@@ -1,0 +1,96 @@
+
+project_goal: >
+  Build a system that wraps third-party survey links in a validation layer that:
+  - Ensures human responses via CAPTCHA
+  - Verifies user consistency via mid-survey validation
+  - Collects metadata for bot detection
+  - Flags suspicious behavior
+  - Allows admins to manage everything via a control panel
+
+modules:
+  - name: Admin Panel
+    features:
+      - Create and manage projects
+      - Upload or generate survey links
+      - Assign unique identifiers
+      - Manage pre-survey question bank
+      - View submissions and flags
+      - Export data (CSV/Excel)
+    tech_stack:
+      backend: ["Node.js (Express)", "Django", "Laravel"]
+      frontend: ["React", "Next.js", "Vue"]
+      db: ["PostgreSQL", "MongoDB"]
+      ui: ["Tailwind UI", "Shadcn UI", "AdminLTE"]
+
+  - name: Survey Link Generator
+    functionality:
+      input: "One third-party survey link + number of links to generate"
+      output: "N unique wrapper URLs with UIDs"
+      storage_fields:
+        - project_id
+        - original_link
+        - uid
+        - status
+        - timestamps
+      output_format: "https://yourdomain.com/s/:project_id/:uid"
+    db_table:
+      name: survey_links
+      fields:
+        - {name: id, type: UUID, description: "Primary key"}
+        - {name: uid, type: String, description: "Unique identifier for each link"}
+        - {name: project_id, type: FK, description: "Reference to projects"}
+        - {name: original_url, type: String, description: "Third-party survey link"}
+        - {name: status, type: Enum, description: "pending / completed / flagged"}
+        - {name: created_at, type: Timestamp, description: "Time of generation"}
+
+  - name: Landing Page
+    steps:
+      - Load on wrapper domain
+      - Show CAPTCHA (Google reCAPTCHA / hCaptcha)
+      - Collect metadata (IP, device, browser, user-agent, timezone)
+      - Display pre-survey question(s) from project
+      - Save answers temporarily
+
+  - name: Survey Wrapper Page
+    features:
+      - Load actual survey inside an iframe
+      - Start a timer for random validation interrupt
+      - Show one of the initial questions again
+      - Compare with stored answer
+      - On mismatch: flag, log violation, optionally block
+      - On match: allow to continue
+
+  - name: Flagging & Logging System
+    triggers:
+      - CAPTCHA failure
+      - Metadata anomaly (VPN, incognito)
+      - Wrong mid-check answer
+      - Duplicate attempts from same IP/device
+    log_fields:
+      - Project ID
+      - UID
+      - Flag reason
+      - Metadata (IP, device, etc.)
+      - Timestamp
+
+  - name: Data Export
+    features:
+      - Filter/export by project, flag status, date range
+      - Export formats: CSV, Excel
+
+testing:
+  free_domains_and_hosting:
+    - {platform: Freenom, use: "Free .tk, .ml domains", notes: "Use for testing your domain"}
+    - {platform: Vercel, use: "Frontend hosting", notes: "Great for Next.js / React"}
+    - {platform: Render, use: "Fullstack + DB", notes: "Free PostgreSQL instance"}
+    - {platform: Railway, use: "Backend + DB", notes: "Free plan, fast to deploy"}
+    - {platform: Replit / Glitch, use: "Rapid prototyping", notes: "Ideal for MVPs and demos"}
+    - {platform: Cloudflare Pages, use: "Static frontend", notes: "Free subdomain, fast deploy"}
+
+next_steps:
+  - Define DB schema (projects, survey_links, responses, flags)
+  - Build admin panel (CSV upload, project creation, question management)
+  - Build frontend wrapper flow (CAPTCHA + metadata + questions)
+  - Add iframe loader + interrupt validation
+  - Set up flagging, logging, and response storage
+  - Deploy via Freenom + Vercel/Render + test links

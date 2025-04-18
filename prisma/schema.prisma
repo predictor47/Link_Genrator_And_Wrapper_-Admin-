@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id                String       @id @default(uuid())
+  name              String
+  description       String?
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  surveyLinks       SurveyLink[]
+  presurveyQuestions Question[]
+  responses         Response[]
+  flags             Flag[]
+
+  @@map("projects")
+}
+
+model SurveyLink {
+  id          String     @id @default(uuid())
+  uid         String     @unique
+  projectId   String     @map("project_id")
+  project     Project    @relation(fields: [projectId], references: [id])
+  originalUrl String     @map("original_url")
+  status      LinkStatus @default(PENDING)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  responses   Response[]
+  flags       Flag[]
+
+  @@map("survey_links")
+}
+
+model Question {
+  id          String     @id @default(uuid())
+  projectId   String     @map("project_id")
+  project     Project    @relation(fields: [projectId], references: [id])
+  text        String
+  options     String[]
+  createdAt   DateTime   @default(now()) @map("created_at")
+  responses   Response[]
+
+  @@map("questions")
+}
+
+model Response {
+  id          String     @id @default(uuid())
+  surveyLinkId String     @map("survey_link_id")
+  surveyLink  SurveyLink @relation(fields: [surveyLinkId], references: [id])
+  projectId   String     @map("project_id")
+  project     Project    @relation(fields: [projectId], references: [id])
+  questionId  String     @map("question_id")
+  question    Question   @relation(fields: [questionId], references: [id])
+  answer      String
+  metadata    Json
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  @@map("responses")
+}
+
+model Flag {
+  id          String     @id @default(uuid())
+  surveyLinkId String     @map("survey_link_id")
+  surveyLink  SurveyLink @relation(fields: [surveyLinkId], references: [id])
+  projectId   String     @map("project_id")
+  project     Project    @relation(fields: [projectId], references: [id])
+  reason      String
+  metadata    Json
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  @@map("flags")
+}
+
+enum LinkStatus {
+  PENDING
+  COMPLETED
+  FLAGGED
+}
