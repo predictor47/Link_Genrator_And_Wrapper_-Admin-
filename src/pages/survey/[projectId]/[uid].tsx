@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { prisma } from '@/lib/prisma';
@@ -36,6 +36,20 @@ export default function SurveyWrapper({
   const [validationActive, setValidationActive] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
+  const [statusUpdated, setStatusUpdated] = useState<boolean>(false);
+  
+  // Reference to track if we've already marked as in progress
+  const inProgressTracking = useRef<{
+    marked: boolean,
+    timeOnPage: number,
+    activityCount: number,
+    completionTimer: NodeJS.Timeout | null
+  }>({
+    marked: false,
+    timeOnPage: 0,
+    activityCount: 0,
+    completionTimer: null
+  });
   
   // Load session data on component mount
   useEffect(() => {
@@ -59,6 +73,30 @@ export default function SurveyWrapper({
     const hasValidSession = checkSession();
     
     if (hasValidSession && originalUrl && question) {
+      // Update status to IN_PROGRESS once iframe is loaded
+      const updateToInProgress = async () => {
+        if (!inProgressTracking.current.marked && sessionData) {
+          try {
+            await axios.post('/api/links/update-status', {
+              projectId: sessionData.projectId,
+              uid: sessionData.uid,
+              status: 'IN_PROGRESS',
+              token: sessionData.token
+            });
+            
+            inProgressTracking.current.marked = true;
+            setStatusUpdated(true);
+          } catch (error) {
+            console.error('Failed to update status to IN_PROGRESS:', error);
+          }
+        }
+      };
+      
+      // Mark as IN_PROGRESS after the iframe loads
+      const inProgressTimer = setTimeout(() => {
+        updateToInProgress();
+      }, 5000); // Give some time for the iframe to load
+      
       // Set up random validation check after 30-120 seconds
       const validationDelay = Math.floor(Math.random() * (120 - 30 + 1) + 30) * 1000;
       
@@ -66,9 +104,65 @@ export default function SurveyWrapper({
         setValidationActive(true);
       }, validationDelay);
       
-      return () => clearTimeout(validationTimer);
+      // Set up a timer to detect potential survey completion
+      // This is a heuristic since we can't directly interact with the external survey
+      const completionTimer = setTimeout(() => {
+        if (sessionData && inProgressTracking.current.timeOnPage > 30 && inProgressTracking.current.activityCount > 5) {
+          handlePotentialCompletion();
+        }
+      }, 180000); // Check after 3 minutes as a baseline
+      
+      inProgressTracking.current.completionTimer = completionTimer;
+      
+      // Track time on page
+      const interval = setInterval(() => {
+        inProgressTracking.current.timeOnPage += 1;
+      }, 1000);
+      
+      // Track user activity as a signal they might be completing the survey
+      const trackActivity = () => {
+        inProgressTracking.current.activityCount += 1;
+      };
+      
+      window.addEventListener('mousemove', trackActivity);
+      window.addEventListener('click', trackActivity);
+      window.addEventListener('keypress', trackActivity);
+      
+      // Add event listener for beforeunload to potentially mark as complete
+      // This helps detect when the user is leaving after completing the survey
+      window.addEventListener('beforeunload', handlePotentialCompletion);
+      
+      return () => {
+        clearTimeout(inProgressTimer);
+        clearTimeout(validationTimer);
+        if (inProgressTracking.current.completionTimer) {
+          clearTimeout(inProgressTracking.current.completionTimer);
+        }
+        clearInterval(interval);
+        window.removeEventListener('mousemove', trackActivity);
+        window.removeEventListener('click', trackActivity);
+        window.removeEventListener('keypress', trackActivity);
+        window.removeEventListener('beforeunload', handlePotentialCompletion);
+      };
     }
-  }, [originalUrl, question]);
+  }, [originalUrl, question, sessionData]);
+  
+  // Handle potential survey completion
+  const handlePotentialCompletion = async () => {
+    if (sessionData && inProgressTracking.current.marked) {
+      try {
+        // Only attempt to update if we've already marked as in progress
+        await axios.post('/api/links/update-status', {
+          projectId: sessionData.projectId,
+          uid: sessionData.uid,
+          status: 'COMPLETED',
+          token: sessionData.token
+        });
+      } catch (error) {
+        console.error('Failed to update survey status to completed:', error);
+      }
+    }
+  };
   
   // Handle validation submission
   const handleValidationSubmit = async () => {
@@ -84,17 +178,8 @@ export default function SurveyWrapper({
       // Answers match, let the user continue
       setValidationActive(false);
       
-      // Update survey link status to completed
-      try {
-        await axios.post('/api/links/complete', {
-          projectId: sessionData.projectId,
-          uid: sessionData.uid,
-          token: sessionData.token
-        });
-      } catch (error) {
-        // Non-critical error, don't block the user
-        console.error('Failed to update survey status:', error);
-      }
+      // Eventually update survey link status to completed when actual completion is detected
+      // This is now handled by the activity tracking logic
     } else {
       // Answers don't match, flag the response
       try {
@@ -191,6 +276,16 @@ export default function SurveyWrapper({
           sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
         />
       )}
+      
+      {/* Optional helper for users to manually mark completion */}
+      <div className="bg-gray-100 px-6 py-3 border-t flex justify-end">
+        <button 
+          onClick={handlePotentialCompletion}
+          className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded text-sm"
+        >
+          I've Completed The Survey
+        </button>
+      </div>
     </div>
   );
 }
@@ -211,12 +306,14 @@ export async function getServerSideProps(context: any) {
   }
 
   try {
-    // Check if survey link exists and is valid
+    // Check if survey link exists and is valid (now we allow PENDING, STARTED or IN_PROGRESS)
     const surveyLink = await prisma.surveyLink.findFirst({
       where: {
         projectId,
         uid,
-        status: 'PENDING',
+        status: {
+          in: ['PENDING', 'STARTED', 'IN_PROGRESS']
+        }
       },
     });
 
@@ -243,9 +340,16 @@ export async function getServerSideProps(context: any) {
       },
     });
 
+    // Parse options JSON string for each question
+    const parsedQuestions = questions.map(q => ({
+      id: q.id,
+      text: q.text,
+      options: JSON.parse(q.options || '[]')
+    }));
+
     // Select a random question if available
-    const randomQuestion = questions.length > 0
-      ? questions[Math.floor(Math.random() * questions.length)]
+    const randomQuestion = parsedQuestions.length > 0
+      ? parsedQuestions[Math.floor(Math.random() * parsedQuestions.length)]
       : null;
 
     return {

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import HCaptcha from '@hcaptcha/react-hcaptcha';
+import HCaptchaComponent from '@hcaptcha/react-hcaptcha';
 import { prisma } from '@/lib/prisma';
 
 // Types for our component props and state
@@ -107,6 +107,14 @@ export default function SurveyLandingPage({
       });
 
       if (response.data.success) {
+        // Update link status to STARTED
+        await axios.post('/api/links/update-status', {
+          projectId,
+          uid,
+          status: 'STARTED',
+          token: response.data.sessionToken
+        });
+        
         // Store session token and answer data in sessionStorage for mid-survey validation
         sessionStorage.setItem('surveySession', JSON.stringify({
           token: response.data.sessionToken,
@@ -151,8 +159,8 @@ export default function SurveyLandingPage({
             <p className="text-gray-600 mb-4">Please complete the verification below to access the survey.</p>
             
             <div className="flex justify-center">
-              <HCaptcha
-                sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY as string}
+              <HCaptchaComponent
+                sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY || '10000000-ffff-ffff-ffff-000000000001'}
                 onVerify={handleCaptchaVerify}
               />
             </div>
@@ -261,12 +269,19 @@ export async function getServerSideProps(context: any) {
       },
     });
 
+    // Parse the options JSON string for each question
+    const parsedQuestions = questions.map(question => ({
+      id: question.id,
+      text: question.text,
+      options: JSON.parse(question.options || '[]')
+    }));
+
     return {
       props: {
         isValid: true,
         projectId,
         uid,
-        questions: JSON.parse(JSON.stringify(questions)), // Serialize for Next.js
+        questions: JSON.parse(JSON.stringify(parsedQuestions)), // Serialize for Next.js
       },
     };
   } catch (error) {

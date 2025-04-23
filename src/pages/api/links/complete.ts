@@ -33,6 +33,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    // Only allow completion if the survey is in STARTED or IN_PROGRESS state
+    if (surveyLink.status !== 'STARTED' && surveyLink.status !== 'IN_PROGRESS') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot complete survey from ${surveyLink.status} status`
+      });
+    }
+
     // Update survey link status to completed
     await prisma.surveyLink.update({
       where: { id: surveyLink.id },

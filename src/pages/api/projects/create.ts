@@ -31,7 +31,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           data: {
             projectId: project.id,
             text: q.text,
-            options: q.options || []
+            // Convert options array to JSON string for SQLite storage
+            options: JSON.stringify(q.options || [])
           }
         })
       );

@@ -70,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           surveyLinkId: surveyLink.id,
           projectId: surveyLink.projectId,
           reason: `Bot detection: ${reasons.join(', ')}`,
-          metadata: mergedMetadata,
+          metadata: JSON.stringify(mergedMetadata),
         }
       });
       
@@ -94,7 +94,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             projectId: surveyLink.projectId,
             questionId: answer.questionId,
             answer: answer.value,
-            metadata: mergedMetadata
+            metadata: JSON.stringify(mergedMetadata)
           }
         });
       }

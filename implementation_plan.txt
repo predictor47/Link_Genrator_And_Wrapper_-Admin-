@@ -1,0 +1,279 @@
+# 🛠️ Enhanced Survey Link Wrapper System — Implementation Plan
+
+## 📌 Project Goal
+
+Build a system that wraps third-party survey links in a validation layer that:
+- Ensures human responses via custom CAPTCHA solution
+- Provides test/live environments with different security levels
+- Supports vendor-specific link generation and analytics
+- Enforces geo-restrictions and VPN detection
+- Verifies user consistency via mid-survey validation
+- Collects metadata for bot detection
+- Flags suspicious behavior
+- Allows admins to manage everything via a control panel
+
+---
+
+## 🧱 System Modules
+
+### 1. Admin Panel
+
+#### Features
+- Create and manage projects
+- Upload or generate survey links with test/live mode options
+- Assign unique identifiers and vendor IDs
+- Set geo-restrictions per project or vendor
+- Manage pre-survey question bank
+- View submissions and flags (overall and by vendor)
+- Export data (CSV/Excel)
+
+#### Tech Stack
+- Backend: Node.js (Express) / Django / Laravel
+- Frontend: React / Next.js / Vue
+- DB: PostgreSQL / MongoDB
+- Admin UI: Tailwind UI / Shadcn UI / AdminLTE
+
+---
+
+### 2. Enhanced Survey Link Generator
+
+#### Functionality
+- Input: 
+  - Third-party survey link
+  - Number of links to generate
+  - Link type (test/live)
+  - Optional vendor ID
+  - Geographic restrictions
+- Output: N unique wrapper URLs with UIDs
+- Store in DB:
+  - project_id
+  - vendor_id (if applicable)
+  - original_link
+  - uid
+  - link_type (test/live)
+  - geo_restrictions
+  - status (pending/completed/flagged)
+  - timestamps
+
+#### Output Format
+
+https://yourdomain.com/s/:project_id/:uid
+
+#### DB Table: `survey_links`
+
+| Field           | Type        | Description                        |
+|----------------|-------------|------------------------------------|
+| id             | UUID        | Primary key                        |
+| uid            | String      | Unique identifier for each link    |
+| project_id     | FK          | Reference to projects              |
+| vendor_id      | FK          | Optional reference to vendors      |
+| original_url   | String      | Third-party survey link            |
+| link_type      | Enum        | test / live                        |
+| geo_restriction| String[]    | Array of allowed country codes     |
+| status         | Enum        | pending / completed / flagged      |
+| created_at     | Timestamp   | Time of generation                 |
+
+#### DB Table: `vendors` (New)
+
+| Field           | Type        | Description                        |
+|----------------|-------------|------------------------------------|
+| id             | UUID        | Primary key                        |
+| name           | String      | Vendor name                        |
+| code           | String      | Unique vendor code                 |
+| project_id     | FK          | Reference to projects              |
+| created_at     | Timestamp   | Creation timestamp                 |
+
+---
+
+### 3. Custom CAPTCHA System
+
+#### Features
+- Server-generated CAPTCHA challenges
+- Multiple verification types:
+  - Text-based challenges
+  - Image selection puzzles
+  - Simple math problems
+- Difficulty adjustment
+- Accessibility options
+
+#### Implementation
+- Client/server architecture
+- Canvas-based generation
+- Secure verification process
+- Mobile-friendly design
+- Customizable appearance
+
+---
+
+### 4. Landing Page
+
+#### Steps
+1. Load on wrapper domain
+2. Check for VPN usage:
+   - Test links: Allow but log
+   - Live links: Prompt to disable VPN
+3. Verify geo-location against restrictions:
+   - If outside allowed region:
+     - Test links: Allow but flag
+     - Live links: Show message and block
+4. Show custom CAPTCHA
+5. Collect metadata:
+   - IP, device, browser, user-agent, timezone
+6. Display pre-survey question(s) from project
+7. Save answers temporarily
+
+---
+
+### 5. Survey Wrapper Page
+
+#### Features
+- Load actual survey inside an iframe
+- Start a timer for random validation interrupt
+- Show one of the initial questions again
+  - Compare with stored answer
+  - On mismatch: flag, log violation, optionally block
+  - On match: allow to continue
+- Capture completion event via:
+  - Redirect to completion landing page
+  - Webhook from survey platform (if available)
+
+---
+
+### 6. Completion Tracking System
+
+#### Features
+- Dedicated completion landing page per project/vendor
+- Third-party survey platforms redirect here after completion
+- Automatically mark survey as completed
+- Capture final metadata and verify consistency with initial session
+- Optional: trigger completion webhooks
+
+#### DB Table: `completions` (New)
+
+| Field           | Type        | Description                        |
+|----------------|-------------|------------------------------------|
+| id             | UUID        | Primary key                        |
+| link_id        | FK          | Reference to survey_links          |
+| ip_address     | String      | Respondent IP (hashed)             |
+| metadata       | JSON        | Browser, device info               |
+| completed_at   | Timestamp   | Completion time                    |
+| vendor_id      | FK          | Optional reference to vendors      |
+| geo_location   | JSON        | Location data                      |
+
+---
+
+### 7. Security & Bot Prevention
+
+#### VPN Detection
+- IP address verification against VPN databases
+- Proxy detection
+- Different policies for test vs. live links
+
+#### Geo-restriction
+- IP-based country detection
+- Custom messaging for blocked regions
+- Regional quota management
+
+#### Bot Detection
+- Browser fingerprinting
+- Behavioral analysis
+- Click pattern monitoring
+- Time-to-complete analysis
+- Mouse movement tracking (optional)
+
+---
+
+### 8. Flagging & Logging System
+
+#### Triggers
+- CAPTCHA failure
+- VPN detected
+- Outside geo-restriction
+- Metadata anomaly
+- Wrong mid-check answer
+- Duplicate attempts from same IP/device
+- Suspicious completion speed
+
+#### Logged Data
+- Project ID, UID
+- Vendor ID
+- Flag reason
+- Metadata (IP, device, etc.)
+- Timestamp
+- Link type (test/live)
+
+---
+
+### 9. Analytics Dashboard
+
+#### Features
+- Project-level statistics
+- Vendor-specific analytics
+- Completion rates
+- Flag frequency analysis
+- Geographic distribution
+- Test vs. live comparison
+- Quality score metrics
+
+---
+
+### 10. Data Export
+
+#### Features
+- Admin can filter/export by:
+  - Project
+  - Vendor
+  - Link type (test/live)
+  - Flag status
+  - Geographic region
+  - Date range
+- Output: CSV / Excel / JSON
+
+---
+
+## 🔗 Free Domains & Hosting (For Testing)
+
+| Platform           | Use                      | Notes                           |
+|--------------------|--------------------------|----------------------------------|
+| **Freenom**        | Free `.tk`, `.ml`, etc.  | Use for testing your domain     |
+| **Vercel**         | Frontend hosting         | Great for Next.js / React       |
+| **Render**         | Fullstack + DB           | Free PostgreSQL instance        |
+| **Railway**        | Backend + DB             | Free plan, fast to deploy       |
+| **Replit / Glitch**| Rapid prototyping        | Ideal for MVPs and demos        |
+| **Cloudflare Pages** | Static frontend       | Free subdomain, fast deploy     |
+
+---
+
+## 🚀 Implementation Priority
+
+1. Update database schema for vendor IDs, test/live links, and geo-restrictions
+2. Build custom CAPTCHA service
+3. Enhance link generation with test/live and vendor ID support
+4. Implement geo-restriction and VPN detection
+5. Create completion landing page system
+6. Update admin interface for new features
+7. Develop vendor-specific analytics
+8. Test complete system flow with security measures
+
+---
+
+## ⚙️ Test Environment
+
+Create a segregated test environment with:
+- Relaxed security for testing (no VPN checks)
+- Simplified CAPTCHA for developer testing
+- Debug logging for all processes
+- Test completion webhooks
+
+---
+
+## 💻 Development Workflow
+
+1. Prototype custom CAPTCHA and validate usability
+2. Implement core database changes
+3. Build test/live switching functionality
+4. Develop geo-restriction and VPN detection
+5. Create vendor management system
+6. Enhance analytics for vendor segmentation
+7. Complete system testing with both test/live links
+8. Deploy to production with monitoring
