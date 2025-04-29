@@ -2,8 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/s/[projectId]/[uid]": "pages/s/[projectId]/[uid].js",
-  "/admin": "pages/admin.js",
-  "/admin/projects/[id]/generate": "pages/admin/projects/[id]/generate.js",
-  "/admin/projects/[id]": "pages/admin/projects/[id].js"
+  "/api/projects/delete": "pages/api/projects/delete.js",
+  "/": "pages/index.js",
+  "/admin": "pages/admin.js"
 }

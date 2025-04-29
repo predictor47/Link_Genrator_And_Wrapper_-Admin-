@@ -1,0 +1,65 @@
+{
+  "name": "link-generator-admin-mcp",
+  "version": "1.0.0",
+  "description": "MCP configuration for Link Generator Admin project",
+  "modelContexts": [
+    {
+      "name": "AmplifyDataModels",
+      "filePatterns": ["amplify/data/resource.ts"],
+      "relationships": [
+        { "from": "Project", "to": "SurveyLink", "type": "hasMany" },
+        { "from": "Project", "to": "Vendor", "type": "hasMany" },
+        { "from": "Project", "to": "Question", "type": "hasMany" },
+        { "from": "Project", "to": "Response", "type": "hasMany" },
+        { "from": "Project", "to": "Flag", "type": "hasMany" },
+        { "from": "SurveyLink", "to": "Response", "type": "hasMany" },
+        { "from": "SurveyLink", "to": "Flag", "type": "hasMany" },
+        { "from": "Vendor", "to": "SurveyLink", "type": "hasMany" },
+        { "from": "Question", "to": "Response", "type": "hasMany" }
+      ]
+    },
+    {
+      "name": "APIEndpoints",
+      "filePatterns": ["src/pages/api/**/*.ts"],
+      "description": "All API endpoints in the project"
+    },
+    {
+      "name": "SecurityFeatures",
+      "filePatterns": ["src/lib/auth-service.ts", "src/lib/captcha.ts", "src/lib/vpn-detection.ts", "src/lib/ipinfo.ts"],
+      "description": "Security-related code including authentication, captcha, and VPN detection"
+    },
+    {
+      "name": "AmplifyConfiguration",
+      "filePatterns": ["src/lib/amplify-config.ts", "amplify.yml"],
+      "description": "AWS Amplify configuration and setup files"
+    }
+  ],
+  "tools": [
+    {
+      "name": "schema-validator",
+      "description": "Validates that data operations comply with the Amplify schema",
+      "action": "validate",
+      "patterns": ["src/pages/api/**/*.ts"]
+    },
+    {
+      "name": "security-analyzer",
+      "description": "Analyzes code for security vulnerabilities and compliance with best practices",
+      "action": "analyze",
+      "patterns": ["src/**/*.ts", "src/**/*.tsx"]
+    },
+    {
+      "name": "amplify-data-operations",
+      "description": "Provides helper functions for common Amplify data operations",
+      "action": "generate",
+      "patterns": ["src/lib/amplify-helpers.ts"]
+    }
+  ],
+  "settings": {
+    "securityStandards": ["OWASP10", "CWE", "NIST"],
+    "codeQualityMetrics": ["complexity", "duplications", "vulnerabilities"],
+    "amplifyModels": {
+      "validateRelationships": true,
+      "checkAuthRules": true
+    }
+  }
+}

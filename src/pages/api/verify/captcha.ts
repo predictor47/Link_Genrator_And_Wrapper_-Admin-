@@ -1,119 +1,91 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { v4 as uuidv4 } from 'uuid';
-import { verifyCaptcha } from '@/lib/captcha';
-import { collectMetadata, detectAnomalies, enhanceMetadataWithVPNDetection } from '@/lib/metadata';
-import { prisma } from '@/lib/prisma';
+import { generateChallenge, verifyChallengeResponse } from '@/lib/captcha';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
+  // Handle CORS for cross-domain requests
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
-  try {
-    const { token, projectId, uid, clientMetadata, answers } = req.body;
-
-    if (!token || !projectId || !uid) {
+  // Generate a new challenge
+  if (req.method === 'GET') {
+    const fingerprint = req.query.fingerprint as string;
+    
+    if (!fingerprint) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Missing required fields' 
+        error: 'Missing browser fingerprint' 
       });
     }
+    
+    try {
+      const challenge = generateChallenge({ fingerprint });
 
-    // Verify CAPTCHA token
-    const isValidCaptcha = await verifyCaptcha(token);
-    if (!isValidCaptcha) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'CAPTCHA validation failed' 
+      // Don't expose answer in the response
+      return res.status(200).json({
+        success: true,
+        challenge
+      });
+    } catch (error) {
+      console.error('Error generating challenge:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to generate challenge'
       });
     }
-
-    // Get the survey link
-    const surveyLink = await prisma.surveyLink.findFirst({
-      where: {
-        projectId,
-        uid,
-        status: 'PENDING'
-      },
-      include: {
-        project: true
-      }
-    });
-
-    if (!surveyLink) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Survey link not found or already used' 
-      });
-    }
-
-    // Collect server-side metadata
-    const serverMetadata = collectMetadata(req);
-    
-    // Enhance metadata with VPN detection
-    const enhancedMetadata = await enhanceMetadataWithVPNDetection(serverMetadata);
-    
-    // Merge with client metadata
-    const mergedMetadata = {
-      ...enhancedMetadata,
-      timezone: clientMetadata?.timezone || null,
-      fingerprint: clientMetadata?.fingerprint || null,
-    };
-    
-    // Check for anomalies in metadata
-    const { isBot, reasons } = detectAnomalies(mergedMetadata);
-    
-    // If bot is detected, flag the link
-    if (isBot) {
-      await prisma.flag.create({
-        data: {
-          surveyLinkId: surveyLink.id,
-          projectId: surveyLink.projectId,
-          reason: `Bot detection: ${reasons.join(', ')}`,
-          metadata: JSON.stringify(mergedMetadata),
-        }
-      });
+  }
+  
+  // Verify a challenge response
+  if (req.method === 'POST') {
+    try {
+      const { id, answer, fingerprint, timing } = req.body;
       
-      await prisma.surveyLink.update({
-        where: { id: surveyLink.id },
-        data: { status: 'FLAGGED' }
-      });
-      
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Suspicious activity detected' 
-      });
-    }
-    
-    // Store the user's answers to pre-survey questions
-    if (answers && answers.length > 0) {
-      for (const answer of answers) {
-        await prisma.response.create({
-          data: {
-            surveyLinkId: surveyLink.id,
-            projectId: surveyLink.projectId,
-            questionId: answer.questionId,
-            answer: answer.value,
-            metadata: JSON.stringify(mergedMetadata)
-          }
+      if (!id || answer === undefined || !fingerprint || !timing) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required fields'
         });
       }
+      
+      const result = verifyChallengeResponse({
+        id,
+        answer,
+        fingerprint,
+        timing
+      });
+      
+      return res.status(200).json({
+        success: result.valid,
+        error: result.reason,
+        token: result.valid ? generateVerificationToken(fingerprint) : null
+      });
+    } catch (error) {
+      console.error('Error verifying challenge:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to verify challenge'
+      });
     }
-
-    // Create a session token for mid-survey validation
-    const sessionToken = uuidv4();
-    
-    // Return success response with original URL and session token
-    return res.status(200).json({
-      success: true,
-      originalUrl: surveyLink.originalUrl,
-      sessionToken,
-    });
-  } catch (error) {
-    console.error('Error verifying captcha:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Internal server error' 
-    });
   }
+  
+  return res.status(405).json({ error: 'Method not allowed' });
+}
+
+// Generate a verification token once captcha is solved
+function generateVerificationToken(fingerprint: string): string {
+  const crypto = require('crypto');
+  const timestamp = Date.now();
+  const data = `${fingerprint}:${timestamp}:${process.env.CAPTCHA_SECRET_KEY || 'default-secret'}`;
+  
+  const hash = crypto
+    .createHash('sha256')
+    .update(data)
+    .digest('hex');
+  
+  // Short-lived token (valid for 1 hour)
+  return `${timestamp}:${hash}`;
 }

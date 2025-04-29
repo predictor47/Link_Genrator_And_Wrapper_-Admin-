@@ -1,0 +1,60 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Amplify Sandbox",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "amplify",
+        "sandbox"
+      ],
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Next.js Dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Amplify Gen2 Sandbox",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "@aws-amplify/backend-cli",
+        "sandbox"
+      ],
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Amplify Gen 2 Sandbox",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "@aws-amplify/backend-cli",
+        "sandbox"
+      ],
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Next.js Dev Server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "console": "integratedTerminal"
+    }
+  ]
+}

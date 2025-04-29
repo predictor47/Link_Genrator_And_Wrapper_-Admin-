@@ -1,0 +1,62 @@
+version: 2
+appRoot: 
+  - .
+applications:
+  - frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - .next/cache/**/*
+      buildPath: /
+    appRoot: .
+    backend:
+      phases:
+        build:
+          commands:
+            - npm ci
+            - npx prisma generate
+            - npx prisma migrate deploy
+      artifacts:
+        files:
+          - prisma/**/*
+          - next.config.js
+          - package.json
+          - public/**/*
+      cache:
+        paths:
+          - node_modules/**/*
+    redirects:
+      # Custom domain subdomain configuration
+      - source: https://admin.${AMPLIFY_DOMAIN}/*
+        target: https://admin.${AMPLIFY_DOMAIN}/admin/:splat
+        status: 301
+        condition: null
+    environment:
+      variables:
+        # Environment variables needed for the app
+        NODE_ENV: production
+        NEXTAUTH_URL: https://admin.${AMPLIFY_DOMAIN}
+        NEXT_PUBLIC_APP_URL: https://${AMPLIFY_DOMAIN}
+    customRules:
+      # Rules for subdomain routing
+      - pattern: '/admin/**/*'
+        target: '/admin/[id]/[...path]'
+        status: '200'
+        condition: 'subdomain = admin'
+      - pattern: '/**/*.*'
+        target: '/[file]'
+        status: '200'
+      - pattern: '/**/*'
+        target: '/index.html'
+        status: '200'

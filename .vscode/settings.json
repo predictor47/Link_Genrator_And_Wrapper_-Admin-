@@ -1,3 +1,35 @@
 {
-    "git.ignoreLimitWarning": true
+  "git.ignoreLimitWarning": true,
+  "mcp.enabled": true,
+  "mcp.configPath": "C:\\Users\\munee\\OneDrive\\Desktop\\Link_Genrator_And_Wrapper_-Admin-\\mcp.config.json",
+  "mcp.modelProviders": [
+    {
+      "name": "amplify-data-models",
+      "path": "C:\\Users\\munee\\OneDrive\\Desktop\\Link_Genrator_And_Wrapper_-Admin-\\amplify\\data\\resource.ts"
+    },
+    {
+      "name": "security-services",
+      "path": "C:\\Users\\munee\\OneDrive\\Desktop\\Link_Genrator_And_Wrapper_-Admin-\\src\\lib\\security-service.ts"
+    }
+  ],
+  "mcp.security": {
+    "enableVulnerabilityScanning": true,
+    "securityStandards": [
+      "OWASP10",
+      "CWE",
+      "NIST"
+    ]
+  },
+  "mcp.telemetry": {
+    "enabled": true,
+    "logLevel": "info"
+  },
+  "aws.telemetry": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "javascript.updateImportsOnFileMove.enabled": "always",
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "javascript.preferences.importModuleSpecifier": "relative"
 }
