@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "setup-amplify": "node scripts/setup-amplify.js",
+    "create-admin": "node scripts/create-admin-user.js",
+    "deploy": "amplify push && npm run create-admin && amplify publish"
   },
   "dependencies": {
     "@aws-amplify/auth": "^6.12.3",
