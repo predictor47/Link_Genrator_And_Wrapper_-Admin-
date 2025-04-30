@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import axios from 'axios';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 
 interface CompletionPageProps {
   project: {
@@ -154,15 +154,9 @@ export async function getServerSideProps(context: any) {
   const { projectId, uid } = context.params;
   
   try {
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-      select: {
-        id: true,
-        name: true
-      }
-    });
-    
-    if (!project) {
+    // Fetch project data using Amplify
+    const projectResult = await amplifyDataService.projects.get(projectId);
+    if (!projectResult || !projectResult.data) {
       return {
         props: {
           project: null,
@@ -172,28 +166,30 @@ export async function getServerSideProps(context: any) {
       };
     }
     
-    const surveyLink = await prisma.surveyLink.findFirst({
-      where: {
-        projectId,
-        uid
-      },
-      include: {
-        vendor: {
-          select: {
-            code: true
-          }
-        }
-      }
-    });
+    const project = projectResult.data;
     
-    if (!surveyLink) {
+    // Fetch survey link using Amplify
+    const surveyLinkResult = await amplifyDataService.surveyLinks.getByUid(uid);
+    const surveyLink = surveyLinkResult?.data;
+    
+    if (!surveyLink || surveyLink.projectId !== projectId) {
       return {
         props: {
-          project,
+          project: {
+            id: project.id,
+            name: project.name
+          },
           surveyLink: null,
           error: 'Survey link not found'
         }
       };
+    }
+    
+    // Get vendor code if applicable
+    let vendorCode = null;
+    if (surveyLink.vendorId) {
+      const vendorResult = await amplifyDataService.vendors.get(surveyLink.vendorId);
+      vendorCode = vendorResult.data?.code || null;
     }
     
     return {
@@ -204,9 +200,9 @@ export async function getServerSideProps(context: any) {
         },
         surveyLink: {
           uid: surveyLink.uid,
-          status: surveyLink.status,
+          status: surveyLink.status || 'PENDING',
           originalUrl: surveyLink.originalUrl,
-          vendorCode: surveyLink.vendor?.code || null
+          vendorCode
         },
         error: null
       }

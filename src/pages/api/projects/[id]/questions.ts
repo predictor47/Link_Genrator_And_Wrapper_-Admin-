@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id: projectId } = req.query;
@@ -11,10 +11,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // GET: List all questions for a project
   if (req.method === 'GET') {
     try {
-      const questions = await prisma.question.findMany({
-        where: { projectId },
-        orderBy: { createdAt: 'desc' }
-      });
+      const questionsResult = await amplifyDataService.questions.listByProject(projectId);
+      const questions = questionsResult.data || [];
 
       // Parse options from JSON string to array
       const parsedQuestions = questions.map(q => ({
@@ -22,7 +20,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         options: JSON.parse(q.options || '[]')
       }));
 
-      return res.status(200).json({ success: true, questions: parsedQuestions });
+      // Sort by creation date descending
+      const sortedQuestions = parsedQuestions.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
+
+      return res.status(200).json({ success: true, questions: sortedQuestions });
     } catch (error) {
       console.error('Error fetching questions:', error);
       return res.status(500).json({ 
@@ -47,18 +52,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Store options as JSON string
       const optionsString = JSON.stringify(options);
 
-      const question = await prisma.question.create({
-        data: {
-          text,
-          options: optionsString,
-          projectId
-        }
+      const questionResult = await amplifyDataService.questions.create({
+        text,
+        options: optionsString,
+        projectId
       });
 
       return res.status(201).json({ 
         success: true, 
         question: {
-          ...question,
+          ...questionResult.data,
           options
         }
       });
@@ -84,23 +87,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Ensure the question belongs to this project
-      const question = await prisma.question.findFirst({
-        where: {
-          id: questionId,
-          projectId
-        }
-      });
+      const questionResult = await amplifyDataService.questions.get(questionId);
+      const question = questionResult.data;
 
-      if (!question) {
+      if (!question || question.projectId !== projectId) {
         return res.status(404).json({
           success: false,
           message: 'Question not found or does not belong to this project'
         });
       }
 
-      await prisma.question.delete({
-        where: { id: questionId }
-      });
+      await amplifyDataService.questions.delete(questionId);
 
       return res.status(200).json({ 
         success: true, 

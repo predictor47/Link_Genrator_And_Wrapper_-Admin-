@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import HCaptchaComponent from '@hcaptcha/react-hcaptcha';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 
 // Types for our component props and state
 interface Question {
@@ -236,14 +236,20 @@ export async function getServerSideProps(context: any) {
   }
 
   try {
-    // Check if survey link exists and is valid
-    const surveyLink = await prisma.surveyLink.findFirst({
-      where: {
-        projectId,
-        uid,
-        status: 'PENDING',
-      },
+    // Check if survey link exists and is valid using Amplify Data Service
+    const surveyLinkResult = await amplifyDataService.surveyLinks.list({
+      filter: {
+        and: [
+          { projectId: { eq: projectId } },
+          { uid: { eq: uid } },
+          { status: { eq: 'PENDING' } }
+        ]
+      }
     });
+
+    const surveyLink = surveyLinkResult.data && surveyLinkResult.data.length > 0 
+      ? surveyLinkResult.data[0] 
+      : null;
 
     if (!surveyLink) {
       return {
@@ -257,17 +263,9 @@ export async function getServerSideProps(context: any) {
       };
     }
 
-    // Get pre-survey questions for this project
-    const questions = await prisma.question.findMany({
-      where: {
-        projectId,
-      },
-      select: {
-        id: true,
-        text: true,
-        options: true,
-      },
-    });
+    // Get pre-survey questions for this project using Amplify Data Service
+    const questionsResult = await amplifyDataService.questions.listByProject(projectId);
+    const questions = questionsResult.data || [];
 
     // Parse the options JSON string for each question
     const parsedQuestions = questions.map(question => ({

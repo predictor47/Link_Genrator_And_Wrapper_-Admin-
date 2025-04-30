@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 import axios from 'axios';
 
 // Define proper types based on your Prisma schema
@@ -524,39 +524,35 @@ export async function getServerSideProps({ params }: { params: { id: string } })
   const { id } = params;
 
   try {
-    // Fetch project data with correct relation name (presurveyQuestions)
-    const project = await prisma.project.findUnique({
-      where: { id },
-      include: {
-        presurveyQuestions: true,
-        vendors: true,
-        _count: {
-          select: {
-            surveyLinks: true,
-            flags: true,
-          }
-        }
-      }
-    });
+    // Fetch project data using Amplify Data Service
+    const projectResult = await amplifyDataService.projects.get(id);
+    const project = projectResult.data;
 
     if (!project) {
       return { props: { project: null } };
     }
 
-    // Get survey links stats for this project
-    const linkStats = await prisma.surveyLink.groupBy({
-      by: ['status'],
-      where: {
-        projectId: id
-      },
-      _count: {
-        id: true,
-      },
+    // Get questions for this project
+    const questionsResult = await amplifyDataService.questions.listByProject(id);
+    const questions = questionsResult.data || [];
+
+    // Get vendors for this project
+    const vendorsResult = await amplifyDataService.vendors.listByProject(id);
+    const vendors = vendorsResult.data || [];
+
+    // Get survey links for this project
+    const surveyLinksResult = await amplifyDataService.surveyLinks.listByProject(id);
+    const surveyLinks = surveyLinksResult.data || [];
+
+    // Get flags for this project
+    const flagsResult = await amplifyDataService.flags.list({
+      filter: { projectId: { eq: id } }
     });
+    const flags = flagsResult.data || [];
 
     // Initialize stats
     const stats = {
-      total: 0,
+      total: surveyLinks.length,
       pending: 0,
       started: 0,
       inProgress: 0,
@@ -564,30 +560,31 @@ export async function getServerSideProps({ params }: { params: { id: string } })
       flagged: 0
     };
 
-    // Calculate total
-    stats.total = project._count.surveyLinks;
-
-    // Process link stats
-    linkStats.forEach(stat => {
-      const { status, _count } = stat;
-      switch (status) {
+    // Calculate stats from survey links
+    surveyLinks.forEach(link => {
+      switch (link.status) {
         case 'PENDING':
-          stats.pending = _count.id;
+          stats.pending++;
           break;
         case 'STARTED':
-          stats.started = _count.id;
+          stats.started++;
           break;
         case 'IN_PROGRESS':
-          stats.inProgress = _count.id;
+          stats.inProgress++;
           break;
         case 'COMPLETED':
-          stats.completed = _count.id;
+          stats.completed++;
           break;
         case 'FLAGGED':
-          stats.flagged = _count.id;
+          stats.flagged++;
           break;
       }
     });
+
+    // Add flags count if not already counted in status
+    if (flags.length > stats.flagged) {
+      stats.flagged = flags.length;
+    }
 
     return {
       props: {
@@ -595,17 +592,17 @@ export async function getServerSideProps({ params }: { params: { id: string } })
           id: project.id,
           name: project.name,
           description: project.description,
-          createdAt: project.createdAt.toISOString(),
-          questions: project.presurveyQuestions.map((q: { id: string; text: string; options: string }) => ({
+          createdAt: project.createdAt,
+          questions: questions.map(q => ({
             id: q.id,
             text: q.text,
             options: q.options // This is already a string in your schema
           })),
-          vendors: project.vendors.map((v: any) => ({
+          vendors: vendors.map(v => ({
             id: v.id,
             name: v.name,
             code: v.code,
-            createdAt: v.createdAt.toISOString()
+            createdAt: v.createdAt
           })),
           stats
         }

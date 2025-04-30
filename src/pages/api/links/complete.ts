@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -16,15 +16,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Verify token (in a real app, we'd validate the session token more securely)
-    
     // Get the survey link
-    const surveyLink = await prisma.surveyLink.findFirst({
-      where: {
-        projectId,
-        uid
-      }
-    });
+    const surveyLinkResult = await amplifyDataService.surveyLinks.getByUid(uid);
+    const surveyLink = surveyLinkResult?.data;
 
     if (!surveyLink) {
       return res.status(404).json({ 
@@ -66,13 +60,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // If suspicious activity detected, flag but still mark as completed
     if (shouldFlag) {
-      await prisma.flag.create({
-        data: {
-          surveyLinkId: surveyLink.id,
-          projectId,
-          reason: flagReason,
-          metadata: JSON.stringify(metadata || {})
-        }
+      await amplifyDataService.flags.create({
+        surveyLinkId: surveyLink.id,
+        projectId,
+        reason: flagReason,
+        metadata: JSON.stringify(metadata || {})
       });
     }
 
@@ -84,38 +76,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Update vendor information if provided and different from current
     if (vendorId && vendorId !== surveyLink.vendorId) {
       // Verify vendor belongs to this project
-      const vendorExists = await prisma.vendor.findFirst({
-        where: {
-          id: vendorId,
-          projectId
+      const vendorResults = await amplifyDataService.vendors.list({
+        filter: {
+          and: [
+            { id: { eq: vendorId } },
+            { projectId: { eq: projectId } }
+          ]
         }
       });
       
-      if (vendorExists) {
+      if (vendorResults.data && vendorResults.data.length > 0) {
         updateData.vendorId = vendorId;
       }
     }
-    
-    // Update survey link status to completed
-    await prisma.surveyLink.update({
-      where: { id: surveyLink.id },
-      data: updateData
-    });
+    if (!surveyLink.id) {
+      throw new Error('Survey link ID is null or undefined');
+    }
+    await amplifyDataService.surveyLinks.update(surveyLink.id, updateData);
 
     // Store completion metadata if provided
     if (metadata) {
-      // Create a response record with the completion metadata
-      await prisma.response.create({
-        data: {
-          surveyLinkId: surveyLink.id,
-          projectId,
-          questionId: '00000000-0000-0000-0000-000000000000', // Placeholder for completion metadata
-          answer: 'COMPLETION',
-          metadata: JSON.stringify({
-            completionTimestamp: new Date().toISOString(),
-            ...metadata
-          })
-        }
+      await amplifyDataService.responses.create({
+        surveyLinkId: surveyLink.id,
+        projectId,
+        questionId: '00000000-0000-0000-0000-000000000000', // Placeholder for completion metadata
+        answer: 'COMPLETION',
+        metadata: JSON.stringify({
+          completionTimestamp: new Date().toISOString(),
+          ...(metadata || {})
+        })
       });
     }
 

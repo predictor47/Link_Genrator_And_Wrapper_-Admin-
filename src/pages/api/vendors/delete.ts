@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'DELETE') {
@@ -17,14 +17,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Check if vendor exists
-    const vendor = await prisma.vendor.findUnique({
-      where: { id },
-      include: {
-        surveyLinks: {
-          select: { id: true }
-        }
-      }
-    });
+    const vendorResult = await amplifyDataService.vendors.get(id);
+    const vendor = vendorResult.data;
 
     if (!vendor) {
       return res.status(404).json({ 
@@ -34,17 +28,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Check if vendor has any survey links
-    if (vendor.surveyLinks.length > 0) {
+    const surveyLinksResult = await amplifyDataService.surveyLinks.list({
+      filter: { vendorId: { eq: id } }
+    });
+
+    if (surveyLinksResult.data && surveyLinksResult.data.length > 0) {
       return res.status(409).json({ 
         success: false, 
         message: 'Cannot delete vendor with associated survey links' 
       });
     }
 
-    // Delete the vendor
-    await prisma.vendor.delete({
-      where: { id }
-    });
+    // Delete the vendor using Amplify
+    await amplifyDataService.vendors.delete(id);
 
     return res.status(200).json({ 
       success: true, 

@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -18,13 +18,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Verify token (in a real app, we'd validate the session token)
     
-    // Get the survey link
-    const surveyLink = await prisma.surveyLink.findFirst({
-      where: {
-        projectId,
-        uid
-      }
-    });
+    // Get the survey link using Amplify
+    const surveyLinkResult = await amplifyDataService.surveyLinks.getByUid(uid);
+    const surveyLink = surveyLinkResult?.data;
 
     if (!surveyLink) {
       return res.status(404).json({ 
@@ -33,20 +29,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Create a flag for this response
-    await prisma.flag.create({
-      data: {
-        surveyLinkId: surveyLink.id,
-        projectId,
-        reason,
-        metadata: metadata || {}
-      }
+    // Create a flag for this response using Amplify
+    await amplifyDataService.flags.create({
+      surveyLinkId: surveyLink.id,
+      projectId,
+      reason,
+      metadata: JSON.stringify(metadata || {})
     });
 
-    // Update survey link status to flagged
-    await prisma.surveyLink.update({
-      where: { id: surveyLink.id },
-      data: { status: 'FLAGGED' }
+    if (!surveyLink.id) {
+      throw new Error('Survey link ID is null or undefined');
+    }
+    await amplifyDataService.surveyLinks.update(surveyLink.id, { 
+      status: 'FLAGGED' 
     });
 
     return res.status(200).json({

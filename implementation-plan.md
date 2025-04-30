@@ -1,136 +1,57 @@
+# AWS Amplify Migration Implementation Plan
 
-# 🛠️ Survey Link Wrapper System — Implementation Plan
+## Completed Steps
+- [x] Updated package.json to remove Prisma dependencies
+- [x] Converted API endpoints to use Amplify services instead of Prisma
+- [x] Updated frontend pages to use Amplify data services
 
-## 📌 Project Goal
+## Remaining Steps
 
-Build a system that wraps third-party survey links in a validation layer that:
-- Ensures human responses via CAPTCHA
-- Verifies user consistency via mid-survey validation
-- Collects metadata for bot detection
-- Flags suspicious behavior
-- Allows admins to manage everything via a control panel
+### 1. Remove Prisma-Related Files
+Delete the following files and directories as they're no longer needed:
+- `src/lib/prisma.ts`
+- `prisma/` directory and all its contents
+- Any Prisma references in deployment directories
 
----
+### 2. Update Any Remaining API Endpoints
+Ensure all API endpoints use `amplifyDataService` instead of `prisma`:
+- Check for any remaining imports of `prisma` in the codebase
+- Replace all Prisma query operations with equivalent Amplify operations
 
-## 🧱 System Modules
+### 3. Finalize Amplify Backend Setup
+- Run `npm run setup-amplify` to ensure all Amplify backend resources are properly configured
+- Verify that all required environment variables are set in Amplify
 
-### 1. Admin Panel
+### 4. Testing
+- Test all API endpoints to ensure they work with Amplify
+- Test frontend pages to ensure data is properly retrieved and displayed
+- Verify authentication flows work correctly
 
-#### Features
-- Create and manage projects
-- Upload or generate survey links
-- Assign unique identifiers
-- Manage pre-survey question bank
-- View submissions and flags
-- Export data (CSV/Excel)
+### 5. Deployment
+- Run `npm run deploy` to deploy the Amplify backend and frontend
+- Verify the deployed application works as expected
 
-#### Tech Stack
-- Backend: Node.js (Express) / Django / Laravel
-- Frontend: React / Next.js / Vue
-- DB: PostgreSQL / MongoDB
-- Admin UI: Tailwind UI / Shadcn UI / AdminLTE
+## Files Updated to Use Amplify Instead of Prisma
+- API endpoints:
+  - `src/pages/api/vendors/list.ts`
+  - `src/pages/api/vendors/delete.ts`
+  - `src/pages/api/vendors/create.ts`
+  - `src/pages/api/projects/[id]/questions.ts`
+  - `src/pages/api/projects/delete.ts`
+  - `src/pages/api/links/update-status.ts`
+  - `src/pages/api/links/flag.ts`
+  - `src/pages/api/links/complete.ts`
+  
+- Frontend pages:
+  - `src/pages/admin/index.tsx`
+  - `src/pages/admin/projects/[id].tsx`
+  - `src/pages/completion/[projectId]/[uid].tsx`
+  - `src/pages/s/[projectId]/[uid].tsx`
+  - `src/pages/survey/[projectId]/[uid].tsx`
 
----
-
-### 2. Survey Link Generator
-
-#### Functionality
-- Input: One third-party survey link + number of links to generate
-- Output: N unique wrapper URLs with UIDs
-- Store in DB:
-  - project_id
-  - original_link
-  - uid
-  - status (pending/completed/flagged)
-  - timestamps
-
-#### Output Format
-```
-https://yourdomain.com/s/:project_id/:uid
-```
-
-#### DB Table: `survey_links`
-
-| Field           | Type        | Description                        |
-|----------------|-------------|------------------------------------|
-| id             | UUID        | Primary key                        |
-| uid            | String      | Unique identifier for each link   |
-| project_id     | FK          | Reference to projects              |
-| original_url   | String      | Third-party survey link            |
-| status         | Enum        | pending / completed / flagged      |
-| created_at     | Timestamp   | Time of generation                 |
-
----
-
-### 3. Landing Page
-
-#### Steps
-1. Load on wrapper domain
-2. Show CAPTCHA (Google reCAPTCHA / hCaptcha)
-3. Collect metadata:
-   - IP, device, browser, user-agent, timezone
-4. Display pre-survey question(s) from project
-5. Save answers temporarily
-
----
-
-### 4. Survey Wrapper Page
-
-#### Features
-- Load actual survey inside an iframe
-- Start a timer for random validation interrupt
-- Show one of the initial questions again
-  - Compare with stored answer
-  - On mismatch: flag, log violation, optionally block
-  - On match: allow to continue
-
----
-
-### 5. Flagging & Logging System
-
-#### Triggers
-- CAPTCHA failure
-- Metadata anomaly (VPN, incognito)
-- Wrong mid-check answer
-- Duplicate attempts from same IP/device
-
-#### Logged Data
-- Project ID, UID
-- Flag reason
-- Metadata (IP, device, etc.)
-- Timestamp
-
----
-
-### 6. Data Export
-
-#### Features
-- Admin can filter/export by:
-  - Project
-  - Flag status
-  - Date range
-- Output: CSV / Excel
-
----
-
-## 🔗 Free Domains & Hosting (For Testing)
-
-| Platform           | Use                      | Notes                           |
-|--------------------|--------------------------|----------------------------------|
-| **Freenom**        | Free `.tk`, `.ml`, etc.  | Use for testing your domain     |
-| **Vercel**         | Frontend hosting         | Great for Next.js / React       |
-| **Render**         | Fullstack + DB           | Free PostgreSQL instance        |
-| **Railway**        | Backend + DB             | Free plan, fast to deploy       |
-| **Replit / Glitch**| Rapid prototyping        | Ideal for MVPs and demos        |
-| **Cloudflare Pages** | Static frontend       | Free subdomain, fast deploy     |
-
----
-
-## ✅ Next Steps
-
-1. Define DB schema (`projects`, `survey_links`, `responses`, `flags`)
-2. Build admin panel (CSV upload, project creation, question management)
-3. Build frontend wrapper flow (CAPTCHA + metadata + questions)
-4. Add iframe loader + interrupt validation
-5. Set up flagging, logging, and response storage
-6. Deploy via Freenom + Vercel/Render + test links
+## Benefits of Migrating to AWS Amplify
+- Simplified infrastructure (single provider)
+- Better scalability with DynamoDB
+- Integrated authentication with Cognito
+- Streamlined deployment process
+- Improved security with AWS IAM

@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 import axios from 'axios';
 
 interface Project {
   id: string;
   name: string;
   description: string | null;
-  createdAt: Date;
+  createdAt: string | Date; // Allow both string and Date to handle both API responses and frontend requirements
   _count: {
     surveyLinks: number;
     flags: number;
@@ -383,6 +383,7 @@ export default function AdminDashboard({ projects: initialProjects, stats: initi
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <Link 
                           href={`/admin/projects/${project.id}`}
+
                           className="text-blue-600 hover:text-blue-900 mr-4"
                         >
                           View
@@ -464,74 +465,11 @@ export default function AdminDashboard({ projects: initialProjects, stats: initi
 
 export async function getServerSideProps() {
   try {
-    // Get projects with counts
-    const projects = await prisma.project.findMany({
-      orderBy: {
-        createdAt: 'desc',
-      },
-      include: {
-        _count: {
-          select: {
-            surveyLinks: true,
-            flags: true,
-          },
-        },
-      },
-    });
-
-    // Get overall stats
-    const linkStats = await prisma.surveyLink.groupBy({
-      by: ['status'],
-      _count: {
-        id: true,
-      },
-    });
-
-    // Get project-specific stats
-    const projectLinkStats = await prisma.surveyLink.groupBy({
-      by: ['projectId', 'status'],
-      _count: {
-        id: true,
-      },
-    });
-
-    // Initialize project stats object
-    const projectStats: Record<string, { 
-      pending: number, 
-      started: number,
-      inProgress: number,
-      completed: number,
-      flagged: number
-    }> = {};
-
-    // Process project-specific stats
-    projectLinkStats.forEach((stat) => {
-      const { projectId, status } = stat;
-      const count = stat._count.id;
-      
-      if (!projectStats[projectId]) {
-        projectStats[projectId] = {
-          pending: 0,
-          started: 0,
-          inProgress: 0,
-          completed: 0,
-          flagged: 0
-        };
-      }
-      
-      if (status === 'PENDING') {
-        projectStats[projectId].pending = count;
-      } else if (status === 'STARTED') {
-        projectStats[projectId].started = count;
-      } else if (status === 'IN_PROGRESS') {
-        projectStats[projectId].inProgress = count;
-      } else if (status === 'COMPLETED') {
-        projectStats[projectId].completed = count;
-      } else if (status === 'FLAGGED') {
-        projectStats[projectId].flagged = count;
-      }
-    });
-
+    // Get all projects using Amplify Data Service
+    const projectsResult = await amplifyDataService.projects.list();
+    const projects = projectsResult.data || [];
+    
+    // Initialize stats
     const stats = {
       totalProjects: projects.length,
       totalLinks: 0,
@@ -542,27 +480,108 @@ export async function getServerSideProps() {
       flaggedLinks: 0,
     };
 
-    // Process overall link stats
-    linkStats.forEach((stat) => {
-      const count = stat._count.id;
-      stats.totalLinks += count;
-      
-      if (stat.status === 'PENDING') {
-        stats.pendingLinks = count;
-      } else if (stat.status === 'STARTED') {
-        stats.startedLinks = count;
-      } else if (stat.status === 'IN_PROGRESS') {
-        stats.inProgressLinks = count;
-      } else if (stat.status === 'COMPLETED') {
-        stats.completedLinks = count;
-      } else if (stat.status === 'FLAGGED') {
-        stats.flaggedLinks = count;
+    // Initialize project stats object
+    const projectStats: Record<string, { 
+      pending: number, 
+      started: number,
+      inProgress: number,
+      completed: number,
+      flagged: number
+    }> = {};
+    
+    // Initialize counts for each project
+    projects.forEach(project => {
+      if (project && project.id) {
+        projectStats[project.id] = {
+          pending: 0,
+          started: 0,
+          inProgress: 0,
+          completed: 0,
+          flagged: 0
+        };
       }
     });
 
+    // Get all survey links to compute stats
+    const surveyLinksResult = await amplifyDataService.surveyLinks.list();
+    const surveyLinks = surveyLinksResult.data || [];
+    
+    // Calculate total links
+    stats.totalLinks = surveyLinks.length;
+    
+    // Process survey links to compute both overall and project-specific stats
+    surveyLinks.forEach(link => {
+      // Skip links without a project or status
+      if (!link.projectId || !link.status) return;
+      
+      // Update project-specific stats
+      if (link.projectId && projectStats[link.projectId]) {
+        switch (link.status) {
+          case 'PENDING':
+            projectStats[link.projectId].pending += 1;
+            stats.pendingLinks += 1;
+            break;
+          case 'STARTED':
+            projectStats[link.projectId].started += 1;
+            stats.startedLinks += 1;
+            break;
+          case 'IN_PROGRESS':
+            projectStats[link.projectId].inProgress += 1;
+            stats.inProgressLinks += 1;
+            break;
+          case 'COMPLETED':
+            projectStats[link.projectId].completed += 1;
+            stats.completedLinks += 1;
+            break;
+          case 'FLAGGED':
+            projectStats[link.projectId].flagged += 1;
+            stats.flaggedLinks += 1;
+            break;
+        }
+      }
+    });
+    
+    // Get flag counts for each project
+    const flagsResult = await amplifyDataService.flags.list();
+    const flags = flagsResult.data || [];
+    
+    // Calculate counts for each project
+    const projectCounts: Record<string, { surveyLinks: number, flags: number }> = {};
+    projects.forEach(project => {
+      if (!project || !project.id) return;
+      
+      // Count survey links
+      const projectLinks = surveyLinks.filter(link => link.projectId === project.id);
+      
+      // Count flags
+      const projectFlags = flags.filter(flag => flag.projectId === project.id);
+      
+      projectCounts[project.id] = {
+        surveyLinks: projectLinks.length,
+        flags: projectFlags.length
+      };
+    });
+
+    // Format projects data for the frontend
+    const formattedProjects = projects.map(project => {
+      if (!project || !project.id) {
+        return null;
+      }
+      return {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        createdAt: project.createdAt,
+        _count: {
+          surveyLinks: projectCounts[project.id]?.surveyLinks || 0,
+          flags: projectCounts[project.id]?.flags || 0
+        }
+      };
+    }).filter(Boolean) as Project[];
+
     return {
       props: {
-        projects: JSON.parse(JSON.stringify(projects)),
+        projects: JSON.parse(JSON.stringify(formattedProjects)),
         stats,
         projectStats
       },

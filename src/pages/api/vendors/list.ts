@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -16,23 +16,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Check if project exists
-    const project = await prisma.project.findUnique({
-      where: { id: projectId }
-    });
-
-    if (!project) {
+    // Check if project exists first
+    const projectResult = await amplifyDataService.projects.get(projectId);
+    
+    if (!projectResult || !projectResult.data) {
       return res.status(404).json({ 
         success: false, 
         message: 'Project not found' 
       });
     }
 
-    // Get all vendors for this project
-    const vendors = await prisma.vendor.findMany({
-      where: { projectId },
-      orderBy: { name: 'asc' }
-    });
+    // Get all vendors for this project using Amplify
+    const vendorsResult = await amplifyDataService.vendors.listByProject(projectId);
+    
+    // Sort vendors by name
+    const vendors = vendorsResult.data.sort((a, b) => 
+      (a.name || '').localeCompare(b.name || '')
+    );
 
     return res.status(200).json({ 
       success: true, 

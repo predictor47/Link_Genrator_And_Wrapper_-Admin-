@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 
 interface UpdateStatusRequest {
   projectId: string;
@@ -57,41 +57,44 @@ export default async function handler(
       });
     }
 
-    // Get the survey link
-    const surveyLink = await prisma.surveyLink.findFirst({
-      where: {
-        projectId,
-        uid
-      },
-      include: {
-        vendor: true
-      }
-    });
-
-    if (!surveyLink) {
+    // Get the survey link using Amplify
+    const surveyLinkResult = await amplifyDataService.surveyLinks.getByUid(uid);
+    if (!surveyLinkResult || !surveyLinkResult.data) {
       return res.status(404).json({ 
         success: false, 
         message: 'Survey link not found' 
+      });
+    }
+    
+    const surveyLink = surveyLinkResult.data;
+
+    // Verify this survey link belongs to the specified project
+    if (surveyLink.projectId !== projectId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Survey link does not belong to the specified project'
       });
     }
 
     // Prepare update data
     const updateData: any = { 
       status,
-      updatedAt: new Date()
+      updatedAt: new Date().toISOString()
     };
     
     // Update vendor information if provided and different from current
     if (vendorId && vendorId !== surveyLink.vendorId) {
-      // Verify vendor belongs to this project
-      const vendorExists = await prisma.vendor.findFirst({
-        where: {
-          id: vendorId,
-          projectId
+      // Verify vendor belongs to this project using Amplify
+      const vendorResult = await amplifyDataService.vendors.list({
+        filter: {
+          and: [
+            { id: { eq: vendorId } },
+            { projectId: { eq: projectId } }
+          ]
         }
       });
       
-      if (vendorExists) {
+      if (vendorResult.data && vendorResult.data.length > 0) {
         updateData.vendorId = vendorId;
       } else {
         return res.status(400).json({
@@ -101,27 +104,35 @@ export default async function handler(
       }
     }
     
-    // Update survey link status
-    await prisma.surveyLink.update({
-      where: { id: surveyLink.id },
-      data: updateData
-    });
+    // Update survey link status using Amplify
+    if (!surveyLink.id) {
+      throw new Error('Survey link ID is null or undefined');
+    }
+    await amplifyDataService.surveyLinks.update(surveyLink.id, updateData);
+
+    // Get vendor info if available
+    let vendorCode = null;
+    if (surveyLink.vendorId || updateData.vendorId) {
+      const vendorId = updateData.vendorId || surveyLink.vendorId;
+      if (vendorId) {
+        const vendorResult = await amplifyDataService.vendors.get(vendorId);
+        vendorCode = vendorResult.data?.code || null;
+      }
+    }
 
     // Store metadata if provided
     if (metadata) {
-      // Create a response record with the completion metadata
-      await prisma.response.create({
-        data: {
-          surveyLinkId: surveyLink.id,
-          projectId,
-          questionId: '00000000-0000-0000-0000-000000000000', // Placeholder for status update metadata
-          answer: status,
-          metadata: JSON.stringify({
-            statusUpdateTimestamp: new Date().toISOString(),
-            previousStatus: surveyLink.status,
-            ...metadata
-          })
-        }
+      // Create a response record with the status update metadata
+      await amplifyDataService.responses.create({
+        surveyLinkId: surveyLink.id,
+        projectId,
+        questionId: '00000000-0000-0000-0000-000000000000', // Placeholder for status update metadata
+        answer: status,
+        metadata: JSON.stringify({
+          statusUpdateTimestamp: new Date().toISOString(),
+          previousStatus: surveyLink.status,
+          ...(metadata || {})
+        })
       });
     }
 
@@ -131,7 +142,7 @@ export default async function handler(
       updatedLink: {
         uid: surveyLink.uid,
         status,
-        vendor: surveyLink.vendor?.code || null
+        vendor: vendorCode
       }
     });
   } catch (error) {

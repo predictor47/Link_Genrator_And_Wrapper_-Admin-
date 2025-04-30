@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 
 interface VendorRequest {
   projectId: string;
@@ -23,11 +23,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Check if project exists
-    const project = await prisma.project.findUnique({
-      where: { id: projectId }
-    });
-
-    if (!project) {
+    const projectResult = await amplifyDataService.projects.get(projectId);
+    
+    if (!projectResult || !projectResult.data) {
       return res.status(404).json({ 
         success: false, 
         message: 'Project not found' 
@@ -35,14 +33,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Check if vendor code is already used in this project
-    const existingVendor = await prisma.vendor.findFirst({
-      where: {
-        projectId,
-        code
+    const existingVendorResult = await amplifyDataService.vendors.list({
+      filter: {
+        and: [
+          { projectId: { eq: projectId } },
+          { code: { eq: code } }
+        ]
       }
     });
 
-    if (existingVendor) {
+    if (existingVendorResult.data && existingVendorResult.data.length > 0) {
       return res.status(400).json({ 
         success: false, 
         message: 'Vendor code already exists in this project' 
@@ -50,17 +50,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Create vendor
-    const vendor = await prisma.vendor.create({
-      data: {
-        name,
-        code,
-        projectId
-      }
+    const vendorResult = await amplifyDataService.vendors.create({
+      name,
+      code,
+      projectId
     });
 
     return res.status(201).json({ 
       success: true, 
-      vendor 
+      vendor: vendorResult.data
     });
   } catch (error) {
     console.error('Error creating vendor:', error);

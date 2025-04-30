@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 import { detectVPN } from '@/lib/vpn-detection';
 import { collectClientMetadata } from '@/lib/metadata';
 
@@ -601,37 +601,9 @@ export async function getServerSideProps(context: any) {
   const { projectId, uid } = context.params;
   
   try {
-    // Get the survey link
-    const link = await prisma.surveyLink.findFirst({
-      where: {
-        projectId,
-        uid,
-      },
-      select: {
-        id: true,
-        originalUrl: true,
-        geoRestriction: true,
-        linkType: true,
-        vendor: {
-          select: {
-            code: true
-          }
-        },
-        project: {
-          select: {
-            presurveyQuestions: {
-              select: {
-                id: true,
-                text: true,
-                options: true
-              }
-            }
-          }
-        }
-      }
-    });
-    
-    if (!link) {
+    // Get the survey link using Amplify Data Service
+    const linkResult = await amplifyDataService.surveyLinks.getByUid(uid);
+    if (!linkResult || !linkResult.data) {
       return {
         props: {
           isValid: false,
@@ -642,6 +614,49 @@ export async function getServerSideProps(context: any) {
           questions: []
         }
       };
+    }
+    
+    const link = linkResult.data;
+    
+    if (link.projectId !== projectId) {
+      return {
+        props: {
+          isValid: false,
+          originalUrl: null,
+          geoRestriction: null,
+          linkType: null,
+          vendorCode: null,
+          questions: []
+        }
+      };
+    }
+    
+    // Get the project with questions
+    const projectResult = await amplifyDataService.projects.get(projectId);
+    if (!projectResult || !projectResult.data) {
+      return {
+        props: {
+          isValid: false,
+          originalUrl: null,
+          geoRestriction: null,
+          linkType: null,
+          vendorCode: null,
+          questions: []
+        }
+      };
+    }
+    
+    const project = projectResult.data;
+    
+    // Get the questions for this project
+    const questionsResult = await amplifyDataService.questions.listByProject(projectId);
+    const questionsData = questionsResult?.data || [];
+
+    // Get vendor code if available
+    let vendorCode = null;
+    if (link.vendorId) {
+      const vendorResult = await amplifyDataService.vendors.get(link.vendorId);
+      vendorCode = vendorResult?.data?.code || null;
     }
     
     // Parse geo-restriction from JSON string
@@ -655,10 +670,10 @@ export async function getServerSideProps(context: any) {
     }
     
     // Parse question options from JSON string
-    const questions = link.project?.presurveyQuestions.map(q => ({
+    const questions = questionsData.map(q => ({
       ...q,
       options: JSON.parse(q.options || '[]')
-    })) || [];
+    }));
     
     return {
       props: {
@@ -666,7 +681,7 @@ export async function getServerSideProps(context: any) {
         originalUrl: link.originalUrl,
         geoRestriction,
         linkType: link.linkType,
-        vendorCode: link.vendor?.code || null,
+        vendorCode,
         questions: JSON.parse(JSON.stringify(questions))
       }
     };
