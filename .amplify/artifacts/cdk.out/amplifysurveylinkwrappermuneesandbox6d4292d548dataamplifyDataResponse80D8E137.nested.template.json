@@ -1,0 +1,2334 @@
+{
+ "Parameters": {
+  "DynamoDBModelTableReadIOPS": {
+   "Type": "Number",
+   "Default": 5,
+   "Description": "The number of read IOPS the table should support."
+  },
+  "DynamoDBModelTableWriteIOPS": {
+   "Type": "Number",
+   "Default": 5,
+   "Description": "The number of write IOPS the table should support."
+  },
+  "DynamoDBBillingMode": {
+   "Type": "String",
+   "Default": "PAY_PER_REQUEST",
+   "AllowedValues": [
+    "PAY_PER_REQUEST",
+    "PROVISIONED"
+   ],
+   "Description": "Configure @model types to create DynamoDB tables with PAY_PER_REQUEST or PROVISIONED billing modes."
+  },
+  "DynamoDBEnablePointInTimeRecovery": {
+   "Type": "String",
+   "Default": "false",
+   "AllowedValues": [
+    "true",
+    "false"
+   ],
+   "Description": "Whether to enable Point in Time Recovery on the table."
+  },
+  "DynamoDBEnableServerSideEncryption": {
+   "Type": "String",
+   "Default": "true",
+   "AllowedValues": [
+    "true",
+    "false"
+   ],
+   "Description": "Enable server side encryption powered by KMS."
+  },
+  "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataAmplifyTableManagerNestedStackAmplifyTableManagerNestedStackResource52E0B858Outputsamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataAmplifyTableManagerTable65D7F86B": {
+   "Type": "String"
+  },
+  "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId": {
+   "Type": "String"
+  },
+  "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name": {
+   "Type": "String"
+  },
+  "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperauthenticatedUserRoleC3A0D94CRef": {
+   "Type": "String"
+  },
+  "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperunauthenticatedUserRole58B187B4Ref": {
+   "Type": "String"
+  },
+  "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperIdentityPool8C76A925Ref": {
+   "Type": "String"
+  }
+ },
+ "Conditions": {
+  "HasEnvironmentParameter": {
+   "Fn::Not": [
+    {
+     "Fn::Equals": [
+      "NONE",
+      "NONE"
+     ]
+    }
+   ]
+  },
+  "ShouldUsePayPerRequestBilling": {
+   "Fn::Equals": [
+    {
+     "Ref": "DynamoDBBillingMode"
+    },
+    "PAY_PER_REQUEST"
+   ]
+  },
+  "ShouldUsePointInTimeRecovery": {
+   "Fn::Equals": [
+    {
+     "Ref": "DynamoDBEnablePointInTimeRecovery"
+    },
+    "true"
+   ]
+  },
+  "CDKMetadataAvailable": {
+   "Fn::Or": [
+    {
+     "Fn::Or": [
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "af-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-east-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-northeast-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-northeast-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-northeast-3"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-south-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-3"
+       ]
+      }
+     ]
+    },
+    {
+     "Fn::Or": [
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-4"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ca-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ca-west-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "cn-north-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "cn-northwest-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-central-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-north-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-south-2"
+       ]
+      }
+     ]
+    },
+    {
+     "Fn::Or": [
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-west-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-west-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-west-3"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "il-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "me-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "me-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "sa-east-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-east-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-east-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-west-1"
+       ]
+      }
+     ]
+    },
+    {
+     "Fn::Equals": [
+      {
+       "Ref": "AWS::Region"
+      },
+      "us-west-2"
+     ]
+    }
+   ]
+  }
+ },
+ "Resources": {
+  "ResponseTable": {
+   "Type": "Custom::AmplifyDynamoDBTable",
+   "Properties": {
+    "ServiceToken": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataAmplifyTableManagerNestedStackAmplifyTableManagerNestedStackResource52E0B858Outputsamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataAmplifyTableManagerTable65D7F86B"
+    },
+    "tableName": {
+     "Fn::Join": [
+      "",
+      [
+       "Response-",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+       },
+       "-NONE"
+      ]
+     ]
+    },
+    "attributeDefinitions": [
+     {
+      "attributeName": "id",
+      "attributeType": "S"
+     },
+     {
+      "attributeName": "surveyLinkId",
+      "attributeType": "S"
+     },
+     {
+      "attributeName": "projectId",
+      "attributeType": "S"
+     },
+     {
+      "attributeName": "questionId",
+      "attributeType": "S"
+     }
+    ],
+    "keySchema": [
+     {
+      "attributeName": "id",
+      "keyType": "HASH"
+     }
+    ],
+    "globalSecondaryIndexes": [
+     {
+      "indexName": "gsi-SurveyLink.responses",
+      "keySchema": [
+       {
+        "attributeName": "surveyLinkId",
+        "keyType": "HASH"
+       }
+      ],
+      "projection": {
+       "projectionType": "ALL"
+      },
+      "provisionedThroughput": {
+       "Fn::If": [
+        "ShouldUsePayPerRequestBilling",
+        {
+         "Ref": "AWS::NoValue"
+        },
+        {
+         "ReadCapacityUnits": {
+          "Ref": "DynamoDBModelTableReadIOPS"
+         },
+         "WriteCapacityUnits": {
+          "Ref": "DynamoDBModelTableWriteIOPS"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "indexName": "gsi-Project.responses",
+      "keySchema": [
+       {
+        "attributeName": "projectId",
+        "keyType": "HASH"
+       }
+      ],
+      "projection": {
+       "projectionType": "ALL"
+      },
+      "provisionedThroughput": {
+       "Fn::If": [
+        "ShouldUsePayPerRequestBilling",
+        {
+         "Ref": "AWS::NoValue"
+        },
+        {
+         "ReadCapacityUnits": {
+          "Ref": "DynamoDBModelTableReadIOPS"
+         },
+         "WriteCapacityUnits": {
+          "Ref": "DynamoDBModelTableWriteIOPS"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "indexName": "gsi-Question.responses",
+      "keySchema": [
+       {
+        "attributeName": "questionId",
+        "keyType": "HASH"
+       }
+      ],
+      "projection": {
+       "projectionType": "ALL"
+      },
+      "provisionedThroughput": {
+       "Fn::If": [
+        "ShouldUsePayPerRequestBilling",
+        {
+         "Ref": "AWS::NoValue"
+        },
+        {
+         "ReadCapacityUnits": {
+          "Ref": "DynamoDBModelTableReadIOPS"
+         },
+         "WriteCapacityUnits": {
+          "Ref": "DynamoDBModelTableWriteIOPS"
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "provisionedThroughput": {
+     "Fn::If": [
+      "ShouldUsePayPerRequestBilling",
+      {
+       "Ref": "AWS::NoValue"
+      },
+      {
+       "ReadCapacityUnits": {
+        "Ref": "DynamoDBModelTableReadIOPS"
+       },
+       "WriteCapacityUnits": {
+        "Ref": "DynamoDBModelTableWriteIOPS"
+       }
+      }
+     ]
+    },
+    "sseSpecification": {
+     "sseEnabled": false
+    },
+    "streamSpecification": {
+     "streamViewType": "NEW_AND_OLD_IMAGES"
+    },
+    "deletionProtectionEnabled": false,
+    "allowDestructiveGraphqlSchemaUpdates": true,
+    "replaceTableUponGsiUpdate": true,
+    "pointInTimeRecoverySpecification": {
+     "Fn::If": [
+      "ShouldUsePointInTimeRecovery",
+      {
+       "PointInTimeRecoveryEnabled": true
+      },
+      {
+       "Ref": "AWS::NoValue"
+      }
+     ]
+    },
+    "billingMode": {
+     "Fn::If": [
+      "ShouldUsePayPerRequestBilling",
+      "PAY_PER_REQUEST",
+      {
+       "Ref": "AWS::NoValue"
+      }
+     ]
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/ResponseTable/Default/Default"
+   }
+  },
+  "ResponseIAMRoleF2E44F08": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "appsync.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "dynamodb:BatchGetItem",
+          "dynamodb:BatchWriteItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+          "dynamodb:UpdateItem",
+          "dynamodb:ConditionCheckItem",
+          "dynamodb:DescribeTable",
+          "dynamodb:GetRecords",
+          "dynamodb:GetShardIterator"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          {
+           "Fn::Sub": [
+            "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tablename}",
+            {
+             "tablename": {
+              "Fn::Join": [
+               "",
+               [
+                "Response-",
+                {
+                 "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+                },
+                "-NONE"
+               ]
+              ]
+             }
+            }
+           ]
+          },
+          {
+           "Fn::Sub": [
+            "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tablename}/*",
+            {
+             "tablename": {
+              "Fn::Join": [
+               "",
+               [
+                "Response-",
+                {
+                 "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+                },
+                "-NONE"
+               ]
+              ]
+             }
+            }
+           ]
+          }
+         ]
+        }
+       ],
+       "Version": "2012-10-17"
+      },
+      "PolicyName": "DynamoDBAccess"
+     }
+    ],
+    "RoleName": {
+     "Fn::Join": [
+      "",
+      [
+       "ResponseIAMRole76df69-",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+       },
+       "-NONE"
+      ]
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "amplify:deployment-type",
+      "Value": "sandbox"
+     },
+     {
+      "Key": "amplify:friendly-name",
+      "Value": "amplifyData"
+     },
+     {
+      "Key": "created-by",
+      "Value": "amplify"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/ResponseIAMRole/Resource"
+   }
+  },
+  "ResponseDataSource": {
+   "Type": "AWS::AppSync::DataSource",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DynamoDBConfig": {
+     "AwsRegion": {
+      "Ref": "AWS::Region"
+     },
+     "TableName": {
+      "Fn::Select": [
+       1,
+       {
+        "Fn::Split": [
+         "/",
+         {
+          "Fn::Select": [
+           5,
+           {
+            "Fn::Split": [
+             ":",
+             {
+              "Fn::GetAtt": [
+               "ResponseTable",
+               "TableArn"
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    },
+    "Name": "ResponseTable",
+    "ServiceRoleArn": {
+     "Fn::GetAtt": [
+      "ResponseIAMRoleF2E44F08",
+      "Arn"
+     ]
+    },
+    "Type": "AMAZON_DYNAMODB"
+   },
+   "DependsOn": [
+    "ResponseIAMRoleF2E44F08"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/ResponseDataSource/Resource"
+   }
+  },
+  "QuerygetResponsepreAuth0FunctionQuerygetResponsepreAuth0FunctionAppSyncFunctionEE28EAA3": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "QuerygetResponsepreAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/ffc597e18023b530e6afcbe02cee647d49550fa9e77bd06f1dee09d8b1be8de3.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/QuerygetResponsepreAuth0Function/QuerygetResponsepreAuth0Function.AppSyncFunction"
+   }
+  },
+  "QuerygetResponseauth0FunctionQuerygetResponseauth0FunctionAppSyncFunction04B62540": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "QuerygetResponseauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/6677b1986afebbf1f4026c57099890e32ab4e450e422c5e3c930b085a73b6b60.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/QuerygetResponseauth0Function/QuerygetResponseauth0Function.AppSyncFunction"
+   }
+  },
+  "QuerygetResponsepostAuth0FunctionQuerygetResponsepostAuth0FunctionAppSyncFunction24F6BCB6": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "QuerygetResponsepostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/QuerygetResponsepostAuth0Function/QuerygetResponsepostAuth0Function.AppSyncFunction"
+   }
+  },
+  "QueryGetResponseDataResolverFnQueryGetResponseDataResolverFnAppSyncFunction86E833EC": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Fn::GetAtt": [
+      "ResponseDataSource",
+      "Name"
+     ]
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "QueryGetResponseDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/08f4d557693d96c1a4efba0f9dc91330e4b19772fd5477c156468843e3d9cb5e.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/4c6a2d29f01c6091bd1d9afe16e5849d456c96f17c3b215938c8067399532719.vtl"
+    }
+   },
+   "DependsOn": [
+    "ResponseDataSource"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/QueryGetResponseDataResolverFn/QueryGetResponseDataResolverFn.AppSyncFunction"
+   }
+  },
+  "GetResponseResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "FieldName": "getResponse",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "QuerygetResponsepreAuth0FunctionQuerygetResponsepreAuth0FunctionAppSyncFunctionEE28EAA3",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "QuerygetResponseauth0FunctionQuerygetResponseauth0FunctionAppSyncFunction04B62540",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "QuerygetResponsepostAuth0FunctionQuerygetResponsepostAuth0FunctionAppSyncFunction24F6BCB6",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "QueryGetResponseDataResolverFnQueryGetResponseDataResolverFnAppSyncFunction86E833EC",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Query\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"getResponse\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"AMAZON_DYNAMODB\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n$util.qr($ctx.stash.put(\"tableName\", \"",
+       {
+        "Fn::Select": [
+         1,
+         {
+          "Fn::Split": [
+           "/",
+           {
+            "Fn::Select": [
+             5,
+             {
+              "Fn::Split": [
+               ":",
+               {
+                "Fn::GetAtt": [
+                 "ResponseTable",
+                 "TableArn"
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperauthenticatedUserRoleC3A0D94CRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperunauthenticatedUserRole58B187B4Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperIdentityPool8C76A925Ref"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Query"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/queryGetResponseResolver"
+   }
+  },
+  "QuerylistResponsespreAuth0FunctionQuerylistResponsespreAuth0FunctionAppSyncFunction652E6FFD": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "QuerylistResponsespreAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/3e81312d4c75951808eda9fcd5f854c1925c0b819de0939f09c4fe2eebb190b8.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/QuerylistResponsespreAuth0Function/QuerylistResponsespreAuth0Function.AppSyncFunction"
+   }
+  },
+  "QuerylistResponsesauth0FunctionQuerylistResponsesauth0FunctionAppSyncFunction9513C69D": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "QuerylistResponsesauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/6677b1986afebbf1f4026c57099890e32ab4e450e422c5e3c930b085a73b6b60.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/QuerylistResponsesauth0Function/QuerylistResponsesauth0Function.AppSyncFunction"
+   }
+  },
+  "QuerylistResponsespostAuth0FunctionQuerylistResponsespostAuth0FunctionAppSyncFunction1898F892": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "QuerylistResponsespostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/QuerylistResponsespostAuth0Function/QuerylistResponsespostAuth0Function.AppSyncFunction"
+   }
+  },
+  "QueryListResponsesDataResolverFnQueryListResponsesDataResolverFnAppSyncFunction0CE99FBA": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Fn::GetAtt": [
+      "ResponseDataSource",
+      "Name"
+     ]
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "QueryListResponsesDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/9fcbe070ecd3023c5bf5b966fa9584757db9762eef123bad0820bd87591b2174.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/cc01911d0269d4080ea57505dc445dfc315ef7ad85d3d9d4ea1357858bff451d.vtl"
+    }
+   },
+   "DependsOn": [
+    "ResponseDataSource"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/QueryListResponsesDataResolverFn/QueryListResponsesDataResolverFn.AppSyncFunction"
+   }
+  },
+  "ListResponseResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "FieldName": "listResponses",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "QuerylistResponsespreAuth0FunctionQuerylistResponsespreAuth0FunctionAppSyncFunction652E6FFD",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "QuerylistResponsesauth0FunctionQuerylistResponsesauth0FunctionAppSyncFunction9513C69D",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "QuerylistResponsespostAuth0FunctionQuerylistResponsespostAuth0FunctionAppSyncFunction1898F892",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "QueryListResponsesDataResolverFnQueryListResponsesDataResolverFnAppSyncFunction0CE99FBA",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Query\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"listResponses\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"AMAZON_DYNAMODB\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n$util.qr($ctx.stash.put(\"tableName\", \"",
+       {
+        "Fn::Select": [
+         1,
+         {
+          "Fn::Split": [
+           "/",
+           {
+            "Fn::Select": [
+             5,
+             {
+              "Fn::Split": [
+               ":",
+               {
+                "Fn::GetAtt": [
+                 "ResponseTable",
+                 "TableArn"
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperauthenticatedUserRoleC3A0D94CRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperunauthenticatedUserRole58B187B4Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperIdentityPool8C76A925Ref"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Query"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/queryListResponsesResolver"
+   }
+  },
+  "MutationcreateResponseinit0FunctionMutationcreateResponseinit0FunctionAppSyncFunction502556C2": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationcreateResponseinit0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/a183ddccbd956316c38ef97177b8f088ef0826f62023323f5ae6053d348ccffc.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/MutationcreateResponseinit0Function/MutationcreateResponseinit0Function.AppSyncFunction"
+   }
+  },
+  "MutationcreateResponsepreAuth0FunctionMutationcreateResponsepreAuth0FunctionAppSyncFunction01FBD1C8": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationcreateResponsepreAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/39fb35c6f8e8573ffe3a63ba867cf543b05af129a104b387a44f03c3d85da0c3.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/MutationcreateResponsepreAuth0Function/MutationcreateResponsepreAuth0Function.AppSyncFunction"
+   }
+  },
+  "MutationcreateResponseauth0FunctionMutationcreateResponseauth0FunctionAppSyncFunction66DC57D0": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationcreateResponseauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/13358b36bef4868cbdc0a39d73a7bd8e921b77cc06a5fea6dad940706fc98ced.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/MutationcreateResponseauth0Function/MutationcreateResponseauth0Function.AppSyncFunction"
+   }
+  },
+  "MutationcreateResponsepostAuth0FunctionMutationcreateResponsepostAuth0FunctionAppSyncFunction2A443F5E": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationcreateResponsepostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/MutationcreateResponsepostAuth0Function/MutationcreateResponsepostAuth0Function.AppSyncFunction"
+   }
+  },
+  "MutationCreateResponseDataResolverFnMutationCreateResponseDataResolverFnAppSyncFunction0360FB7B": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Fn::GetAtt": [
+      "ResponseDataSource",
+      "Name"
+     ]
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationCreateResponseDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/1caf896c8b70b60823c503b3054ea879497f45d52db10957e32d4601b3042565.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/f4a52b72209a9dfa197b5e7367a5c378c5bb86de6e29ddd9e48b49a3fe54b249.vtl"
+    }
+   },
+   "DependsOn": [
+    "ResponseDataSource"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/MutationCreateResponseDataResolverFn/MutationCreateResponseDataResolverFn.AppSyncFunction"
+   }
+  },
+  "CreateResponseResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "FieldName": "createResponse",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "MutationcreateResponseinit0FunctionMutationcreateResponseinit0FunctionAppSyncFunction502556C2",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationcreateResponsepreAuth0FunctionMutationcreateResponsepreAuth0FunctionAppSyncFunction01FBD1C8",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationcreateResponseauth0FunctionMutationcreateResponseauth0FunctionAppSyncFunction66DC57D0",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationcreateResponsepostAuth0FunctionMutationcreateResponsepostAuth0FunctionAppSyncFunction2A443F5E",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationCreateResponseDataResolverFnMutationCreateResponseDataResolverFnAppSyncFunction0360FB7B",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Mutation\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"createResponse\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"AMAZON_DYNAMODB\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n$util.qr($ctx.stash.put(\"tableName\", \"",
+       {
+        "Fn::Select": [
+         1,
+         {
+          "Fn::Split": [
+           "/",
+           {
+            "Fn::Select": [
+             5,
+             {
+              "Fn::Split": [
+               ":",
+               {
+                "Fn::GetAtt": [
+                 "ResponseTable",
+                 "TableArn"
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperauthenticatedUserRoleC3A0D94CRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperunauthenticatedUserRole58B187B4Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperIdentityPool8C76A925Ref"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Mutation"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/mutationCreateResponseResolver"
+   }
+  },
+  "MutationupdateResponseinit0FunctionMutationupdateResponseinit0FunctionAppSyncFunction23FD805C": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationupdateResponseinit0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/06db846fd14e6fc371f22b12b5545ba8e2dbfeda85d8c8d586c71c282166657b.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/MutationupdateResponseinit0Function/MutationupdateResponseinit0Function.AppSyncFunction"
+   }
+  },
+  "MutationupdateResponsepreAuth0FunctionMutationupdateResponsepreAuth0FunctionAppSyncFunction922FD3A4": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationupdateResponsepreAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/39fb35c6f8e8573ffe3a63ba867cf543b05af129a104b387a44f03c3d85da0c3.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/MutationupdateResponsepreAuth0Function/MutationupdateResponsepreAuth0Function.AppSyncFunction"
+   }
+  },
+  "MutationupdateResponseauth0FunctionMutationupdateResponseauth0FunctionAppSyncFunction49A1B095": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Fn::GetAtt": [
+      "ResponseDataSource",
+      "Name"
+     ]
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationupdateResponseauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/1f5fed297da9c32ae3af922bf3a38ccf23b956078887d16891ec06c20c64722c.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/028c132d46d6a695dc3967e90eff107411602021b5dbac82ebd5ff403e93eb82.vtl"
+    }
+   },
+   "DependsOn": [
+    "ResponseDataSource"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/MutationupdateResponseauth0Function/MutationupdateResponseauth0Function.AppSyncFunction"
+   }
+  },
+  "MutationupdateResponsepostAuth0FunctionMutationupdateResponsepostAuth0FunctionAppSyncFunctionA20D240C": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationupdateResponsepostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/MutationupdateResponsepostAuth0Function/MutationupdateResponsepostAuth0Function.AppSyncFunction"
+   }
+  },
+  "MutationUpdateResponseDataResolverFnMutationUpdateResponseDataResolverFnAppSyncFunction28A76E3F": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Fn::GetAtt": [
+      "ResponseDataSource",
+      "Name"
+     ]
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationUpdateResponseDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/474bf0776ec2164a13191d1a0a9e057154931e4918fea5086f49850d02a5371b.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/f4a52b72209a9dfa197b5e7367a5c378c5bb86de6e29ddd9e48b49a3fe54b249.vtl"
+    }
+   },
+   "DependsOn": [
+    "ResponseDataSource"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/MutationUpdateResponseDataResolverFn/MutationUpdateResponseDataResolverFn.AppSyncFunction"
+   }
+  },
+  "UpdateResponseResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "FieldName": "updateResponse",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "MutationupdateResponseinit0FunctionMutationupdateResponseinit0FunctionAppSyncFunction23FD805C",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationupdateResponsepreAuth0FunctionMutationupdateResponsepreAuth0FunctionAppSyncFunction922FD3A4",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationupdateResponseauth0FunctionMutationupdateResponseauth0FunctionAppSyncFunction49A1B095",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationupdateResponsepostAuth0FunctionMutationupdateResponsepostAuth0FunctionAppSyncFunctionA20D240C",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationUpdateResponseDataResolverFnMutationUpdateResponseDataResolverFnAppSyncFunction28A76E3F",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Mutation\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"updateResponse\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"AMAZON_DYNAMODB\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n$util.qr($ctx.stash.put(\"tableName\", \"",
+       {
+        "Fn::Select": [
+         1,
+         {
+          "Fn::Split": [
+           "/",
+           {
+            "Fn::Select": [
+             5,
+             {
+              "Fn::Split": [
+               ":",
+               {
+                "Fn::GetAtt": [
+                 "ResponseTable",
+                 "TableArn"
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperauthenticatedUserRoleC3A0D94CRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperunauthenticatedUserRole58B187B4Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperIdentityPool8C76A925Ref"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Mutation"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/mutationUpdateResponseResolver"
+   }
+  },
+  "MutationdeleteResponsepreAuth0FunctionMutationdeleteResponsepreAuth0FunctionAppSyncFunction0554D188": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationdeleteResponsepreAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/a2c0f8a4d76f659d130c8a445801845ae9d33e5cc2c5ecd610edc272d4bd46e3.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/MutationdeleteResponsepreAuth0Function/MutationdeleteResponsepreAuth0Function.AppSyncFunction"
+   }
+  },
+  "MutationdeleteResponseauth0FunctionMutationdeleteResponseauth0FunctionAppSyncFunction1B816741": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Fn::GetAtt": [
+      "ResponseDataSource",
+      "Name"
+     ]
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationdeleteResponseauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/1f5fed297da9c32ae3af922bf3a38ccf23b956078887d16891ec06c20c64722c.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/05de9eab8d843ef7ef353a7792e3969abe58aae4a1016c0995c6ebddc6f9068f.vtl"
+    }
+   },
+   "DependsOn": [
+    "ResponseDataSource"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/MutationdeleteResponseauth0Function/MutationdeleteResponseauth0Function.AppSyncFunction"
+   }
+  },
+  "MutationdeleteResponsepostAuth0FunctionMutationdeleteResponsepostAuth0FunctionAppSyncFunctionC95EDC2D": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationdeleteResponsepostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/MutationdeleteResponsepostAuth0Function/MutationdeleteResponsepostAuth0Function.AppSyncFunction"
+   }
+  },
+  "MutationDeleteResponseDataResolverFnMutationDeleteResponseDataResolverFnAppSyncFunctionD73C2316": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Fn::GetAtt": [
+      "ResponseDataSource",
+      "Name"
+     ]
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationDeleteResponseDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/4f7907d1209a2c9953a0c053df402c634e359546d70c7cc5c2e8e21ea734880f.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/f4a52b72209a9dfa197b5e7367a5c378c5bb86de6e29ddd9e48b49a3fe54b249.vtl"
+    }
+   },
+   "DependsOn": [
+    "ResponseDataSource"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/MutationDeleteResponseDataResolverFn/MutationDeleteResponseDataResolverFn.AppSyncFunction"
+   }
+  },
+  "DeleteResponseResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "FieldName": "deleteResponse",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "MutationdeleteResponsepreAuth0FunctionMutationdeleteResponsepreAuth0FunctionAppSyncFunction0554D188",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationdeleteResponseauth0FunctionMutationdeleteResponseauth0FunctionAppSyncFunction1B816741",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationdeleteResponsepostAuth0FunctionMutationdeleteResponsepostAuth0FunctionAppSyncFunctionC95EDC2D",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationDeleteResponseDataResolverFnMutationDeleteResponseDataResolverFnAppSyncFunctionD73C2316",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Mutation\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"deleteResponse\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"AMAZON_DYNAMODB\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n$util.qr($ctx.stash.put(\"tableName\", \"",
+       {
+        "Fn::Select": [
+         1,
+         {
+          "Fn::Split": [
+           "/",
+           {
+            "Fn::Select": [
+             5,
+             {
+              "Fn::Split": [
+               ":",
+               {
+                "Fn::GetAtt": [
+                 "ResponseTable",
+                 "TableArn"
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperauthenticatedUserRoleC3A0D94CRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperunauthenticatedUserRole58B187B4Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperIdentityPool8C76A925Ref"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Mutation"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/mutationDeleteResponseResolver"
+   }
+  },
+  "SubscriptiononCreateResponseauth0FunctionSubscriptiononCreateResponseauth0FunctionAppSyncFunction5A104DDD": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptiononCreateResponseauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/4843bc77043eb1b2460e9b1e3df9218ebee2b5c86adc9e9f789a60b4f3a02049.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/SubscriptiononCreateResponseauth0Function/SubscriptiononCreateResponseauth0Function.AppSyncFunction"
+   }
+  },
+  "SubscriptiononCreateResponsepostAuth0FunctionSubscriptiononCreateResponsepostAuth0FunctionAppSyncFunction6A472199": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptiononCreateResponsepostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/SubscriptiononCreateResponsepostAuth0Function/SubscriptiononCreateResponsepostAuth0Function.AppSyncFunction"
+   }
+  },
+  "SubscriptionOnCreateResponseDataResolverFnSubscriptionOnCreateResponseDataResolverFnAppSyncFunctionEFED9158": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptionOnCreateResponseDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/fe3c43ada4b9d681a5e2312663ef7a73386424d73b73e51f8e2e9d4b50f7c502.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/e0cff47fb007f0bbf2a4e43ca256d6aa7ec109821769fd79fa7c5e83f0e7f9fc.vtl"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/SubscriptionOnCreateResponseDataResolverFn/SubscriptionOnCreateResponseDataResolverFn.AppSyncFunction"
+   }
+  },
+  "SubscriptiononCreateResponseResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "FieldName": "onCreateResponse",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "SubscriptiononCreateResponseauth0FunctionSubscriptiononCreateResponseauth0FunctionAppSyncFunction5A104DDD",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "SubscriptiononCreateResponsepostAuth0FunctionSubscriptiononCreateResponsepostAuth0FunctionAppSyncFunction6A472199",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "SubscriptionOnCreateResponseDataResolverFnSubscriptionOnCreateResponseDataResolverFnAppSyncFunctionEFED9158",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Subscription\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"onCreateResponse\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"NONE\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperauthenticatedUserRoleC3A0D94CRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperunauthenticatedUserRole58B187B4Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperIdentityPool8C76A925Ref"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Subscription"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/subscriptionOnCreateResponseResolver"
+   }
+  },
+  "SubscriptiononUpdateResponseauth0FunctionSubscriptiononUpdateResponseauth0FunctionAppSyncFunction01E2C800": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptiononUpdateResponseauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/4843bc77043eb1b2460e9b1e3df9218ebee2b5c86adc9e9f789a60b4f3a02049.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/SubscriptiononUpdateResponseauth0Function/SubscriptiononUpdateResponseauth0Function.AppSyncFunction"
+   }
+  },
+  "SubscriptiononUpdateResponsepostAuth0FunctionSubscriptiononUpdateResponsepostAuth0FunctionAppSyncFunction4D5E75DE": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptiononUpdateResponsepostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/SubscriptiononUpdateResponsepostAuth0Function/SubscriptiononUpdateResponsepostAuth0Function.AppSyncFunction"
+   }
+  },
+  "SubscriptionOnUpdateResponseDataResolverFnSubscriptionOnUpdateResponseDataResolverFnAppSyncFunctionF03D8CD9": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptionOnUpdateResponseDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/fe3c43ada4b9d681a5e2312663ef7a73386424d73b73e51f8e2e9d4b50f7c502.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/e0cff47fb007f0bbf2a4e43ca256d6aa7ec109821769fd79fa7c5e83f0e7f9fc.vtl"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/SubscriptionOnUpdateResponseDataResolverFn/SubscriptionOnUpdateResponseDataResolverFn.AppSyncFunction"
+   }
+  },
+  "SubscriptiononUpdateResponseResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "FieldName": "onUpdateResponse",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "SubscriptiononUpdateResponseauth0FunctionSubscriptiononUpdateResponseauth0FunctionAppSyncFunction01E2C800",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "SubscriptiononUpdateResponsepostAuth0FunctionSubscriptiononUpdateResponsepostAuth0FunctionAppSyncFunction4D5E75DE",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "SubscriptionOnUpdateResponseDataResolverFnSubscriptionOnUpdateResponseDataResolverFnAppSyncFunctionF03D8CD9",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Subscription\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"onUpdateResponse\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"NONE\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperauthenticatedUserRoleC3A0D94CRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperunauthenticatedUserRole58B187B4Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperIdentityPool8C76A925Ref"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Subscription"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/subscriptionOnUpdateResponseResolver"
+   }
+  },
+  "SubscriptiononDeleteResponseauth0FunctionSubscriptiononDeleteResponseauth0FunctionAppSyncFunction3FE4DD51": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptiononDeleteResponseauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/4843bc77043eb1b2460e9b1e3df9218ebee2b5c86adc9e9f789a60b4f3a02049.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/SubscriptiononDeleteResponseauth0Function/SubscriptiononDeleteResponseauth0Function.AppSyncFunction"
+   }
+  },
+  "SubscriptiononDeleteResponsepostAuth0FunctionSubscriptiononDeleteResponsepostAuth0FunctionAppSyncFunction9B7A41C2": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptiononDeleteResponsepostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/SubscriptiononDeleteResponsepostAuth0Function/SubscriptiononDeleteResponsepostAuth0Function.AppSyncFunction"
+   }
+  },
+  "SubscriptionOnDeleteResponseDataResolverFnSubscriptionOnDeleteResponseDataResolverFnAppSyncFunction24CC2861": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPINONEDS0CDAC637Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptionOnDeleteResponseDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/fe3c43ada4b9d681a5e2312663ef7a73386424d73b73e51f8e2e9d4b50f7c502.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/e0cff47fb007f0bbf2a4e43ca256d6aa7ec109821769fd79fa7c5e83f0e7f9fc.vtl"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/SubscriptionOnDeleteResponseDataResolverFn/SubscriptionOnDeleteResponseDataResolverFn.AppSyncFunction"
+   }
+  },
+  "SubscriptiononDeleteResponseResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+    },
+    "FieldName": "onDeleteResponse",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "SubscriptiononDeleteResponseauth0FunctionSubscriptiononDeleteResponseauth0FunctionAppSyncFunction3FE4DD51",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "SubscriptiononDeleteResponsepostAuth0FunctionSubscriptiononDeleteResponsepostAuth0FunctionAppSyncFunction9B7A41C2",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "SubscriptionOnDeleteResponseDataResolverFnSubscriptionOnDeleteResponseDataResolverFnAppSyncFunction24CC2861",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Subscription\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"onDeleteResponse\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"NONE\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperauthenticatedUserRoleC3A0D94CRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperunauthenticatedUserRole58B187B4Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548authNestedStackauthNestedStackResource3ABEA967Outputsamplifysurveylinkwrappermuneesandbox6d4292d548authSurveyLinkWrapperSurveyLinkWrapperIdentityPool8C76A925Ref"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Subscription"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/subscriptionOnDeleteResponseResolver"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/1WOwW6DMAyGn6X34A047biCduwm2L0yiUEpIUGx06pCvPsEnTrt9PuTP9l/AflbAa8HvHGmzZg528FyIhYyraAeVdX7L4w4kVDcoAreWLHBq4Y4pKhJVYklTH/Y++eMNz4v5u5xCqaDb+wcHZFJWZxgaYJ72MHRqnCe+e41LPWu112Ngu3z5H/6SF5vJargezukiHuj38/uSnFVXJ6RmYThfQvFJRyTHkm2AuvmfiaZk6h93QoO1g+r8sEQXPjlWhSQl5AfLmxtFpMXOxE0j/wB8C001DYBAAA="
+   },
+   "Metadata": {
+    "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/data/amplifyData/Response/CDKMetadata/Default"
+   },
+   "Condition": "CDKMetadataAvailable"
+  }
+ },
+ "Outputs": {
+  "GetAttResponseTableStreamArn": {
+   "Description": "Your DynamoDB table StreamArn.",
+   "Value": {
+    "Fn::GetAtt": [
+     "ResponseTable",
+     "TableStreamArn"
+    ]
+   },
+   "Export": {
+    "Name": {
+     "Fn::Join": [
+      ":",
+      [
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+       },
+       "GetAtt:ResponseTable:StreamArn"
+      ]
+     ]
+    }
+   }
+  },
+  "GetAttResponseTableName": {
+   "Description": "Your DynamoDB table name.",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "Response-",
+      {
+       "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+      },
+      "-NONE"
+     ]
+    ]
+   },
+   "Export": {
+    "Name": {
+     "Fn::Join": [
+      ":",
+      [
+       {
+        "Ref": "referencetoamplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataGraphQLAPI4BAB7690ApiId"
+       },
+       "GetAtt:ResponseTable:Name"
+      ]
+     ]
+    }
+   }
+  },
+  "amplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataResponseResponseDataSource1C962996Name": {
+   "Value": {
+    "Fn::GetAtt": [
+     "ResponseDataSource",
+     "Name"
+    ]
+   }
+  },
+  "amplifysurveylinkwrappermuneesandbox6d4292d548dataamplifyDataResponseResponseTableEFD9724DTableArn": {
+   "Value": {
+    "Fn::GetAtt": [
+     "ResponseTable",
+     "TableArn"
+    ]
+   }
+  }
+ }
+}

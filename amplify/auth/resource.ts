@@ -17,26 +17,14 @@ export const auth = defineAuth({
     },
   },
   
-  // Add MFA configuration
-  multifactor: {
-    mode: 'OPTIONAL',
-    sms: {
-      smsMessage: (code) => `Your verification code is ${code}`
-    }
-  },
-  
   // Define user attributes
   userAttributes: {
-    // Standard attributes - only email is a standard attribute here
     email: {
       required: true,
       mutable: true
     }
   },
   
-  // Set the name separately from userAttributes since it's a top-level property
   name: "SurveyLinkWrapper",
-
-  // Set account recovery method
   accountRecovery: 'EMAIL_ONLY'
 });

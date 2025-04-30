@@ -14,11 +14,11 @@ const schema = a.schema({
       geoRestriction: a.string(),
       createdAt: a.datetime(),
       updatedAt: a.datetime(),
-      // Fix relationship fields with correct two-argument syntax
-      project: a.belongsTo('Project', 'projects'),
-      vendor: a.belongsTo('Vendor', 'vendors'),
-      responses: a.hasMany('Response', 'surveyLinks'),
-      flags: a.hasMany('Flag', 'surveyLinks')
+      // Fix relationship fields with both required arguments
+      project: a.belongsTo('Project', 'projectId'),
+      vendor: a.belongsTo('Vendor', 'vendorId'),
+      responses: a.hasMany('Response', 'surveyLinkId'),
+      flags: a.hasMany('Flag', 'surveyLinkId')
     })
     .authorization(allow => [
       allow.publicApiKey().to(['read']),
@@ -33,8 +33,8 @@ const schema = a.schema({
       projectId: a.string().required(),
       createdAt: a.datetime(),
       updatedAt: a.datetime(),
-      project: a.belongsTo('Project', 'vendors'),
-      surveyLinks: a.hasMany('SurveyLink', 'vendors')
+      project: a.belongsTo('Project', 'projectId'),
+      surveyLinks: a.hasMany('SurveyLink', 'vendorId')
     })
     .authorization(allow => [
       allow.authenticated().to(['read', 'create', 'update', 'delete'])
@@ -47,11 +47,11 @@ const schema = a.schema({
       description: a.string(),
       createdAt: a.datetime(),
       updatedAt: a.datetime(),
-      surveyLinks: a.hasMany('SurveyLink', 'projects'),
-      vendors: a.hasMany('Vendor', 'projects'),
-      responses: a.hasMany('Response', 'projects'),
-      flags: a.hasMany('Flag', 'projects'),
-      questions: a.hasMany('Question', 'projects')
+      surveyLinks: a.hasMany('SurveyLink', 'projectId'),
+      vendors: a.hasMany('Vendor', 'projectId'),
+      responses: a.hasMany('Response', 'projectId'),
+      flags: a.hasMany('Flag', 'projectId'),
+      questions: a.hasMany('Question', 'projectId')
     })
     .authorization(allow => [
       allow.authenticated().to(['read', 'create', 'update', 'delete'])
@@ -64,8 +64,8 @@ const schema = a.schema({
       text: a.string().required(),
       options: a.string().required(), // Stored as JSON string
       createdAt: a.datetime(),
-      project: a.belongsTo('Project', 'questions'),
-      responses: a.hasMany('Response', 'questions')
+      project: a.belongsTo('Project', 'projectId'),
+      responses: a.hasMany('Response', 'questionId')
     })
     .authorization(allow => [
       allow.authenticated().to(['read', 'create', 'update', 'delete'])
@@ -80,9 +80,9 @@ const schema = a.schema({
       answer: a.string().required(),
       metadata: a.string(),
       createdAt: a.datetime(),
-      surveyLink: a.belongsTo('SurveyLink', 'responses'),
-      project: a.belongsTo('Project', 'responses'),
-      question: a.belongsTo('Question', 'responses')
+      surveyLink: a.belongsTo('SurveyLink', 'surveyLinkId'),
+      project: a.belongsTo('Project', 'projectId'),
+      question: a.belongsTo('Question', 'questionId')
     })
     .authorization(allow => [
       allow.publicApiKey().to(['create']),
@@ -98,8 +98,8 @@ const schema = a.schema({
       metadata: a.string(),
       resolved: a.boolean(),
       createdAt: a.datetime(),
-      surveyLink: a.belongsTo('SurveyLink', 'flags'),
-      project: a.belongsTo('Project', 'flags')
+      surveyLink: a.belongsTo('SurveyLink', 'surveyLinkId'),
+      project: a.belongsTo('Project', 'projectId')
     })
     .authorization(allow => [
       allow.publicApiKey().to(['create']),

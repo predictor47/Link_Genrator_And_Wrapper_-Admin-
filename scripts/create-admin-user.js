@@ -13,15 +13,28 @@ const { fromIni } = require("@aws-sdk/credential-provider-ini");
 const fs = require('fs');
 const path = require('path');
 
-// Read Amplify outputs
-const amplifyOutputsPath = path.join(process.cwd(), 'amplify_outputs.json');
+// Read Amplify outputs - try multiple possible locations
+let amplifyOutputs;
+const possiblePaths = [
+  path.join(process.cwd(), 'amplify_outputs.json'),
+  path.join(process.cwd(), '.amplify', 'amplify_outputs.json'),
+  path.join(process.cwd(), 'src', 'amplify_outputs.json')
+];
 
-if (!fs.existsSync(amplifyOutputsPath)) {
-  console.error('Error: amplify_outputs.json not found. Please run "amplify push" first.');
-  process.exit(1);
+for (const possiblePath of possiblePaths) {
+  if (fs.existsSync(possiblePath)) {
+    console.log(`Found amplify_outputs.json at: ${possiblePath}`);
+    amplifyOutputs = JSON.parse(fs.readFileSync(possiblePath, 'utf8'));
+    break;
+  }
 }
 
-const amplifyOutputs = JSON.parse(fs.readFileSync(amplifyOutputsPath, 'utf8'));
+if (!amplifyOutputs) {
+  console.error('Error: amplify_outputs.json not found in any expected location.');
+  console.error('Please specify the path to your amplify_outputs.json file:');
+  console.error('node scripts/create-admin-user.js --outputs-path=/path/to/amplify_outputs.json');
+  process.exit(1);
+}
 
 // Get UserPool ID from Amplify outputs
 const userPoolId = amplifyOutputs.auth?.userPoolId;

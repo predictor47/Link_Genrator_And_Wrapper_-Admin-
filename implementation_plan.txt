@@ -17,7 +17,15 @@
    amplify push
    ```
 
-## Step 2: Create Admin User
+## Step 2: Add Hosting to Your Project
+1. Add hosting capability to your Amplify app:
+   ```
+   amplify add hosting
+   ```
+   - Select "Hosting with Amplify Console"
+   - Choose "Manual deployment"
+
+## Step 3: Create Admin User
 1. Create the admin user with the predefined credentials:
    ```
    npm run create-admin
@@ -26,36 +34,20 @@
      - Email: protegeresearch@gmail.com
      - Password: Logitude!10
 
-## Step 3: Deploy the Application
+## Step 4: Deploy the Application
 1. Deploy the application to Amplify Hosting:
    ```
-   amplify add hosting
    amplify publish
    ```
 
-2. Configure custom domain in AWS Amplify Console (optional):
-   - Go to AWS Amplify Console
-   - Select your app
-   - Click on "Domain Management"
-   - Click "Add domain"
-   - Follow the instructions to set up your custom domain
-
-## Step 4: Configure Domain and Subdomains
-1. For production, set up the following subdomains:
-   - admin.yourdomain.com (for admin access)
-   - app.yourdomain.com (for regular users)
-
-2. Update environment variables in AWS Amplify Console:
-   - Go to AWS Amplify Console
-   - Select your app
-   - Go to "Environment variables"
-   - Add the following variables:
-     - ADMIN_DOMAIN=admin.yourdomain.com
-     - PUBLIC_DOMAIN=app.yourdomain.com
+2. Note the Amplify URL that is provided after deployment:
+   - Format: https://[branch].[app-id].amplifyapp.com
+   - This is the URL you'll use to access your application
 
 ## Step 5: Test the Application
 1. Test admin access:
-   - Visit admin.yourdomain.com (or your Amplify app URL)
+   - Visit your Amplify URL: https://[branch].[app-id].amplifyapp.com
+   - Navigate to /admin
    - Login with:
      - Email: protegeresearch@gmail.com
      - Password: Logitude!10
@@ -66,8 +58,7 @@
    - Test survey link redirection and completion
 
 ## Security Notes
-- The admin section is hidden from regular users:
-  - Only accessible via admin subdomain or when authenticated
+- The admin section is protected:
   - Login required for all admin pages except login, signup, verification
   - API routes protected with authentication checks
 
@@ -75,6 +66,12 @@
   - Email: protegeresearch@gmail.com
   - Password: Logitude!10
   - Store these securely and change the password after first login
+
+## Future Custom Domain Setup (Optional)
+When you're ready to set up a custom domain:
+1. Go to AWS Amplify Console > Domain Management
+2. Click "Add domain" and follow the instructions
+3. After setting up the domain, update the middleware.ts file to use subdomain-based access control
 
 ## Maintenance
 - Update the admin password regularly
