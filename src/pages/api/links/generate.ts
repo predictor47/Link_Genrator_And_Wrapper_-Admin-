@@ -70,8 +70,8 @@ export default async function handler(
     // Validate project exists
     const projectResult = await amplifyDataService.projects.get(projectId);
     
-    // Fix: Extract project data from the GraphQL response structure
-    const project = projectResult?.data;
+    // Fix: Extract project correctly without accessing .data
+    const project = projectResult;
 
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });

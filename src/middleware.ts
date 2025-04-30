@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { AuthService } from './lib/auth-service';
 
-// Define allowed admin subdomains
-const ADMIN_SUBDOMAINS = ['admin', 'dashboard'];
-
-// Define environments where security may be relaxed (for dev/testing)
-const DEV_ENVIRONMENTS = ['development', 'test'];
+// Define admin paths that need protection
+const ADMIN_PATHS = ['/admin'];
 
 // Public paths that don't require authentication
 const PUBLIC_PATHS = [
@@ -19,30 +17,23 @@ const PUBLIC_PATHS = [
   '/completion/' // Completion route
 ];
 
-export function middleware(request: NextRequest) {
-  const { pathname, hostname } = request.nextUrl;
-
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  
+  // Check if this is the root path - always allow access to home page
+  if (pathname === '/') {
+    return NextResponse.next();
+  }
+  
   // Check if this is an admin route
-  const isAdminRoute = pathname.startsWith('/admin');
+  const isAdminRoute = ADMIN_PATHS.some(path => pathname.startsWith(path));
   
-  // Parse the hostname to get subdomain
-  const hostParts = hostname.split('.');
-  let subdomain: string | null = null;
-  
-  // For localhost development, handle special case
-  if (hostname === 'localhost') {
-    // Skip subdomain check for local development
-    subdomain = 'admin'; // Assume it's admin for local dev
-  }
-  // Handle regular domain with potential subdomains
-  else if (hostParts.length > 2) {
-    subdomain = hostParts[0];
+  if (!isAdminRoute) {
+    // For non-admin routes, just proceed
+    return NextResponse.next();
   }
   
-  const isAdminSubdomain = ADMIN_SUBDOMAINS.includes(subdomain || '');
-  const isDevEnvironment = DEV_ENVIRONMENTS.includes(process.env.NODE_ENV || '');
-  
-  // Check if path is public
+  // Check if path is public (login, signup, etc.)
   const isPublicPath = PUBLIC_PATHS.some(publicPath => 
     pathname === publicPath || 
     pathname.startsWith(publicPath + '/') ||
@@ -51,50 +42,29 @@ export function middleware(request: NextRequest) {
     pathname.match(/^\/completion\/[^\/]+\/[^\/]+$/) // Match /completion/[projectId]/[uid]
   );
   
+  // If it's a public path within admin routes (like /admin/login), allow access
+  if (isPublicPath) {
+    return NextResponse.next();
+  }
+  
   // Check for authentication
   const authToken = request.cookies.get('idToken')?.value;
   const isAuthenticated = !!authToken;
 
-  // Only allow access to admin routes from admin subdomains
-  if (isAdminRoute && !isAdminSubdomain && !isDevEnvironment) {
-    // Redirect to home page or return 404 to mask the admin existence
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-
-  // Require authentication for admin routes except public ones
-  if (isAdminRoute && !isPublicPath && !isAuthenticated) {
-    // Redirect to login page
+  // If not authenticated and trying to access protected admin route, redirect to login
+  if (!isAuthenticated) {
+    // Redirect to admin login page
     return NextResponse.redirect(new URL('/admin/login', request.url));
   }
 
-  // Check for API routes that should be protected
-  if (pathname.startsWith('/api/') && (
-      pathname.includes('/admin/') ||
-      pathname.startsWith('/api/projects/') ||
-      pathname.startsWith('/api/vendors/')
-    ) && !isAdminSubdomain && !isDevEnvironment) {
-    // Return 404 for unauthorized API access
-    return new NextResponse(
-      JSON.stringify({ success: false, message: 'Not Found' }),
-      {
-        status: 404,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-  }
-
+  // User is authenticated, allow access to admin route
   return NextResponse.next();
 }
 
 // Configure matchers to run middleware only on specific paths
 export const config = {
   matcher: [
-    // Match all admin paths and API paths (except for links/* and verify/*)
-    '/admin/:path*',
-    '/api/projects/:path*',
-    '/api/vendors/:path*',
-    '/api/admin/:path*',
+    // Match all paths for proper routing
+    '/(.*)',
   ],
 };

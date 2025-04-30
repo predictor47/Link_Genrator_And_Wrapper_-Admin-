@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { prisma } from '@/lib/prisma';
-import { detectVpn } from '@/lib/vpn-detection';
+import { detectVPN } from '@/lib/vpn-detection';
 import { collectClientMetadata } from '@/lib/metadata';
 
 // Types for our component
@@ -209,7 +209,7 @@ export default function SurveyPage({
       try {
         // Get IP information
         const ipResponse = await axios.get('/api/ip-check');
-        const isVpn = await detectVpn(ipResponse.data.ip);
+        const isVpn = await detectVPN(ipResponse.data.ip);
         const country = ipResponse.data.country || 'Unknown';
         
         setUserCountry(country);

@@ -123,7 +123,7 @@ export const securityService = {
       }
 
       // Check if link is already completed or flagged
-      if (['COMPLETED', 'FLAGGED'].includes(surveyLink.status)) {
+      if (surveyLink.status && ['COMPLETED', 'FLAGGED'].includes(surveyLink.status)) {
         return {
           allowed: false,
           reason: 'LINK_ALREADY_USED',

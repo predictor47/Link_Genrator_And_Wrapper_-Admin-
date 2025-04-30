@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -16,24 +16,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Create a new project
-    const project = await prisma.project.create({
-      data: {
-        name,
-        description: description || '',
-      }
+    // Create a new project using Amplify Data service
+    const projectResult = await amplifyDataService.projects.create({
+      name,
+      description: description || '',
     });
+
+    // Check if projectResult is null before accessing its properties
+    if (!projectResult) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to create project. Project creation returned null.'
+      });
+    }
 
     // Add questions if provided
     if (questions && Array.isArray(questions) && questions.length > 0) {
       const questionPromises = questions.map((q: { text: string, options: string[] }) => 
-        prisma.question.create({
-          data: {
-            projectId: project.id,
-            text: q.text,
-            // Convert options array to JSON string for SQLite storage
-            options: JSON.stringify(q.options || [])
-          }
+        amplifyDataService.questions.create({
+          projectId: projectResult.id,
+          text: q.text,
+          options: JSON.stringify(q.options || [])
         })
       );
       
@@ -43,13 +46,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(201).json({
       success: true,
       message: 'Project created successfully',
-      project
+      project: projectResult
     });
   } catch (error) {
     console.error('Error creating project:', error);
     return res.status(500).json({ 
       success: false, 
-      message: 'Failed to create project' 
+      message: 'Failed to create project. Please ensure you are authenticated and have correct permissions.' 
     });
   }
 }

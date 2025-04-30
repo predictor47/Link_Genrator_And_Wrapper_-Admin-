@@ -17,25 +17,53 @@ export const amplifyDataService = {
   // Project operations
   projects: {
     create: async (data: any) => {
-      return client.models.Project.create(data);
+      const result = await client.models.Project.create(data);
+      return result.data;
     },
     get: async (id: string) => {
-      return client.models.Project.get({ id });
+      const result = await client.models.Project.get({ id });
+      return result.data;
     },
     list: async (filter?: any) => {
-      return client.models.Project.list(filter);
+      const result = await client.models.Project.list(filter);
+      return result;
     },
     update: async (id: string, data: any) => {
-      return client.models.Project.update({ id, ...data });
+      const result = await client.models.Project.update({ id, ...data });
+      return result.data;
     },
     delete: async (id: string) => {
-      return client.models.Project.delete({ id });
+      const result = await client.models.Project.delete({ id });
+      return result.data;
     },
     getWithRelations: async (id: string) => {
-      // Fix: Replace includeSurveyLinks with proper selectionSet for relations
-      return client.models.Project.get({ id }, {
-        selectionSet: ['*', 'surveyLinks.*', 'vendors.*', 'questions.*']
-      });
+      // Fix: Remove problematic selection set and handle relationships separately
+      const project = await client.models.Project.get({ id });
+      
+      if (project.data) {
+        // Fetch related data separately to avoid deep type instantiation
+        const surveyLinks = await client.models.SurveyLink.list({
+          filter: { projectId: { eq: id } }
+        });
+        
+        const vendors = await client.models.Vendor.list({
+          filter: { projectId: { eq: id } }
+        });
+        
+        const questions = await client.models.Question.list({
+          filter: { projectId: { eq: id } }
+        });
+        
+        // Combine project with its related data
+        return {
+          ...project.data,
+          surveyLinks: surveyLinks.data,
+          vendors: vendors.data,
+          questions: questions.data
+        };
+      }
+      
+      return null;
     }
   },
 
