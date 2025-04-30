@@ -1,62 +1,57 @@
-version: 2
-appRoot: 
-  - .
-applications:
-  - frontend:
-      phases:
-        preBuild:
-          commands:
-            - npm ci
-        build:
-          commands:
-            - npm run build
-      artifacts:
-        baseDirectory: .next
-        files:
-          - '**/*'
-      cache:
-        paths:
-          - node_modules/**/*
-          - .next/cache/**/*
-      buildPath: /
-    appRoot: .
-    backend:
-      phases:
-        build:
-          commands:
-            - npm ci
-            - npx prisma generate
-            - npx prisma migrate deploy
-      artifacts:
-        files:
-          - prisma/**/*
-          - next.config.js
-          - package.json
-          - public/**/*
-      cache:
-        paths:
-          - node_modules/**/*
-    redirects:
-      # Custom domain subdomain configuration
-      - source: https://admin.${AMPLIFY_DOMAIN}/*
-        target: https://admin.${AMPLIFY_DOMAIN}/admin/:splat
-        status: 301
-        condition: null
-    environment:
-      variables:
-        # Environment variables needed for the app
-        NODE_ENV: production
-        NEXTAUTH_URL: https://admin.${AMPLIFY_DOMAIN}
-        NEXT_PUBLIC_APP_URL: https://${AMPLIFY_DOMAIN}
-    customRules:
-      # Rules for subdomain routing
-      - pattern: '/admin/**/*'
-        target: '/admin/[id]/[...path]'
-        status: '200'
-        condition: 'subdomain = admin'
-      - pattern: '/**/*.*'
-        target: '/[file]'
-        status: '200'
-      - pattern: '/**/*'
-        target: '/index.html'
-        status: '200'
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  customHeaders:
+    - pattern: '**/*'
+      headers:
+        - key: 'Strict-Transport-Security'
+          value: 'max-age=31536000; includeSubDomains'
+        - key: 'X-Content-Type-Options'
+          value: 'nosniff'
+        - key: 'X-XSS-Protection'
+          value: '1; mode=block'
+        - key: 'X-Frame-Options'
+          value: 'DENY'
+    - pattern: '/survey/**/*'
+      headers:
+        - key: 'X-Frame-Options'
+          value: 'SAMEORIGIN'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
+  customRules:
+    # Handle admin subdomain routing
+    - source: 'https://admin.protegeresearchsurvey.com/'
+      target: 'https://admin.protegeresearchsurvey.com/admin'
+      status: '301'
+      condition: null
+    # Rewrite for the admin subdomain routes
+    - source: 'https://admin.protegeresearchsurvey.com/<*>'
+      target: '/admin/<*>'
+      status: '200'
+      condition: null
+    # Handle survey short links
+    - source: '/s/<*>'
+      target: '/survey/<*>'
+      status: '200'
+      condition: null
+    # Handle direct survey links
+    - source: '/survey/<*>'
+      target: '/survey/<*>'
+      status: '200'
+      condition: null
+    # Default redirect for unknown routes
+    - source: '/<*>'
+      target: '/index.html'
+      status: '404'

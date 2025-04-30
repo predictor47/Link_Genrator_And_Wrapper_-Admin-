@@ -14,6 +14,10 @@ type GenerateLinksRequest = {
   liveCount?: number; // For split between test/live links
 };
 
+// Domain configuration
+const DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
+const SHORT_URL = process.env.NEXT_PUBLIC_SURVEY_SHORT_URL || `https://${DOMAIN}/s`;
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -190,7 +194,8 @@ export default async function handler(
       return acc;
     }, {} as Record<string, { name: string; code: string }>);
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    // Use the custom domain for link generation
+    const baseUrl = `https://${DOMAIN}`;
 
     // Format the response with complete URLs
     const formattedLinks = sortedLinks.map(link => {

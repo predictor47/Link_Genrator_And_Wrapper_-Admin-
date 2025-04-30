@@ -1,6 +1,10 @@
 import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
 import { amplifyDataService } from './amplify-data-service';
 
+// Domain configuration
+const MAIN_DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
+const SHORT_URL_BASE = process.env.NEXT_PUBLIC_SURVEY_SHORT_URL || `https://${MAIN_DOMAIN}/s`;
+
 // Create stubs for the missing functions that will be implemented later
 const getVpnStatus = async (ip: string) => {
   // TODO: Implement VPN detection
@@ -182,6 +186,24 @@ export const securityService = {
         }
       };
     }
+  },
+  
+  /**
+   * Generate survey links using the custom domain
+   */
+  generateSurveyLink: (projectId: string, uid: string, type: string = 'short'): string => {
+    if (type === 'short') {
+      return `${SHORT_URL_BASE}/${projectId}/${uid}`;
+    } else {
+      return `https://${MAIN_DOMAIN}/survey/${projectId}/${uid}`;
+    }
+  },
+
+  /**
+   * Generate completion page link using the custom domain
+   */
+  generateCompletionLink: (projectId: string, uid: string): string => {
+    return `https://${MAIN_DOMAIN}/completion/${projectId}/${uid}`;
   },
 
   /**

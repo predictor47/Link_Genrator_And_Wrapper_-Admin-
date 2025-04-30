@@ -2,6 +2,10 @@ import { Amplify } from 'aws-amplify';
 
 let configurationDone = false;
 
+// Domain configuration
+export const MAIN_DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
+export const ADMIN_DOMAIN = process.env.NEXT_PUBLIC_ADMIN_DOMAIN || `admin.${MAIN_DOMAIN}`;
+
 /**
  * Configure Amplify with the right settings
  */
@@ -104,5 +108,10 @@ export const amplifyConfig = {
       region: process.env.NEXT_PUBLIC_API_REGION || process.env.NEXT_PUBLIC_AUTH_REGION || 'us-east-1',
       defaultAuthMode: 'userPool'
     }
+  },
+  // Domain configuration
+  domains: {
+    main: MAIN_DOMAIN,
+    admin: ADMIN_DOMAIN
   }
 } as any;

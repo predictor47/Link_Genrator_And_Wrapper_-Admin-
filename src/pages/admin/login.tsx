@@ -8,6 +8,10 @@ import { configureAmplify } from '@/lib/amplify-config';
 // Initialize Amplify
 configureAmplify();
 
+// Domain configuration
+const DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
+const ADMIN_DOMAIN = process.env.NEXT_PUBLIC_ADMIN_DOMAIN || `admin.${DOMAIN}`;
+
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
@@ -34,6 +38,22 @@ export default function LoginPage() {
     
     checkAuth();
   }, [redirect, router]);
+
+  // Check if we're on the admin subdomain
+  useEffect(() => {
+    // Only run on the client side
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      const isLocalhost = hostname === 'localhost' || hostname.startsWith('127.0.0.1');
+      const isAmplifyDomain = hostname.includes('amplifyapp.com');
+      const isAdminDomain = hostname === ADMIN_DOMAIN;
+      
+      // If we're in production environment and not on the admin subdomain, redirect
+      if (!isLocalhost && !isAmplifyDomain && !isAdminDomain) {
+        window.location.href = `https://${ADMIN_DOMAIN}/admin/login`;
+      }
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,8 +92,9 @@ export default function LoginPage() {
   return (
     <>
       <Head>
-        <title>Admin Login | Survey Link Manager</title>
-        <meta name="description" content="Login to the survey link management admin panel" />
+        <title>Admin Login | Protege Research Survey</title>
+        <meta name="description" content="Login to the Protege Research Survey admin panel" />
+        <meta name="robots" content="noindex, nofollow" />
       </Head>
       
       <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-12 sm:px-6 lg:px-8">
@@ -83,7 +104,7 @@ export default function LoginPage() {
               Admin Login
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600">
-              Sign in to access the survey link management dashboard
+              Sign in to access the survey management dashboard
             </p>
           </div>
           
@@ -173,6 +194,11 @@ export default function LoginPage() {
               </Link>
             </div>
           </form>
+          
+          <div className="text-center text-xs text-gray-500 mt-8">
+            <p>Protege Research Survey Admin Portal</p>
+            <p>© {new Date().getFullYear()} All Rights Reserved</p>
+          </div>
         </div>
       </div>
     </>

@@ -1,0 +1,17 @@
+# Allow all crawlers on main domain
+User-agent: *
+Allow: /
+
+# Disallow crawling of survey links
+Disallow: /s/
+Disallow: /survey/
+Disallow: /completion/
+Disallow: /api/
+
+# Completely restrict admin subdomain access
+Host: admin.protegeresearchsurvey.com
+User-agent: *
+Disallow: /
+
+# Sitemap for main domain
+Sitemap: https://protegeresearchsurvey.com/sitemap.xml
