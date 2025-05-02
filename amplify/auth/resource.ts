@@ -8,11 +8,13 @@ export const auth = defineAuth({
     externalProviders: {
       callbackUrls: [
         'http://localhost:3000/',
-        'https://yourdomain.com/'
+        'https://admin.protegeresearchsurvey.com/',
+        'https://protegeresearchsurvey.com/'
       ],
       logoutUrls: [
         'http://localhost:3000/',
-        'https://yourdomain.com/'
+        'https://admin.protegeresearchsurvey.com/',
+        'https://protegeresearchsurvey.com/'
       ]
     },
   },

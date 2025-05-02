@@ -59,29 +59,10 @@ function applySecurityHeaders(response: NextResponse, isAdminRoute: boolean): Ne
   return response;
 }
 
-// Validate token by making a request to the server or checking locally
-async function validateToken(token: string): Promise<boolean> {
-  try {
-    // Since we're in middleware, we can't directly use AuthService methods that require browser APIs
-    // Instead, make a simple fetch request to validate the token
-    const response = await fetch('https://cognito-idp.us-east-1.amazonaws.com', {
-      method: 'POST',
-      headers: {
-        'X-Amz-Target': 'AWSCognitoIdentityProviderService.GetUser',
-        'Content-Type': 'application/x-amz-json-1.1',
-        'Authorization': `Bearer ${token}`
-      },
-    });
-    
-    return response.ok;
-  } catch (error) {
-    console.error('Token validation error:', error);
-    return false;
-  }
-}
-
 export async function middleware(request: NextRequest) {
   const { pathname, host, protocol } = request.nextUrl;
+
+  console.log(`Middleware processing: ${pathname} on host: ${host}`);
   
   // For local development
   const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
@@ -127,8 +108,10 @@ export async function middleware(request: NextRequest) {
     return applySecurityHeaders(response, false);
   }
   
-  // Check if this is an admin route
-  const isAdminRoute = ADMIN_PATHS.some(path => pathname.startsWith(path));
+  // Check if this is an admin route that needs protection
+  const isAdminRoute = pathname.startsWith('/admin');
+  
+  console.log(`Path: ${pathname}, isAdminRoute: ${isAdminRoute}`);
   
   if (!isAdminRoute) {
     // For non-admin routes, just proceed with security headers
@@ -145,11 +128,16 @@ export async function middleware(request: NextRequest) {
     pathname.match(/^\/completion\/[^\/]+\/[^\/]+$/) // Match /completion/[projectId]/[uid]
   );
   
+  console.log(`Path: ${pathname}, isPublicPath: ${isPublicPath}`);
+  
   // If it's a public path within admin routes (like /admin/login), allow access
   if (isPublicPath) {
     const response = NextResponse.next();
     return applySecurityHeaders(response, pathname.startsWith('/admin'));
   }
+  
+  // If we get here, this is a protected admin route - check for authentication
+  console.log('Protected route - checking auth');
   
   // Check for authentication
   const authToken = request.cookies.get('idToken')?.value;
@@ -157,13 +145,13 @@ export async function middleware(request: NextRequest) {
   // Enhanced authentication check - validate token existence first
   if (!authToken) {
     // No token found, redirect to login
+    console.log('No auth token found - redirecting to login');
     const returnUrl = encodeURIComponent(request.nextUrl.pathname);
     const response = NextResponse.redirect(new URL(`/admin/login?redirect=${returnUrl}`, request.url));
     return applySecurityHeaders(response, true);
   }
   
   // For performance reasons, we'll do a very basic JWT validation check
-  // This doesn't do full validation but prevents the most obvious misuse
   try {
     // Check if token is properly formatted as a JWT token
     const parts = authToken.split('.');
@@ -172,11 +160,13 @@ export async function middleware(request: NextRequest) {
     }
     
     // Check if token is expired by decoding the payload part
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+    const payload = JSON.parse(atob(parts[1]));
     
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
       throw new Error('Token expired');
     }
+    
+    console.log('Auth token valid - proceeding to protected route');
     
     // Token passed basic checks, continue to the requested page
     const response = NextResponse.next();
