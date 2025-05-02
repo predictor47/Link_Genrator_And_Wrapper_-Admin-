@@ -92,12 +92,20 @@ const CircleProgress = ({ value, max, color, label, percentage }: {
 
 export default function ProjectView({ project }: { project: ProjectData | null }) {
   const router = useRouter();
+  const { id } = router.query;
   const [activeTab, setActiveTab] = useState('stats');
   const [newVendor, setNewVendor] = useState({ name: '', code: '' });
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Handle the "new" path by redirecting to the proper new project page
+  useEffect(() => {
+    if (id === 'new') {
+      router.replace('/admin/projects/new');
+    }
+  }, [id, router]);
 
   // Handle case when project is not found
   if (!project) {
@@ -522,6 +530,16 @@ export default function ProjectView({ project }: { project: ProjectData | null }
 
 export async function getServerSideProps({ params }: { params: { id: string } }) {
   const { id } = params;
+
+  // Special handling for "new" path - we don't need to fetch data in this case
+  if (id === 'new') {
+    return {
+      redirect: {
+        destination: '/admin/projects/new',
+        permanent: false,
+      },
+    };
+  }
 
   try {
     // Fetch project data using Amplify Data Service

@@ -59,6 +59,27 @@ function applySecurityHeaders(response: NextResponse, isAdminRoute: boolean): Ne
   return response;
 }
 
+// Validate token by making a request to the server or checking locally
+async function validateToken(token: string): Promise<boolean> {
+  try {
+    // Since we're in middleware, we can't directly use AuthService methods that require browser APIs
+    // Instead, make a simple fetch request to validate the token
+    const response = await fetch('https://cognito-idp.us-east-1.amazonaws.com', {
+      method: 'POST',
+      headers: {
+        'X-Amz-Target': 'AWSCognitoIdentityProviderService.GetUser',
+        'Content-Type': 'application/x-amz-json-1.1',
+        'Authorization': `Bearer ${token}`
+      },
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error('Token validation error:', error);
+    return false;
+  }
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname, host, protocol } = request.nextUrl;
   
@@ -132,19 +153,42 @@ export async function middleware(request: NextRequest) {
   
   // Check for authentication
   const authToken = request.cookies.get('idToken')?.value;
-  const isAuthenticated = !!authToken;
-
-  // If not authenticated and trying to access protected admin route, redirect to login
-  if (!isAuthenticated) {
-    // Redirect to admin login page with return URL
+  
+  // Enhanced authentication check - validate token existence first
+  if (!authToken) {
+    // No token found, redirect to login
     const returnUrl = encodeURIComponent(request.nextUrl.pathname);
     const response = NextResponse.redirect(new URL(`/admin/login?redirect=${returnUrl}`, request.url));
     return applySecurityHeaders(response, true);
   }
-
-  // User is authenticated, allow access to admin route
-  const response = NextResponse.next();
-  return applySecurityHeaders(response, true);
+  
+  // For performance reasons, we'll do a very basic JWT validation check
+  // This doesn't do full validation but prevents the most obvious misuse
+  try {
+    // Check if token is properly formatted as a JWT token
+    const parts = authToken.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid token format');
+    }
+    
+    // Check if token is expired by decoding the payload part
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+    
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+      throw new Error('Token expired');
+    }
+    
+    // Token passed basic checks, continue to the requested page
+    const response = NextResponse.next();
+    return applySecurityHeaders(response, true);
+    
+  } catch (error) {
+    // Invalid token, redirect to login
+    console.error('Token validation failed:', error);
+    const returnUrl = encodeURIComponent(request.nextUrl.pathname);
+    const response = NextResponse.redirect(new URL(`/admin/login?redirect=${returnUrl}`, request.url));
+    return applySecurityHeaders(response, true);
+  }
 }
 
 // Configure matchers to run middleware only on specific paths
