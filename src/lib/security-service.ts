@@ -127,7 +127,7 @@ export const securityService = {
       }
 
       // Check if link is already completed or flagged
-      if (surveyLink.status && ['COMPLETED', 'FLAGGED'].includes(surveyLink.status)) {
+      if (surveyLink.data && surveyLink.data.status && ['COMPLETED', 'FLAGGED'].includes(surveyLink.data.status)) {
         return {
           allowed: false,
           reason: 'LINK_ALREADY_USED',
@@ -136,9 +136,9 @@ export const securityService = {
       }
       
       // Check geo-restrictions if set
-      if (surveyLink.geoRestriction && securityContext.geoLocation) {
+      if (surveyLink.data && surveyLink.data.geoRestriction && securityContext.geoLocation) {
         try {
-          const allowedCountries = JSON.parse(surveyLink.geoRestriction);
+          const allowedCountries = JSON.parse(surveyLink.data.geoRestriction);
           if (Array.isArray(allowedCountries) && 
               allowedCountries.length > 0 && 
               !allowedCountries.includes(securityContext.geoLocation.country)) {
@@ -154,7 +154,7 @@ export const securityService = {
       }
       
       // Check VPN usage (if detected and link type is LIVE)
-      if (securityContext.detectedVpn && surveyLink.linkType === 'LIVE') {
+      if (securityContext.detectedVpn && surveyLink.data && surveyLink.data.linkType === 'LIVE') {
         return {
           allowed: false,
           reason: 'VPN_DETECTED',

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 import axios from 'axios';
 import { Chart as ChartJS, 
   ArcElement, 
@@ -57,7 +57,7 @@ interface ProjectAnalyticsProps {
   projectId: string;
   projectName: string;
   vendors: Vendor[];
-  flags: Flag[];
+  flags: Flag[]; 
   geoData: GeoData[];
   linkTypeData: {
     test: number;
@@ -554,7 +554,7 @@ export default function ProjectAnalytics({
                               {stats.completed}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {completionRate}%
+                              {completionRate}% 
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {stats.flagged}
@@ -670,7 +670,7 @@ export default function ProjectAnalytics({
                                 {geo.flaggedCount}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {completionRate}%
+                                {completionRate}% 
                               </td>
                             </tr>
                           );
@@ -744,10 +744,10 @@ export default function ProjectAnalytics({
                       <div className="py-4 sm:py-5 sm:grid sm:grid-cols-4 sm:gap-4 sm:px-6">
                         <dt className="text-sm font-medium text-gray-500">Completion Rate</dt>
                         <dd className="text-sm text-gray-900 sm:col-span-1">
-                          {linkTypeData.test > 0 ? Math.round((linkTypeData.testCompleted / linkTypeData.test) * 100) : 0}%
+                          {linkTypeData.test > 0 ? Math.round((linkTypeData.testCompleted / linkTypeData.test) * 100) : 0}% 
                         </dd>
                         <dd className="text-sm text-gray-900 sm:col-span-1">
-                          {linkTypeData.live > 0 ? Math.round((linkTypeData.liveCompleted / linkTypeData.live) * 100) : 0}%
+                          {linkTypeData.live > 0 ? Math.round((linkTypeData.liveCompleted / linkTypeData.live) * 100) : 0}% 
                         </dd>
                         <dd className="text-sm text-gray-900 sm:col-span-1">
                           {(() => {
@@ -763,10 +763,10 @@ export default function ProjectAnalytics({
                       <div className="py-4 sm:py-5 sm:grid sm:grid-cols-4 sm:gap-4 sm:px-6">
                         <dt className="text-sm font-medium text-gray-500">Flag Rate</dt>
                         <dd className="text-sm text-gray-900 sm:col-span-1">
-                          {linkTypeData.test > 0 ? Math.round((linkTypeData.testFlagged / linkTypeData.test) * 100) : 0}%
+                          {linkTypeData.test > 0 ? Math.round((linkTypeData.testFlagged / linkTypeData.test) * 100) : 0}% 
                         </dd>
                         <dd className="text-sm text-gray-900 sm:col-span-1">
-                          {linkTypeData.live > 0 ? Math.round((linkTypeData.liveFlagged / linkTypeData.live) * 100) : 0}%
+                          {linkTypeData.live > 0 ? Math.round((linkTypeData.liveFlagged / linkTypeData.live) * 100) : 0}% 
                         </dd>
                         <dd className="text-sm text-gray-900 sm:col-span-1">
                           {(() => {
@@ -902,14 +902,9 @@ export async function getServerSideProps({ params }: { params: { id: string } })
   const { id } = params;
 
   try {
-    // Fetch project info
-    const project = await prisma.project.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true,
-      }
-    });
+    // Fetch project info using Amplify
+    const projectResult = await amplifyDataService.projects.get(id);
+    const project = projectResult.data;
 
     if (!project) {
       return {
@@ -917,85 +912,72 @@ export async function getServerSideProps({ params }: { params: { id: string } })
       };
     }
 
-    // Fetch vendors with their stats
-    const vendors = await prisma.vendor.findMany({
-      where: { projectId: id },
-      orderBy: { name: 'asc' },
-      select: {
-        id: true,
-        name: true,
-        code: true,
-        createdAt: true,
-        surveyLinks: {
-          select: { status: true }
-        }
-      }
+    // Fetch vendors with their stats using Amplify
+    const vendorsResult = await amplifyDataService.vendors.list({
+      filter: { projectId: { eq: id } }
     });
+    const vendors = vendorsResult.data || [];
+
+    // Fetch all survey links for this project to calculate vendor stats
+    const surveyLinksResult = await amplifyDataService.surveyLinks.list({
+      filter: { projectId: { eq: id } }
+    });
+    const surveyLinks = surveyLinksResult.data || [];
 
     // Calculate stats for each vendor
     const vendorsWithStats = vendors.map(vendor => {
+      const vendorLinks = surveyLinks.filter(link => link.vendorId === vendor.id);
       const stats = {
-        total: vendor.surveyLinks.length,
-        pending: vendor.surveyLinks.filter(link => link.status === 'PENDING').length,
-        started: vendor.surveyLinks.filter(link => link.status === 'STARTED').length,
-        inProgress: vendor.surveyLinks.filter(link => link.status === 'IN_PROGRESS').length,
-        completed: vendor.surveyLinks.filter(link => link.status === 'COMPLETED').length,
-        flagged: vendor.surveyLinks.filter(link => link.status === 'FLAGGED').length,
+        total: vendorLinks.length,
+        pending: vendorLinks.filter(link => link.status === 'PENDING').length,
+        started: vendorLinks.filter(link => link.status === 'STARTED').length,
+        inProgress: vendorLinks.filter(link => link.status === 'IN_PROGRESS').length,
+        completed: vendorLinks.filter(link => link.status === 'COMPLETED').length,
+        flagged: vendorLinks.filter(link => link.status === 'FLAGGED').length,
       };
 
       return {
         id: vendor.id,
         name: vendor.name,
         code: vendor.code,
-        createdAt: vendor.createdAt.toISOString(),
+        createdAt: vendor.createdAt,
         stats
       };
     });
 
-    // Fetch flags
-    const flags = await prisma.flag.findMany({
-      where: { projectId: id },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-      select: {
-        id: true,
-        reason: true,
-        createdAt: true,
-        surveyLink: {
-          select: {
-            linkType: true,
-            vendor: {
-              select: {
-                name: true
-              }
-            }
-          }
-        }
+    // Fetch flags using Amplify
+    const flagsResult = await amplifyDataService.flags.list({
+      filter: { projectId: { eq: id } }
+    });
+    const flags = flagsResult.data || [];
+
+    // Process flags - map vendor names from the vendor map
+    const vendorMap = vendors.reduce((acc: Record<string, any>, vendor) => {
+      if (vendor.id) {
+        acc[vendor.id] = vendor;
       }
+      return acc;
+    }, {});
+
+    const processedFlags = flags.map(flag => {
+      // Find the survey link for this flag to get link type and vendor info
+      const surveyLink = surveyLinks.find(link => link.id === flag.surveyLinkId);
+      const vendor = surveyLink?.vendorId ? vendorMap[surveyLink.vendorId] : null;
+
+      return {
+        id: flag.id,
+        reason: flag.reason,
+        createdAt: flag.createdAt,
+        linkType: surveyLink?.linkType || null,
+        vendorName: vendor?.name || null
+      };
     });
 
-    const processedFlags = flags.map(flag => ({
-      id: flag.id,
-      reason: flag.reason,
-      createdAt: flag.createdAt.toISOString(),
-      linkType: flag.surveyLink?.linkType || null,
-      vendorName: flag.surveyLink?.vendor?.name || null
-    }));
-
-    // Fetch geographic data
-    // In a real implementation, this would come from actual response metadata
-    // Here we'll create some sample data based on existing responses
-    const responses = await prisma.response.findMany({
-      where: { projectId: id },
-      select: {
-        metadata: true,
-        surveyLink: {
-          select: {
-            status: true
-          }
-        }
-      }
+    // Fetch responses using Amplify to extract geo data
+    const responsesResult = await amplifyDataService.responses.list({
+      filter: { projectId: { eq: id } }
     });
+    const responses = responsesResult.data || [];
 
     // Extract geo data from responses
     const geoData: Record<string, GeoData> = {};
@@ -1003,7 +985,7 @@ export async function getServerSideProps({ params }: { params: { id: string } })
     // Process responses to extract country info
     responses.forEach(response => {
       try {
-        const metadata = JSON.parse(response.metadata || '{}');
+        const metadata = response.metadata ? JSON.parse(response.metadata) : {};
         const country = metadata?.geoLocation?.country || 
                        metadata?.ip_location?.country ||
                        metadata?.country ||
@@ -1020,9 +1002,12 @@ export async function getServerSideProps({ params }: { params: { id: string } })
         
         geoData[country].count++;
         
-        if (response.surveyLink.status === 'COMPLETED') {
+        // Find the survey link for this response to check status
+        const surveyLink = surveyLinks.find(link => link.id === response.surveyLinkId);
+        
+        if (surveyLink?.status === 'COMPLETED') {
           geoData[country].completedCount++;
-        } else if (response.surveyLink.status === 'FLAGGED') {
+        } else if (surveyLink?.status === 'FLAGGED') {
           geoData[country].flaggedCount++;
         }
       } catch (e) {
@@ -1033,16 +1018,7 @@ export async function getServerSideProps({ params }: { params: { id: string } })
     // Convert to array and sort
     const processedGeoData = Object.values(geoData).sort((a, b) => b.count - a.count);
 
-    // Fetch test vs live data
-    const linkTypeStats = await prisma.surveyLink.groupBy({
-      by: ['linkType', 'status'],
-      where: { projectId: id },
-      _count: {
-        id: true
-      }
-    });
-
-    // Process test vs live data
+    // Calculate test vs live data
     const linkTypeData = {
       test: 0,
       live: 0,
@@ -1052,20 +1028,20 @@ export async function getServerSideProps({ params }: { params: { id: string } })
       liveFlagged: 0
     };
 
-    linkTypeStats.forEach(stat => {
-      if (stat.linkType === 'TEST') {
-        linkTypeData.test += stat._count.id;
-        if (stat.status === 'COMPLETED') {
-          linkTypeData.testCompleted += stat._count.id;
-        } else if (stat.status === 'FLAGGED') {
-          linkTypeData.testFlagged += stat._count.id;
+    surveyLinks.forEach(link => {
+      if (link.linkType === 'TEST') {
+        linkTypeData.test++;
+        if (link.status === 'COMPLETED') {
+          linkTypeData.testCompleted++;
+        } else if (link.status === 'FLAGGED') {
+          linkTypeData.testFlagged++;
         }
       } else {
-        linkTypeData.live += stat._count.id;
-        if (stat.status === 'COMPLETED') {
-          linkTypeData.liveCompleted += stat._count.id;
-        } else if (stat.status === 'FLAGGED') {
-          linkTypeData.liveFlagged += stat._count.id;
+        linkTypeData.live++;
+        if (link.status === 'COMPLETED') {
+          linkTypeData.liveCompleted++;
+        } else if (link.status === 'FLAGGED') {
+          linkTypeData.liveFlagged++;
         }
       }
     });

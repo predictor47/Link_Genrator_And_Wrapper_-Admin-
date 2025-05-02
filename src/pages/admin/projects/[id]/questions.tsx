@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import axios from 'axios';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 
 // Types for our component
 interface Question {
@@ -230,13 +230,8 @@ export async function getServerSideProps(context: any) {
   const { id } = context.params;
   
   try {
-    const project = await prisma.project.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true
-      }
-    });
+    const projectResult = await amplifyDataService.projects.get(id);
+    const project = projectResult.data;
     
     if (!project) {
       return {
@@ -244,25 +239,27 @@ export async function getServerSideProps(context: any) {
       };
     }
     
-    const questions = await prisma.question.findMany({
-      where: { projectId: id },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        text: true,
-        options: true
-      }
+    // Fetch questions using Amplify Data Service
+    const questionsResult = await amplifyDataService.questions.list({
+      filter: { projectId: { eq: id } },
+      sort: { field: 'createdAt', direction: 'DESC' }
     });
     
-    // Parse options from JSON string to array
+    const questions = questionsResult.data || [];
+    
+    // Parse options from JSON string to array if needed
     const parsedQuestions = questions.map(q => ({
-      ...q,
-      options: JSON.parse(q.options || '[]')
+      id: q.id,
+      text: q.text,
+      options: typeof q.options === 'string' ? JSON.parse(q.options || '[]') : q.options
     }));
     
     return {
       props: {
-        project,
+        project: {
+          id: project.id,
+          name: project.name
+        },
         initialQuestions: JSON.parse(JSON.stringify(parsedQuestions))
       }
     };

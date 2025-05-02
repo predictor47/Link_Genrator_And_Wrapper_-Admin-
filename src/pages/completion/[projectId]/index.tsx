@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import axios from 'axios';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 
 interface CompletionPageProps {
   project: {
@@ -136,13 +136,8 @@ export async function getServerSideProps(context: any) {
   const { projectId } = context.params;
   
   try {
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-      select: {
-        id: true,
-        name: true
-      }
-    });
+    const projectResult = await amplifyDataService.projects.get(projectId);
+    const project = projectResult.data;
     
     if (!project) {
       return {

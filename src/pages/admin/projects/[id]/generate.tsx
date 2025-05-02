@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import axios from 'axios';
 import { useForm } from 'react-hook-form';
-import { prisma } from '@/lib/prisma';
+import { amplifyDataService } from '@/lib/amplify-data-service';
 import CSVUploader from '@/components/CSVUploader';
 
 // Type for vendor
@@ -801,13 +801,8 @@ export async function getServerSideProps(context: any) {
   const { id } = context.params;
   
   try {
-    const project = await prisma.project.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        name: true
-      }
-    });
+    const projectResult = await amplifyDataService.projects.get(id);
+    const project = projectResult.data;
     
     if (!project) {
       return {

@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // Check if projectResult is null before accessing its properties
-    if (!projectResult) {
+    if (!projectResult || projectResult.data === null) {
       return res.status(500).json({
         success: false,
         message: 'Failed to create project. Project creation returned null.'
@@ -32,9 +32,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Add questions if provided
     if (questions && Array.isArray(questions) && questions.length > 0) {
+      const projectId = projectResult.data.id;
       const questionPromises = questions.map((q: { text: string, options: string[] }) => 
         amplifyDataService.questions.create({
-          projectId: projectResult.id,
+          projectId,
           text: q.text,
           options: JSON.stringify(q.options || [])
         })
@@ -46,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(201).json({
       success: true,
       message: 'Project created successfully',
-      project: projectResult
+      project: projectResult.data
     });
   } catch (error) {
     console.error('Error creating project:', error);
