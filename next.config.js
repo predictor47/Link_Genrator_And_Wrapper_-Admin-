@@ -16,6 +16,18 @@ const nextConfig = {
   // Handle redirects
   async redirects() {
     return [
+      // Explicitly handle the projects/new route to prevent 404 errors
+      {
+        source: '/projects/new',
+        destination: '/admin/projects/new',
+        permanent: false,
+        has: [
+          {
+            type: 'host',
+            value: ADMIN_DOMAIN,
+          },
+        ],
+      },
       // Redirect default survey routes to the main domain
       {
         source: '/survey/:projectId/:uid',
@@ -59,7 +71,12 @@ const nextConfig = {
   async rewrites() {
     return {
       beforeFiles: [
-        // Handle admin routes on the admin subdomain
+        // Special handling for the admin/projects/new route
+        {
+          source: '/admin/projects/new',
+          destination: '/admin/projects/new',
+        },
+        // Handle admin routes on the admin subdomain, but don't interfere with static routes
         {
           source: '/:path*',
           destination: '/admin/:path*',
