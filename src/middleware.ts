@@ -17,7 +17,10 @@ const PUBLIC_PATHS = [
   '/_next/',  // Next.js static assets
   '/s/',       // Short link route (public-facing)
   '/survey/',  // Survey link route (public-facing)
-  '/completion/' // Completion route (public-facing)
+  '/completion/', // Completion route (public-facing)
+  '/sorry-quota-full',
+  '/sorry-disqualified',
+  '/thank-you-completed'
 ];
 
 // Domain configuration
@@ -127,12 +130,31 @@ export async function middleware(request: NextRequest) {
   
   // Check if we're on the admin subdomain
   const isAdminDomain = host === ADMIN_DOMAIN || 
-                       (isLocalhost && pathname.startsWith('/admin'));
+                       (isLocalhost && pathname.startsWith('/admin')) ||
+                       (isAmplifyDomain && pathname.startsWith('/admin'));
   
   // Check if we're on the main domain
   const isMainDomain = host === MAIN_DOMAIN || 
                        isLocalhost || 
                        isAmplifyDomain;
+
+  // Always allow access to Next.js static assets and favicon
+  if (pathname.startsWith('/_next/') || pathname === '/favicon.ico') {
+    const response = NextResponse.next();
+    return applySecurityHeaders(response, false);
+  }
+  
+  // Special handling for admin domain root
+  if (isAdminDomain && pathname === '/') {
+    // Redirect to admin path
+    return NextResponse.redirect(new URL('/admin', request.url));
+  }
+  
+  // Handle outcome pages - always allow
+  if (['/sorry-quota-full', '/sorry-disqualified', '/thank-you-completed'].some(path => pathname === path)) {
+    const response = NextResponse.next();
+    return applySecurityHeaders(response, false);
+  }
 
   // When in production (not localhost/Amplify preview)
   if (!isLocalhost && !isAmplifyDomain) {
@@ -158,12 +180,6 @@ export async function middleware(request: NextRequest) {
     }
   }
   
-  // Always allow access to Next.js static assets and favicon
-  if (pathname.startsWith('/_next/') || pathname === '/favicon.ico') {
-    const response = NextResponse.next();
-    return applySecurityHeaders(response, false);
-  }
-  
   // Check if this is an admin route
   const isAdminRoute = pathname.startsWith('/admin') || isAdminDomain;
   
@@ -182,6 +198,12 @@ export async function middleware(request: NextRequest) {
     console.log(`Public admin path: ${pathname} - allowing access`);
     const response = NextResponse.next();
     return applySecurityHeaders(response, true);
+  }
+
+  // Special handling for project routes to prevent 404s
+  if (pathname === '/admin/projects/new' || pathname.startsWith('/admin/projects/')) {
+    console.log(`Project route detected: ${pathname} - checking auth`);
+    // Continue with auth check, but make sure we don't redirect incorrectly
   }
   
   // This is a protected admin route - check for authentication
