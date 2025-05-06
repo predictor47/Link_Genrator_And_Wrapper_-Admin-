@@ -4,6 +4,13 @@
 const MAIN_DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
 const ADMIN_DOMAIN = process.env.NEXT_PUBLIC_ADMIN_DOMAIN || `admin.${MAIN_DOMAIN}`;
 
+// Special outcome pages
+const OUTCOME_PAGES = [
+  'sorry-quota-full',
+  'sorry-disqualified',
+  'thank-you-completed'
+];
+
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
@@ -15,7 +22,7 @@ const nextConfig = {
   
   // Handle redirects
   async redirects() {
-    return [
+    const redirects = [
       // Explicitly handle the projects/new route to prevent 404 errors
       {
         source: '/projects/new',
@@ -65,6 +72,23 @@ const nextConfig = {
         ],
       },
     ];
+
+    // Add redirects for special outcome pages when accessed from admin domain
+    OUTCOME_PAGES.forEach(page => {
+      redirects.push({
+        source: `/${page}`,
+        destination: `https://${MAIN_DOMAIN}/${page}`,
+        permanent: false,
+        has: [
+          {
+            type: 'host',
+            value: ADMIN_DOMAIN,
+          },
+        ],
+      });
+    });
+
+    return redirects;
   },
   
   // Handle rewrites

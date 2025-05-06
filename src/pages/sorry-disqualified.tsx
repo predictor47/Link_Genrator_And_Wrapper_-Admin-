@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react';
 import Head from 'next/head';
 
 export default function SorryDisqualified() {
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(15);
   const redirectUrl = "https://protegeresearch.com/";
 
   useEffect(() => {
-    // Set up redirect countdown
+    // Set up redirect countdown - now 15 seconds
     const timer = setTimeout(() => {
       window.location.href = redirectUrl;
-    }, 5000);
+    }, 15000);
 
     // Update countdown timer
     const countdownInterval = setInterval(() => {
