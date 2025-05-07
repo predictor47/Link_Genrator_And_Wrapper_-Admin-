@@ -31,27 +31,49 @@ frontend:
       - node_modules/**/*
       - .next/cache/**/*
   customRules:
-    # Handle admin subdomain routing
+    # Admin subdomain default redirects to admin path
     - source: 'https://admin.protegeresearchsurvey.com/'
-      target: 'https://admin.protegeresearchsurvey.com/admin'
-      status: '301'
-      condition: null
-    # Rewrite for the admin subdomain routes
-    - source: 'https://admin.protegeresearchsurvey.com/<*>'
-      target: '/admin/<*>'
+      target: '/admin/index.html'
       status: '200'
       condition: null
+      
+    # Admin subdomain with any path
+    - source: 'https://admin.protegeresearchsurvey.com/<*>'
+      target: '/<*>'
+      status: '200'
+      condition: null
+      
+    # Special handling for admin login page
+    - source: '/admin/login'
+      target: '/admin/login.html'
+      status: '200'
+      condition: null
+      
+    # Handle Next.js API routes
+    - source: '/api/<*>'
+      target: '/api/<*>'
+      status: '200'
+      condition: null
+      
     # Handle survey short links
     - source: '/s/<*>'
-      target: '/survey/<*>'
+      target: '/s/<*>.html'
       status: '200'
       condition: null
+      
     # Handle direct survey links
     - source: '/survey/<*>'
-      target: '/survey/<*>'
+      target: '/survey/<*>.html'
       status: '200'
       condition: null
-    # Default redirect for unknown routes
-    - source: '/<*>'
+      
+    # Handle _next directory (static assets)
+    - source: '/_next/<*>'
+      target: '/_next/<*>'
+      status: '200'
+      condition: null
+      
+    # Default Next.js Single Page Application handling
+    - source: '/<**>'
       target: '/index.html'
-      status: '404'
+      status: '200'
