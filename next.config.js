@@ -23,7 +23,7 @@ const nextConfig = {
   // Handle redirects
   async redirects() {
     const redirects = [
-      // Redirect root on admin domain to /admin
+      // Redirect root on admin domain to /admin directly
       {
         source: '/',
         destination: '/admin',
@@ -95,12 +95,7 @@ const nextConfig = {
   async rewrites() {
     return {
       beforeFiles: [
-        // Critical fix: Explicitly preserve the /admin/projects/new route
-        {
-          source: '/admin/projects/new',
-          destination: '/admin/projects/new',
-        },
-        // Handle admin domain requests properly
+        // Handle admin subdomain routing - simpler approach
         {
           source: '/:path*',
           destination: '/admin/:path*',
@@ -109,21 +104,10 @@ const nextConfig = {
               type: 'host',
               value: ADMIN_DOMAIN,
             },
-            {
-              type: 'header',
-              key: 'host',
-              value: ADMIN_DOMAIN,
-            }
-          ]
+          ],
         },
       ],
-      afterFiles: [
-        // Ensure admin routes are properly mapped
-        {
-          source: '/admin/:path*',
-          destination: '/admin/:path*',
-        }
-      ],
+      afterFiles: [],
       fallback: [],
     };
   },

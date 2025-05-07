@@ -106,6 +106,12 @@ function isPublicPath(pathname: string): boolean {
     return true;
   }
   
+  // Check auth routes first since they must remain accessible
+  const authRoutes = ['/admin/login', '/admin/signup', '/admin/verify', '/admin/forgot-password'];
+  if (authRoutes.some(route => pathname === route)) {
+    return true;
+  }
+  
   // Check path prefixes
   return PUBLIC_PATHS.some(publicPath => 
     pathname.startsWith(publicPath) && 
@@ -119,7 +125,7 @@ function isPublicPath(pathname: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  const { pathname, host, protocol } = request.nextUrl;
+  const { pathname, host } = request.nextUrl;
 
   console.log(`Middleware processing: ${pathname} on host: ${host}`);
   
@@ -132,11 +138,6 @@ export async function middleware(request: NextRequest) {
   const isAdminDomain = host === ADMIN_DOMAIN || 
                        (isLocalhost && pathname.startsWith('/admin')) ||
                        (isAmplifyDomain && pathname.startsWith('/admin'));
-  
-  // Check if we're on the main domain
-  const isMainDomain = host === MAIN_DOMAIN || 
-                       isLocalhost || 
-                       isAmplifyDomain;
 
   // Always allow access to Next.js static assets and favicon
   if (pathname.startsWith('/_next/') || pathname === '/favicon.ico') {
@@ -144,10 +145,11 @@ export async function middleware(request: NextRequest) {
     return applySecurityHeaders(response, false);
   }
   
-  // Special handling for admin domain root
-  if (isAdminDomain && pathname === '/') {
-    // Redirect to admin path
-    return NextResponse.redirect(new URL('/admin', request.url));
+  // Special handling for authentication routes - always allow
+  if (['/admin/login', '/admin/signup', '/admin/verify', '/admin/forgot-password'].some(route => pathname === route)) {
+    console.log(`Auth route detected: ${pathname} - allowing access`);
+    const response = NextResponse.next();
+    return applySecurityHeaders(response, true);
   }
   
   // Handle outcome pages - always allow
@@ -158,28 +160,30 @@ export async function middleware(request: NextRequest) {
 
   // When in production (not localhost/Amplify preview)
   if (!isLocalhost && !isAmplifyDomain) {
-    // Process admin subdomain requests
-    if (isAdminDomain) {
-      // If accessing root of admin domain, redirect to admin dashboard
-      if (pathname === '/') {
-        return NextResponse.redirect(new URL('/admin', request.url));
-      }
-      
-      // If accessing admin paths without the /admin prefix, add it
-      if (!pathname.startsWith('/admin') && !pathname.startsWith('/_next/') && pathname !== '/favicon.ico') {
-        return NextResponse.redirect(new URL(`/admin${pathname}`, request.url));
-      }
+    // Correctly handle admin subdomain root
+    if (isAdminDomain && pathname === '/') {
+      return NextResponse.redirect(new URL('/admin', request.url));
     }
     
+    // Handle admin login pages directly on subdomain without /admin prefix
+    // This is critical for the login page to work on admin.domain.com/login
+    if (isAdminDomain && 
+        (pathname === '/login' || 
+         pathname === '/signup' || 
+         pathname === '/verify' || 
+         pathname === '/forgot-password')) {
+      return NextResponse.redirect(new URL(`/admin${pathname}`, request.url));
+    }
+
     // Process main domain requests accessing admin section
-    if (isMainDomain && pathname.startsWith('/admin')) {
+    if (host === MAIN_DOMAIN && pathname.startsWith('/admin')) {
       // On main domain trying to access admin, redirect to admin subdomain
       const url = new URL(request.url);
       url.host = ADMIN_DOMAIN;
       return NextResponse.redirect(url);
     }
   }
-  
+
   // Check if this is an admin route
   const isAdminRoute = pathname.startsWith('/admin') || isAdminDomain;
   
@@ -190,7 +194,6 @@ export async function middleware(request: NextRequest) {
     return applySecurityHeaders(response, false);
   }
   
-  // At this point, we know it's an admin route
   console.log(`Admin route detected: ${pathname}`);
   
   // Check if the admin path is public (auth-related paths)
@@ -199,14 +202,8 @@ export async function middleware(request: NextRequest) {
     const response = NextResponse.next();
     return applySecurityHeaders(response, true);
   }
-
-  // Special handling for project routes to prevent 404s
-  if (pathname === '/admin/projects/new' || pathname.startsWith('/admin/projects/')) {
-    console.log(`Project route detected: ${pathname} - checking auth`);
-    // Continue with auth check, but make sure we don't redirect incorrectly
-  }
   
-  // This is a protected admin route - check for authentication
+  // For protected admin routes - check for authentication
   console.log('Protected admin route - checking auth');
   
   // Check for authentication token
