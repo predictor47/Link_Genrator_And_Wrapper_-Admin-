@@ -37,14 +37,20 @@ frontend:
       status: '200'
       condition: null
       
-    # Admin subdomain with any path
+    # Admin subdomain with any path - Fixed to properly route to admin paths
     - source: 'https://admin.protegeresearchsurvey.com/<*>'
-      target: '/<*>'
+      target: '/admin/<*>'
       status: '200'
       condition: null
       
     # Special handling for admin login page
     - source: '/admin/login'
+      target: '/admin/login.html'
+      status: '200'
+      condition: null
+      
+    # Added specific rule for admin login on the admin subdomain
+    - source: 'https://admin.protegeresearchsurvey.com/login'
       target: '/admin/login.html'
       status: '200'
       condition: null
