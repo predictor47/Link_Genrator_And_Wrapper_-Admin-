@@ -135,10 +135,10 @@
    "Value": "[\"phone\",\"email\",\"openid\",\"profile\",\"aws.cognito.signin.user.admin\"]"
   },
   "oauthRedirectSignIn": {
-   "Value": "http://localhost:3000/,https://yourdomain.com/"
+   "Value": "http://localhost:3000/,https://admin.protegeresearchsurvey.com/,https://protegeresearchsurvey.com/"
   },
   "oauthRedirectSignOut": {
-   "Value": "http://localhost:3000/,https://yourdomain.com/"
+   "Value": "http://localhost:3000/,https://admin.protegeresearchsurvey.com/,https://protegeresearchsurvey.com/"
   },
   "oauthResponseType": {
    "Value": "code"
@@ -257,7 +257,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/17250c9c24b5b5f2757aa868f90a6b161102b9af564d28ef30a6234ea8359059.json"
+       "/39478824cb6f3a4b691aef71bf0f6cc1ce630eabd3822e6ed601024ebccdae52.json"
       ]
      ]
     }
@@ -325,7 +325,7 @@
        {
         "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
        },
-       "/64f1c15dea54ce5aebfad578541bc0e76c0a29eac3c9a8f63ff734e284cf8b45.json"
+       "/7d455e6444e9dad2c57c9c8dbe880bd3834c1fbd78116600b49757bddd8fd638.json"
       ]
      ]
     }
@@ -341,7 +341,7 @@
   "CDKMetadata": {
    "Type": "AWS::CDK::Metadata",
    "Properties": {
-    "Analytics": "v2:deflate64:H4sIAAAAAAAA/zPSM7Q00jNQTCwv1k1OydbNyUzSqw4uSUzO1nFOy/MvLSkoLQGxwEK1Onn5Kal6WcX6ZUZGeobGeoaKWcWZmbpFpXklmbmpekEQGgCN7EU9VAAAAA=="
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/zPSM7Q00jNQTCwv1k1OydbNyUzSqw4uSUzO1nFOy/MvLSkoLQGxwEK1Onn5Kal6WcX6ZUZGeoamegaKWcWZmbpFpXklmbmpekEQGgAd2lCaVAAAAA=="
    },
    "Metadata": {
     "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/CDKMetadata/Default"

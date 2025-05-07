@@ -12,7 +12,7 @@
     "lint": "next lint",
     "setup-amplify": "node scripts/setup-amplify.js",
     "create-admin": "node scripts/create-admin-user.js",
-    "deploy": "npx ampx sandbox deploy && npm run create-admin && npx ampx publish"
+    "deploy": "npx ampx sandbox"
   },
   "dependencies": {
     "@aws-amplify/auth": "^6.12.3",

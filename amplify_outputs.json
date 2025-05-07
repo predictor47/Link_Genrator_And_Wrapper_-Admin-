@@ -27,11 +27,13 @@
       "identity_providers": [],
       "redirect_sign_in_uri": [
         "http://localhost:3000/",
-        "https://yourdomain.com/"
+        "https://admin.protegeresearchsurvey.com/",
+        "https://protegeresearchsurvey.com/"
       ],
       "redirect_sign_out_uri": [
         "http://localhost:3000/",
-        "https://yourdomain.com/"
+        "https://admin.protegeresearchsurvey.com/",
+        "https://protegeresearchsurvey.com/"
       ],
       "response_type": "code",
       "scopes": [

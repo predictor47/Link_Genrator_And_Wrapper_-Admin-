@@ -98,7 +98,8 @@
     ],
     "CallbackURLs": [
      "http://localhost:3000/",
-     "https://yourdomain.com/"
+     "https://admin.protegeresearchsurvey.com/",
+     "https://protegeresearchsurvey.com/"
     ],
     "ExplicitAuthFlows": [
      "ALLOW_CUSTOM_AUTH",
@@ -107,7 +108,8 @@
     ],
     "LogoutURLs": [
      "http://localhost:3000/",
-     "https://yourdomain.com/"
+     "https://admin.protegeresearchsurvey.com/",
+     "https://protegeresearchsurvey.com/"
     ],
     "PreventUserExistenceErrors": "ENABLED",
     "SupportedIdentityProviders": [
@@ -322,7 +324,7 @@
   "CDKMetadata": {
    "Type": "AWS::CDK::Metadata",
    "Properties": {
-    "Analytics": "v2:deflate64:H4sIAAAAAAAA/02MvQ7CMBCDn6V7etAwMaKysCBUxIxCcsCV/EjNlQpFeXdUQaGT7c+WJVRrCctCDbHU5lFaukDaY2Q0R1b6IdQQz0mHmycOkE4Ru0MIVtRX//OT2QanyM+rL5libQk9zwd/sjPomfg1vc9zEyxumJW+O/ScBSkHaYTjcNScRYMx9J3GLHwwCG1cPKWEagVV0Uaisus9k0NoPvoGNpbkgfgAAAA="
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/02MwQrCMBBEv6X3dG0DHjxKvXgRqXiWmKy6bZNAs7VIyL9L0WpPM/NmGAnlRkKRqTHk2rR5R1eIBwyM5sRKt0KN4RK1vztiD/EcsD9634nq5n5+NjtvFbll9SVzrDpCx8vBn+wNOiZ+ze/LXPsOt8xKPyw6ToKUhTjBaThpSqLG4IdeYxLOG4QmrJ5SQrmGImsCUd4Pjski1B99A6ag8Sb4AAAA"
    },
    "Metadata": {
     "aws:cdk:path": "amplify-surveylinkwrapper-munee-sandbox-6d4292d548/auth/CDKMetadata/Default"
