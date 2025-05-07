@@ -19,8 +19,9 @@ Ensure all API endpoints use `amplifyDataService` instead of `prisma`:
 - Replace all Prisma query operations with equivalent Amplify operations
 
 ### 3. Finalize Amplify Backend Setup
-- Run `npm run setup-amplify` to ensure all Amplify backend resources are properly configured
-- Verify that all required environment variables are set in Amplify
+- Run `npm run setup-amplify` to generate and configure Amplify backend definitions
+- Run `npx ampx pipeline-deploy --yes` to deploy backend resources before building the frontend
+- Verify that all required environment variables are set in the Amplify console
 
 ### 4. Testing
 - Test all API endpoints to ensure they work with Amplify
