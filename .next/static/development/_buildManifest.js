@@ -1,1 +1,0 @@
-self.__BUILD_MANIFEST = {__rewrites:{afterFiles:[],beforeFiles:[{has:[{type:"host",value:"admin.protegeresearchsurvey.com"}],source:"\u002F:path*",destination:"\u002Fadmin\u002F:path*"}],fallback:[]},sortedPages:["\u002F_app"]};self.__BUILD_MANIFEST_CB && self.__BUILD_MANIFEST_CB()
