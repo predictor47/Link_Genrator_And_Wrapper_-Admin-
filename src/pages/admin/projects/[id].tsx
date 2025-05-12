@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { amplifyDataService } from '@/lib/amplify-data-service';
 import axios from 'axios';
 
-// Define proper types based on your Prisma schema
+// Define proper types based on your Amplify data schema
 interface Question {
   id: string;
   text: string;

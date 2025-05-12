@@ -6,8 +6,10 @@ import type { Schema } from '../../amplify/data/resource';
 // Initialize Amplify with type assertion to avoid type errors
 Amplify.configure(amplifyConfig as any);
 
-// Generate a type-safe client for data operations
-const client = generateClient<Schema>();
+// Generate a type-safe client for data operations with explicit authMode
+const client = generateClient<Schema>({
+  authMode: 'apiKey'
+});
 
 // Helper to safely unwrap data from Amplify responses
 const unwrapData = <T>(result: { data: T | null }): T | null => result.data;

@@ -43,10 +43,10 @@ export function configureAmplify() {
       console.warn('Failed to load amplify_outputs.json:', error);
     }
   }
-
   // If no outputs file was found or in browser context, use environment variables
   // but prioritize our explicit Cognito User Pool ID
   if (!amplifyOutputs) {
+    console.log('Using environment variables for Amplify configuration');
     amplifyOutputs = {
       auth: {
         userPoolId: COGNITO_USER_POOL_ID || process.env.NEXT_PUBLIC_AUTH_USER_POOL_ID,
@@ -69,7 +69,6 @@ export function configureAmplify() {
 
   // Get the region from outputs or environment variables
   const region = 'us-east-1'; // Hardcoded to match the User Pool ID region
-
   // Configure Amplify with the retrieved settings
   try {
     const config: any = {
@@ -86,19 +85,20 @@ export function configureAmplify() {
         GraphQL: {
           endpoint: amplifyOutputs.api?.endpoint || '',
           region: amplifyOutputs.api?.region || region,
-          defaultAuthMode: 'userPool'
+          defaultAuthMode: 'apiKey',
+          apiKey: amplifyOutputs.api_key || process.env.NEXT_PUBLIC_AMPLIFY_API_KEY || ''
         }
       }
     };
     
     // Add region at root level for Amplify v6
     config.region = region;
-    
-    // Apply configuration
+      // Apply configuration
     Amplify.configure(config);
     
     configurationDone = true;
     console.log('Amplify configured with User Pool ID:', COGNITO_USER_POOL_ID);
+    console.log('API Key configured:', config.API.GraphQL.apiKey ? 'Yes (masked)' : 'No');
   } catch (error) {
     console.error('Error configuring Amplify:', error);
   }
