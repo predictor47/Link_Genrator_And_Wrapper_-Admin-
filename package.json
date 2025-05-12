@@ -2,6 +2,10 @@
   "name": "survey-link-wrapper",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "amplify",
+    "amplify-deploy"
+  ],
   "engines": {
     "node": ">=22.15.0"
   },

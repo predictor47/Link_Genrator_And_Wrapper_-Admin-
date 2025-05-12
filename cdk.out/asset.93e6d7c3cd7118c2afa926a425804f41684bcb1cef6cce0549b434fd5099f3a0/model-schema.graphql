@@ -1,0 +1,99 @@
+type SurveyLink @model @auth(rules: [{allow: public, provider: apiKey, operations: [read]},
+  {allow: private, operations: [read, create, update]}])
+{
+  id: ID! @primaryKey
+  uid: String!
+  projectId: String!
+  originalUrl: String!
+  vendorId: String
+  status: SurveyLinkStatus
+  linkType: SurveyLinkLinkType
+  geoRestriction: String
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+  project: Project @belongsTo(references: ["projectId"])
+  vendor: Vendor @belongsTo(references: ["vendorId"])
+  responses: [Response] @hasMany(references: ["surveyLinkId"])
+  flags: [Flag] @hasMany(references: ["surveyLinkId"])
+}
+
+type Vendor @model @auth(rules: [{allow: private, operations: [read, create, update, delete]}])
+{
+  id: ID! @primaryKey
+  name: String!
+  code: String!
+  projectId: String!
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+  project: Project @belongsTo(references: ["projectId"])
+  surveyLinks: [SurveyLink] @hasMany(references: ["vendorId"])
+}
+
+type Project @model @auth(rules: [{allow: private, operations: [read, create, update, delete]}])
+{
+  id: ID! @primaryKey
+  name: String!
+  description: String
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+  surveyLinks: [SurveyLink] @hasMany(references: ["projectId"])
+  vendors: [Vendor] @hasMany(references: ["projectId"])
+  responses: [Response] @hasMany(references: ["projectId"])
+  flags: [Flag] @hasMany(references: ["projectId"])
+  questions: [Question] @hasMany(references: ["projectId"])
+}
+
+type Question @model @auth(rules: [{allow: private, operations: [read, create, update, delete]}])
+{
+  id: ID! @primaryKey
+  projectId: String!
+  text: String!
+  options: String!
+  createdAt: AWSDateTime
+  project: Project @belongsTo(references: ["projectId"])
+  responses: [Response] @hasMany(references: ["questionId"])
+}
+
+type Response @model @auth(rules: [{allow: public, provider: apiKey, operations: [create]},
+  {allow: private, operations: [read, create, update]}])
+{
+  id: ID! @primaryKey
+  surveyLinkId: String!
+  projectId: String!
+  questionId: String!
+  answer: String!
+  metadata: String
+  createdAt: AWSDateTime
+  surveyLink: SurveyLink @belongsTo(references: ["surveyLinkId"])
+  project: Project @belongsTo(references: ["projectId"])
+  question: Question @belongsTo(references: ["questionId"])
+}
+
+type Flag @model @auth(rules: [{allow: public, provider: apiKey, operations: [create]},
+  {allow: private, operations: [read, create, update]}])
+{
+  id: ID! @primaryKey
+  surveyLinkId: String!
+  projectId: String!
+  reason: String!
+  metadata: String
+  resolved: Boolean
+  createdAt: AWSDateTime
+  surveyLink: SurveyLink @belongsTo(references: ["surveyLinkId"])
+  project: Project @belongsTo(references: ["projectId"])
+}
+
+enum SurveyLinkStatus {
+  PENDING
+  STARTED
+  IN_PROGRESS
+  COMPLETED
+  QUOTA_FULL
+  DISQUALIFIED
+  FLAGGED
+}
+
+enum SurveyLinkLinkType {
+  TEST
+  LIVE
+}
