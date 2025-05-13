@@ -1,9 +1,3 @@
 {
-  "name": "link-generator-amplify-backend",
-  "version": "1.0.0",
-  "type": "module",
-  "private": true,
-  "dependencies": {
-    "@aws-amplify/backend": "latest"
-  }
+  "type": "module"
 }

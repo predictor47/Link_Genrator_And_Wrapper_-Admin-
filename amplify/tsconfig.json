@@ -1,15 +1,17 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "target": "es2022",
+    "module": "es2022",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
     "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
-    "isolatedModules": true,
-    "outDir": "dist",
-    "rootDir": "."
-  },
-  "include": ["**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+    "paths": {
+      "$amplify/*": [
+        "../.amplify/generated/*"
+      ]
+    }
+  }
 }

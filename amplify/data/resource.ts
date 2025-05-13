@@ -1,118 +1,94 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 
-// Define the schema with proper Amplify Gen 2 syntax
+// Create a schema without relationships
 const schema = a.schema({
-  SurveyLink: a
-    .model({
-      id: a.id(),
-      uid: a.string().required(),
-      projectId: a.string().required(),
-      originalUrl: a.string().required(),
-      vendorId: a.string(),
-      status: a.enum(['PENDING', 'STARTED', 'IN_PROGRESS', 'COMPLETED', 'QUOTA_FULL', 'DISQUALIFIED', 'FLAGGED']),
-      linkType: a.enum(['TEST', 'LIVE']),
-      geoRestriction: a.string(),
-      createdAt: a.datetime(),
-      updatedAt: a.datetime(),
-      // Fix relationship fields with both required arguments
-      project: a.belongsTo('Project', 'projectId'),
-      vendor: a.belongsTo('Vendor', 'vendorId'),
-      responses: a.hasMany('Response', 'surveyLinkId'),
-      flags: a.hasMany('Flag', 'surveyLinkId')
-    })
-    .authorization(allow => [
-      allow.publicApiKey().to(['read']),
-      allow.authenticated().to(['read', 'create', 'update'])
-    ]),
-
-  Vendor: a
-    .model({
-      id: a.id(),
-      name: a.string().required(),
-      code: a.string().required(),
-      projectId: a.string().required(),
-      createdAt: a.datetime(),
-      updatedAt: a.datetime(),
-      project: a.belongsTo('Project', 'projectId'),
-      surveyLinks: a.hasMany('SurveyLink', 'vendorId')
-    })
-    .authorization(allow => [
-      allow.authenticated().to(['read', 'create', 'update', 'delete'])
-    ]),
-
   Project: a
     .model({
-      id: a.id(),
       name: a.string().required(),
       description: a.string(),
-      createdAt: a.datetime(),
-      updatedAt: a.datetime(),
-      surveyLinks: a.hasMany('SurveyLink', 'projectId'),
-      vendors: a.hasMany('Vendor', 'projectId'),
-      responses: a.hasMany('Response', 'projectId'),
-      flags: a.hasMany('Flag', 'projectId'),
-      questions: a.hasMany('Question', 'projectId')
+      status: a.enum(['ACTIVE', 'PAUSED', 'COMPLETED']),
+      targetCompletions: a.integer().required().default(100),
+      currentCompletions: a.integer().required().default(0),
+      surveyUrl: a.string().required(),
+      createdAt: a.datetime().required(),
+      updatedAt: a.datetime().required(),
+      settings: a.json()
     })
-    .authorization(allow => [
-      allow.authenticated().to(['read', 'create', 'update', 'delete'])
+    .authorization((allow) => [
+      allow.authenticated().to(['create', 'read', 'update', 'delete']),
     ]),
 
   Question: a
     .model({
-      id: a.id(),
-      projectId: a.string().required(),
+      projectId: a.id(),
       text: a.string().required(),
-      options: a.string().required(), // Stored as JSON string
-      createdAt: a.datetime(),
-      project: a.belongsTo('Project', 'projectId'),
-      responses: a.hasMany('Response', 'questionId')
+      type: a.enum(['MULTIPLE_CHOICE', 'TEXT', 'COUNTRY', 'SCALE']),
+      options: a.json(),
+      sequence: a.integer().required(),
+      isRequired: a.boolean().required().default(true),
+      createdAt: a.datetime().required(),
+      updatedAt: a.datetime().required()
     })
-    .authorization(allow => [
-      allow.authenticated().to(['read', 'create', 'update', 'delete'])
+    .authorization((allow) => [
+      allow.authenticated().to(['create', 'read', 'update', 'delete']),
     ]),
 
-  Response: a
+  SurveyLink: a
     .model({
-      id: a.id(),
-      surveyLinkId: a.string().required(),
-      projectId: a.string().required(),
-      questionId: a.string().required(),
-      answer: a.string().required(),
-      metadata: a.string(),
-      createdAt: a.datetime(),
-      surveyLink: a.belongsTo('SurveyLink', 'surveyLinkId'),
-      project: a.belongsTo('Project', 'projectId'),
-      question: a.belongsTo('Question', 'questionId')
+      projectId: a.id(),
+      uid: a.string().required(),
+      status: a.enum(['UNUSED', 'CLICKED', 'COMPLETED', 'DISQUALIFIED', 'QUOTA_FULL']),
+      createdAt: a.datetime().required(),
+      updatedAt: a.datetime().required(),
+      clickedAt: a.datetime(),
+      completedAt: a.datetime(),
+      ipAddress: a.string(),
+      userAgent: a.string(),
+      geoData: a.json(),
+      metadata: a.json(),
+      vendorId: a.id()
     })
-    .authorization(allow => [
-      allow.publicApiKey().to(['create']),
-      allow.authenticated().to(['read', 'create', 'update'])
+    .authorization((allow) => [
+      allow.authenticated().to(['create', 'read', 'update', 'delete']),
+      allow.guest().to(['read', 'update'])
     ]),
 
-  Flag: a
+  Vendor: a
     .model({
-      id: a.id(),
-      surveyLinkId: a.string().required(),
-      projectId: a.string().required(),
-      reason: a.string().required(),
-      metadata: a.string(),
-      resolved: a.boolean(),
-      createdAt: a.datetime(),
-      surveyLink: a.belongsTo('SurveyLink', 'surveyLinkId'),
-      project: a.belongsTo('Project', 'projectId')
+      name: a.string().required(),
+      contactName: a.string(),
+      contactEmail: a.string(),
+      settings: a.json(),
+      createdAt: a.datetime().required(),
+      updatedAt: a.datetime().required()
     })
-    .authorization(allow => [
-      allow.publicApiKey().to(['create']),
-      allow.authenticated().to(['read', 'create', 'update'])
+    .authorization((allow) => [
+      allow.authenticated().to(['create', 'read', 'update', 'delete']),
+    ]),
+
+  ProjectVendor: a
+    .model({
+      projectId: a.id(),
+      vendorId: a.id(),
+      quota: a.integer().required().default(0),
+      currentCount: a.integer().required().default(0),
+      createdAt: a.datetime().required(),
+      updatedAt: a.datetime().required()
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['create', 'read', 'update', 'delete']),
     ])
 });
+
+// Set SurveyLink status default
+const defaultStatus = 'UNUSED';
 
 export type Schema = ClientSchema<typeof schema>;
 
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: 'apiKey',
+    defaultAuthorizationMode: 'identityPool',
     apiKeyAuthorizationMode: {
       expiresInDays: 30
     }

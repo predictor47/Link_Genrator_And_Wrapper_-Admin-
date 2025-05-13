@@ -1,24 +1,11 @@
 import { defineBackend } from '@aws-amplify/backend';
-import { auth } from './auth/resource.js';
-import { data } from './data/resource.js';
+import { auth } from './auth/resource';
+import { data } from './data/resource';
 
-// Define your backend configuration
-const backend = defineBackend({
+/**
+ * @see https://docs.amplify.aws/react/build-a-backend/ to add storage, functions, and more
+ */
+defineBackend({
   auth,
-  data
+  data,
 });
-
-// Configure the password policy in the underlying Cognito User Pool
-const { cfnUserPool } = backend.auth.resources.cfnResources;
-cfnUserPool.policies = {
-  passwordPolicy: {
-    minimumLength: 8,
-    requireLowercase: true,
-    requireNumbers: true,
-    requireSymbols: true,
-    requireUppercase: true,
-    temporaryPasswordValidityDays: 7,
-  },
-};
-
-export default backend;

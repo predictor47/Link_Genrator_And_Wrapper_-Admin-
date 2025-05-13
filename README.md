@@ -13,11 +13,12 @@ This application uses AWS Amplify Gen 2 with the following components:
 ## Prerequisites
 
 - Node.js v22+ and npm
-- AWS CLI installed and configured (`aws configure`)
-- An AWS account with permissions to create Amplify resources
-- AWS Amplify CLI v6+ (`npm install -g @aws-amplify/cli`)
+- GitHub repository connected to AWS Amplify app
+- AWS account with Amplify service access
 
 ## Getting Started
+
+### Local Development
 
 1. Clone the repository
 2. Install dependencies:
@@ -31,24 +32,27 @@ This application uses AWS Amplify Gen 2 with the following components:
      - `NEXT_PUBLIC_ADMIN_DOMAIN`
      - `NEXT_PUBLIC_APP_URL`
 
-4. Set up Amplify backend:
-   ```bash
-   npm run setup-amplify
-   ```
-
-5. Run the development server:
+4. Run the development server:
    ```bash
    npm run dev
    ```
 
-## Deployment
+### Deployment
 
-### Testing before deployment
+## Project Structure
 
-Run the precheck script to ensure everything is ready:
-```bash
-npm run precheck
-```
+- `amplify/` - AWS Amplify Gen 2 backend configuration
+  - `auth/` - Authentication configuration
+  - `data/` - GraphQL schema and data models
+- `src/`
+  - `components/` - Reusable React components
+  - `lib/` - Utility functions and services
+  - `pages/` - Next.js pages
+    - `admin/` - Admin dashboard
+    - `api/` - API routes
+    - `survey/` - Survey pages
+  - `styles/` - CSS styles
+  - `types/` - TypeScript type definitions
 
 ### Option 1: Deploy to Amplify Sandbox (for testing)
 

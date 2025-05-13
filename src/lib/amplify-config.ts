@@ -1,13 +1,21 @@
 import { Amplify } from 'aws-amplify';
+import { generateClient } from 'aws-amplify/data';
+// Fix import path to use relative path instead of alias
+import { Schema } from '../../amplify/data/resource';
 
-let configurationDone = false;
+// Cognito User Pool ID - hardcoded for production
+const COGNITO_USER_POOL_ID = 'us-east-1_QIwwMdokt';
 
 // Domain configuration
 export const MAIN_DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
 export const ADMIN_DOMAIN = process.env.NEXT_PUBLIC_ADMIN_DOMAIN || `admin.${MAIN_DOMAIN}`;
 
-// Explicitly set Cognito User Pool ID
-const COGNITO_USER_POOL_ID = 'us-east-1_QIwwMdokt';
+let configurationDone = false;
+// Define amplifyOutputs at the module level
+let amplifyOutputs: any = null;
+
+// Create a data client for interacting with your Amplify backend
+export const client = generateClient<Schema>();
 
 /**
  * Configure Amplify with the right settings
@@ -16,8 +24,6 @@ export function configureAmplify() {
   if (configurationDone) {
     return; // Avoid multiple configurations
   }
-
-  let amplifyOutputs: any = null;
 
   // For server-side code
   if (typeof window === 'undefined') {
@@ -43,6 +49,7 @@ export function configureAmplify() {
       console.warn('Failed to load amplify_outputs.json:', error);
     }
   }
+  
   // If no outputs file was found or in browser context, use environment variables
   // but prioritize our explicit Cognito User Pool ID
   if (!amplifyOutputs) {
@@ -93,7 +100,8 @@ export function configureAmplify() {
     
     // Add region at root level for Amplify v6
     config.region = region;
-      // Apply configuration
+    
+    // Apply configuration
     Amplify.configure(config);
     
     configurationDone = true;

@@ -1,8 +1,0 @@
-{
-    "app": "node --loader ts-node/esm amplify/backend.ts",
-    "context": {
-        "amplify-backend-namespace": "link-generator-and-wrapper-admin",
-        "amplify-backend-name": "dev",
-        "amplify-backend-type": "sandbox"
-    }
-}

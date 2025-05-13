@@ -2,6 +2,20 @@
 
 This guide covers common issues you might encounter when deploying and running the Survey Link Wrapper application with AWS Amplify Gen 2.
 
+## GitHub-based Deployment Issues
+
+### Issue: "Deployment Failed" in Amplify Console
+
+**Possible causes:**
+- GitHub repository permissions issue
+- Invalid amplify.yml configuration
+- Node.js version mismatch
+
+**Solution:**
+1. Check the deployment logs in the AWS Amplify Console
+2. Verify GitHub repository has the correct permissions
+3. Ensure Node.js version in package.json matches the one in amplify.yml
+
 ## API Authentication Issues
 
 ### Issue: "Not Authorized to access X on type Query" errors
@@ -12,7 +26,7 @@ This guide covers common issues you might encounter when deploying and running t
 - Using wrong authorization mode for the query
 
 **Solution:**
-1. Check if the API key in `.env.local` matches the one in `amplify_outputs.json`
+1. Check if the API key in `.env.local` matches the one in Amplify Console
 2. Verify the API key hasn't expired by running:
    ```bash
    API_KEY=your-api-key npm run test-graphql

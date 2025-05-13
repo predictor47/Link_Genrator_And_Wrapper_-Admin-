@@ -1,32 +1,20 @@
 import { defineAuth } from '@aws-amplify/backend';
 
+/**
+ * Define and configure your auth resource for the Link Generator and Wrapper Admin tool
+ * @see https://docs.amplify.aws/gen2/build-a-backend/auth
+ */
 export const auth = defineAuth({
   loginWith: {
-    email: true,
-    
-    // External providers configuration
-    externalProviders: {
-      callbackUrls: [
-        'http://localhost:3000/',
-        'https://admin.protegeresearchsurvey.com/',
-        'https://protegeresearchsurvey.com/'
-      ],
-      logoutUrls: [
-        'http://localhost:3000/',
-        'https://admin.protegeresearchsurvey.com/',
-        'https://protegeresearchsurvey.com/'
-      ]
+    email: {
+      // Require email verification during signup
+      verificationEmailSubject: 'Your verification code for Survey Link Generator Admin',
+      verificationEmailBody: (createCode: () => string) => `Your verification code is: ${createCode()}`,
     },
   },
-  
-  // Define user attributes
-  userAttributes: {
-    email: {
-      required: true,
-      mutable: true
-    }
-  },
-  
-  name: "SurveyLinkWrapper",
-  accountRecovery: 'EMAIL_ONLY'
-});
+  multifactor: {
+    mode: 'OPTIONAL', // Using the correct enum value
+    sms: {
+      smsMessage: (createCode: () => string) => `Your authentication code is: ${createCode()}`,
+    },
+  }});

@@ -1,26 +1,41 @@
 # Deployment Workflow for Amplify Gen 2
 
-This document outlines the recommended deployment workflow for this Survey Link Wrapper application using AWS Amplify Gen 2.
+This document outlines the simplified Git-based deployment workflow for the Survey Link Wrapper application using AWS Amplify Gen 2.
 
 ## Prerequisites
 
-1. AWS CLI configured with appropriate credentials
+1. GitHub repository connected to AWS Amplify app in the AWS console
 2. Node.js 22.15.0 or later
-3. AWS CDK bootstrapped environment
+3. Git installed and configured
 
 ## Deployment Steps
 
-### 1. Initial Setup
+### 1. Initial Setup (Already Done)
+
+The project is already set up with Amplify Gen 2 and connected to a GitHub repository.
+
+### 2. Deployment Process
+
+Simply push your changes to the connected GitHub repository:
 
 ```bash
-# Install dependencies
-npm install
+# Add all changes
+git add .
 
-# Set up Amplify configuration
-npm run setup-amplify
+# Commit changes
+git commit -m "Your descriptive commit message"
+
+# Push to GitHub
+git push origin main
 ```
 
-### 2. Development Deployment
+AWS Amplify will automatically:
+1. Detect the changes in the GitHub repository
+2. Pull the latest code
+3. Deploy the backend resources using the configurations in the amplify/ directory
+4. Build and deploy the frontend application
+
+### 3. Local Development
 
 For local development and testing, use the sandbox mode:
 
@@ -29,123 +44,43 @@ For local development and testing, use the sandbox mode:
 npm run deploy:sandbox
 ```
 
-### 3. Production Deployment
+### 4. Creating Admin Users
 
-For production deployment, follow these steps:
+After deployment, create an admin user:
 
 ```bash
-# 1. Bootstrap CDK environment first
-npx cdk bootstrap
-
-# 2. Run the enhanced deployment script with debugging
-bash scripts/deploy-with-debug.sh
-
-# 3. After successful backend deployment, build frontend
-npm run build
+# Create admin user
+npm run create-admin
 ```
 
-### 4. Troubleshooting CDK Asset Publishing Errors
+### 5. Testing API Connection
 
-If you encounter CDK asset publishing errors:
-
-```bash
-# 1. Check and fix VTL template issues
-npm run fix-vtl
-
-# 2. Try force deployment with debugging
-AMPLIFY_DEBUG=true npx ampx deploy --force
-
-# 3. If issues persist, try with CDK hotswap
-npx cdk deploy --hotswap
-```
-
-See [CDK_TROUBLESHOOTING.md](./CDK_TROUBLESHOOTING.md) for detailed troubleshooting steps.
-
-## Post-Deployment Verification
-
-After successful deployment, verify your setup:
+Verify your deployment by testing the API:
 
 ```bash
-# Test GraphQL API connection
+# Test GraphQL API
 npm run test-graphql
 
-# Validate API with Node.js client
-npm run validate-api-node
-
-# Create test admin user if needed
-npm run create-test-user
+# Validate API endpoints
+npm run validate-api
 ```
 
-## CI/CD Pipeline Deployment
+## Monitoring Deployment
 
-For automated CI/CD pipelines:
+You can monitor the deployment status in the AWS Amplify Console:
 
-```bash
-# Set required environment variables
-export BRANCH_NAME=main
-export AMPLIFY_APP_ID=your-amplify-app-id
+1. Open the AWS Management Console
+2. Navigate to AWS Amplify
+3. Select your application
+4. Check the Deployment Status tab
 
-# Run CI deployment command
-npm run deploy:ci
-```
+## Troubleshooting
 
-## Best Practices
+If you encounter issues with deployment:
 
-1. Always bootstrap CDK before deployment
-2. Use force flag only when necessary
-3. Check logs in the `./logs` directory for detailed error information
-4. Run post-deployment verification tests
+1. Check the Amplify logs in the AWS Console
+2. Verify your amplify.yml configuration
+3. Ensure your GitHub repository has the correct permissions
+4. Check that Node.js version in package.json matches the version in amplify.yml
 
-## Common Issues
 
-1. **S3 Access Denied**: Check IAM permissions for the deployment user
-2. **VTL Template Errors**: Run `npm run fix-vtl` to identify and fix issues
-3. **Asset Publishing Errors**: Ensure CDK is bootstrapped correctly
-4. **API Connection Errors**: Verify API key in `amplify_outputs.json`
-
-For more details about troubleshooting specific errors, refer to the [CDK_TROUBLESHOOTING.md](./CDK_TROUBLESHOOTING.md) document.
-
-## Advanced Troubleshooting Tools
-
-We've developed several specialized tools to diagnose and fix deployment issues:
-
-### One-Click Repair Solution
-
-```bash
-# Run the complete automated repair process
-npm run repair-all
-```
-
-This comprehensive script runs through all repair steps in sequence to fix any deployment issues.
-
-### Specialized Tools
-
-1. **Direct Asset Fix**
-   ```bash
-   npm run direct-fix
-   ```
-   Quickly resolves S3 asset publishing errors by syncing assets directly.
-
-2. **Comprehensive Asset Fix**
-   ```bash
-   npm run fix-assets
-   ```
-   Advanced solution using multiple approaches to fix asset publishing.
-
-3. **AWS Environment Validation**
-   ```bash
-   npm run check-aws
-   ```
-   Complete validation of your AWS setup for Amplify deployment.
-
-4. **CloudFormation Stack Analysis**
-   ```bash
-   npm run check-stacks
-   ```
-   Detailed analysis of CloudFormation stacks with error reporting.
-
-5. **IAM Policy Generation**
-   ```bash
-   npm run generate-policy
-   ```
-   Creates the necessary IAM policies for successful deployment.

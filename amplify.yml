@@ -1,14 +1,9 @@
 version: 1
 backend:
   phases:
-    preBuild:
-      commands:
-        - npm install -g aws-cli-js
-        - npm install -g aws-sdk
-        - chmod +x ./scripts/ci-deploy.sh
     build:
       commands:
-        - ./scripts/ci-deploy.sh
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID    # deploy backend resources with CI variables
 frontend:
   phases:
     preBuild:
@@ -21,78 +16,7 @@ frontend:
     baseDirectory: .next
     files:
       - '**/*'
-  customHeaders:
-    - pattern: '**/*'
-      headers:
-        - key: 'Strict-Transport-Security'
-          value: 'max-age=31536000; includeSubDomains'
-        - key: 'X-Content-Type-Options'
-          value: 'nosniff'
-        - key: 'X-XSS-Protection'
-          value: '1; mode=block'
-        - key: 'X-Frame-Options'
-          value: 'DENY'
-    - pattern: '/survey/**/*'
-      headers:
-        - key: 'X-Frame-Options'
-          value: 'SAMEORIGIN'
   cache:
     paths:
       - node_modules/**/*
       - .next/cache/**/*
-  customRules:
-    # Admin subdomain: root -> admin index
-    - source: '/'
-      target: '/admin/index.html'
-      status: '200'
-      condition:
-        sourceType: 'HOST_HEADER'
-        operator: 'EQ'
-        value: 'admin.protegeresearchsurvey.com'
-
-    # Admin subdomain: any path -> admin/<path>
-    - source: '/<*>'
-      target: '/admin/<*>'
-      status: '200'
-      condition:
-        sourceType: 'HOST_HEADER'
-        operator: 'EQ'
-        value: 'admin.protegeresearchsurvey.com'
-
-    # Admin login on subdomain
-    - source: '/login'
-      target: '/admin/login.html'
-      status: '200'
-      condition:
-        sourceType: 'HOST_HEADER'
-        operator: 'EQ'
-        value: 'admin.protegeresearchsurvey.com'
-
-    # Next.js API routes
-    - source: '/api/<*>'
-      target: '/api/<*>'
-      status: '200'
-      condition: null
-
-    # Survey routes
-    - source: '/s/<*>'
-      target: '/s/<*>.html'
-      status: '200'
-      condition: null
-
-    - source: '/survey/<*>'
-      target: '/survey/<*>.html'
-      status: '200'
-      condition: null
-
-    # _next static assets
-    - source: '/_next/<*>'
-      target: '/_next/<*>'
-      status: '200'
-      condition: null
-
-    # SPA fallback
-    - source: '/<**>'
-      target: '/index.html'
-      status: '200'
-      condition: null
