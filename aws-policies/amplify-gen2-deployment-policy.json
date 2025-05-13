@@ -1,0 +1,124 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:DescribeStackResources",
+        "cloudformation:GetTemplate",
+        "cloudformation:ListStackResources",
+        "cloudformation:CreateStack",
+        "cloudformation:UpdateStack"
+      ],
+      "Resource": [
+        "arn:aws:cloudformation:us-east-1:868948464569:stack/CDKToolkit/*",
+        "arn:aws:cloudformation:us-east-1:868948464569:stack/amplify-*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:GetObjectVersion"
+      ],
+      "Resource": [
+        "arn:aws:s3:::cdk-hnb659fds-assets-868948464569-us-east-1",
+        "arn:aws:s3:::cdk-hnb659fds-assets-868948464569-us-east-1/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "appsync:CreateGraphqlApi",
+        "appsync:UpdateGraphqlApi",
+        "appsync:DeleteGraphqlApi",
+        "appsync:GetGraphqlApi",
+        "appsync:CreateDataSource",
+        "appsync:UpdateDataSource",
+        "appsync:DeleteDataSource",
+        "appsync:CreateResolver",
+        "appsync:UpdateResolver",
+        "appsync:DeleteResolver",
+        "appsync:CreateApiKey",
+        "appsync:UpdateApiKey",
+        "appsync:DeleteApiKey",
+        "appsync:ListResolvers",
+        "appsync:ListDataSources",
+        "appsync:GetDataSource",
+        "appsync:GetResolver"
+      ],
+      "Resource": [
+        "arn:aws:appsync:us-east-1:868948464569:apis/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:CreateTable",
+        "dynamodb:DescribeTable",
+        "dynamodb:UpdateTable",
+        "dynamodb:DeleteTable",
+        "dynamodb:DescribeContinuousBackups",
+        "dynamodb:UpdateContinuousBackups",
+        "dynamodb:DescribeTimeToLive",
+        "dynamodb:UpdateTimeToLive"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:us-east-1:868948464569:table/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:CreateUserPool",
+        "cognito-idp:DeleteUserPool",
+        "cognito-idp:UpdateUserPool",
+        "cognito-idp:DescribeUserPool",
+        "cognito-idp:CreateUserPoolClient",
+        "cognito-idp:UpdateUserPoolClient",
+        "cognito-idp:DeleteUserPoolClient",
+        "cognito-idp:CreateIdentityProvider",
+        "cognito-idp:UpdateIdentityProvider",
+        "cognito-idp:DeleteIdentityProvider"
+      ],
+      "Resource": [
+        "arn:aws:cognito-idp:us-east-1:868948464569:userpool/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iam:PassRole",
+        "iam:GetRole",
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:PutRolePolicy",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy"
+      ],
+      "Resource": [
+        "arn:aws:iam::868948464569:role/amplify-*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:DeleteFunction",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:GetFunction",
+        "lambda:AddPermission",
+        "lambda:RemovePermission"
+      ],
+      "Resource": [
+        "arn:aws:lambda:us-east-1:868948464569:function:amplify-*"
+      ]
+    }
+  ]
+}
