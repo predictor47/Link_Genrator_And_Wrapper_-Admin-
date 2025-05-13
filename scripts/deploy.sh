@@ -31,8 +31,26 @@ npm install --no-save @aws-amplify/backend-cli @aws-amplify/backend @aws-amplify
 echo "🔧 Configuring Amplify..."
 npm run setup-amplify
 
-echo "🚀 Deploying Amplify backend..."
-npx ampx pipeline-deploy --yes
+echo "🚀 Deploying Amplify backend with enhanced debugging..."
+# First bootstrap CDK to ensure environment is prepared
+npx cdk bootstrap || { echo "❌ CDK bootstrap failed"; exit 1; }
+
+# Execute the enhanced deployment script
+bash scripts/deploy-with-debug.sh
+
+# If deployment failed, try the asset fixer
+if [ $? -ne 0 ]; then
+  echo "⚠️ Deployment failed. Attempting to fix CDK asset publishing issues..."
+  node scripts/fix-cdk-assets.js
+  
+  if [ $? -eq 0 ]; then
+    echo "✅ Asset fixing was successful! Proceeding with build."
+  else
+    echo "❌ Asset fixing failed. Check logs for details."
+    echo "👉 You can try manual troubleshooting steps in CDK_TROUBLESHOOTING.md"
+    exit 1
+  fi
+fi
 
 echo "🚀 Building and deploying frontend..."
 npm run build

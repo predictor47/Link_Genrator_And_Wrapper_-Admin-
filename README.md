@@ -121,9 +121,66 @@ npm run test-api
 
 ## Troubleshooting
 
-- **Deployment Issues**: Run the precheck script first
-- **Auth Issues**: Check Cognito configuration
+### General Issues
+- **Deployment Issues**: Run the precheck script first: `npm run precheck`
+- **Auth Issues**: Check Cognito configuration in `amplify/auth/resource.ts`
 - **API Issues**: Verify that environment variables are set correctly
+
+### CDK Asset Publishing Errors
+
+If you encounter CDK asset publishing errors during deployment, use our troubleshooting tools:
+
+1. **Validate AWS Environment**:
+   ```bash
+   npm run check-aws
+   ```
+   This checks your AWS credentials, region settings, and CDK bootstrap status.
+
+2. **Fix VTL Template Issues**:
+   ```bash
+   npm run fix-vtl
+   ```
+   This scans and fixes common VTL template issues in your Amplify project.
+
+3. **Check CloudFormation Stack Status**:
+   ```bash
+   npm run check-stacks
+   ```
+   This analyzes any failed CloudFormation stacks and provides detailed error information.
+
+4. **Generate Required IAM Policy**:
+   ```bash
+   npm run generate-policy
+   ```
+   Creates and applies the necessary IAM policy for Amplify Gen 2 deployment.
+
+5. **Quick Fix for Asset Publishing Errors**:
+   ```bash
+   npm run direct-fix
+   ```
+   This script directly uploads assets to the S3 bucket, fixing the most common CDK asset publishing error.
+
+6. **Advanced Asset Publishing Fix**:
+   ```bash
+   npm run fix-assets
+   ```
+   A comprehensive solution that tries multiple approaches to fix asset publishing issues.
+
+7. **Complete Automated Repair**:
+   ```bash
+   npm run repair-all
+   ```
+   This comprehensive script runs all repair steps in sequence to fix any deployment issues.
+
+8. **Force Deployment**:
+   ```bash
+   AMPLIFY_DEBUG=true npx ampx deploy --force
+   ```
+   Use this command to deploy with debug logging enabled.
+
+For more detailed troubleshooting information, see:
+- [CDK_TROUBLESHOOTING.md](./CDK_TROUBLESHOOTING.md) - Details on fixing CDK asset publishing errors
+- [DEPLOYMENT.md](./DEPLOYMENT.md) - Complete deployment workflow documentation
 
 ## License
 

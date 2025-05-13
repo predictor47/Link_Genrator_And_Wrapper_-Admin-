@@ -1,1 +1,0 @@
-{"version":1,"functions":{"/admin/projects/[id]":{},"/admin/projects/[id]/analytics":{},"/admin/projects/[id]/generate":{},"/admin":{},"/admin/projects/[id]/questions":{},"/survey/[projectId]/[uid]":{},"/completion/[projectId]/[uid]":{},"/s/[projectId]/[uid]":{},"/completion/[projectId]":{}}}
