@@ -26,7 +26,8 @@ export function configureAmplify() {
     return; // Avoid multiple configurations
   }
 
-  // Try to load amplify_outputs.json in both server and client environments  if (typeof window === 'undefined') {
+  // Try to load amplify_outputs.json in both server and client environments
+  if (typeof window === 'undefined') {
     // For server-side code
     try {
       // Use dynamic imports for Node.js-only modules
@@ -95,9 +96,9 @@ export function configureAmplify() {
       }
     }
   }
-  
-  // Proceed with configuration using available outputs or environment variables
+    // Proceed with configuration using available outputs or environment variables
   doConfiguration();
+}
 
   function doConfiguration() {
     // If no outputs file was found, use environment variables as fallback
