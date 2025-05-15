@@ -79,19 +79,24 @@ export default async function handler(
 
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
-    }
-
-    // Validate vendor if provided
+    }    // Validate vendor if provided
     if (vendorId) {
       const vendorResult = await amplifyDataService.vendors.get(vendorId);
       const vendor = vendorResult?.data;
 
       if (!vendor) {
         return res.status(404).json({ success: false, message: 'Vendor not found' });
-      }
+      }      // Check if vendor belongs to this project by checking the ProjectVendor relationship
+      const projectVendorResult = await amplifyDataService.client.models.ProjectVendor.list({
+        filter: {
+          and: [
+            { projectId: { eq: projectId } },
+            { vendorId: { eq: vendorId } }
+          ]
+        }
+      });
 
-      // Check if vendor belongs to this project
-      if (vendor.projectId !== projectId) {
+      if (!projectVendorResult.data || projectVendorResult.data.length === 0) {
         return res.status(400).json({ success: false, message: 'Vendor does not belong to this project' });
       }
     }
@@ -99,8 +104,7 @@ export default async function handler(
     // Generate links
     const links = [];
     const creationPromises = [];
-    
-    // Handle mixed TEST/LIVE links if counts are provided
+      // Handle mixed TEST/LIVE links if counts are provided
     if (testCount !== undefined && liveCount !== undefined) {
       // Generate TEST links
       for (let i = 0; i < testCount; i++) {
@@ -108,49 +112,47 @@ export default async function handler(
         const linkData = {
           projectId,
           uid,
-          originalUrl,
           vendorId: vendorId || undefined,
-          status: 'PENDING',
-          linkType: 'TEST',
-          geoRestriction: geoRestriction && geoRestriction.length > 0 ? 
-            JSON.stringify(geoRestriction) : 
-            undefined
+          status: 'UNUSED',
+          metadata: JSON.stringify({
+            originalUrl,
+            linkType: 'TEST',
+            geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined
+          })
         };
         
         creationPromises.push(amplifyDataService.surveyLinks.create(linkData));
       }
-      
-      // Generate LIVE links
+        // Generate LIVE links
       for (let i = 0; i < liveCount; i++) {
         const uid = nanoid(10); // Generate a short unique ID
         const linkData = {
           projectId,
           uid,
-          originalUrl,
           vendorId: vendorId || undefined,
-          status: 'PENDING',
-          linkType: 'LIVE',
-          geoRestriction: geoRestriction && geoRestriction.length > 0 ? 
-            JSON.stringify(geoRestriction) : 
-            undefined
+          status: 'UNUSED',
+          metadata: JSON.stringify({
+            originalUrl,
+            linkType: 'LIVE',
+            geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined
+          })
         };
         
         creationPromises.push(amplifyDataService.surveyLinks.create(linkData));
-      }
-    } else {
+      }    } else {
       // Original behavior - generate all links of the same type
-      for (let i = 0; i < totalCount; i++) {
+      for (let i = 0; i < count; i++) {
         const uid = nanoid(10); // Generate a short unique ID
         const linkData = {
           projectId,
           uid,
-          originalUrl,
           vendorId: vendorId || undefined,
-          status: 'PENDING',
-          linkType: linkType || 'LIVE',
-          geoRestriction: geoRestriction && geoRestriction.length > 0 ? 
-            JSON.stringify(geoRestriction) : 
-            undefined
+          status: 'UNUSED',
+          metadata: JSON.stringify({
+            originalUrl,
+            linkType: linkType || 'LIVE',
+            geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined
+          })
         };
         
         creationPromises.push(amplifyDataService.surveyLinks.create(linkData));
@@ -162,10 +164,17 @@ export default async function handler(
     
     // Get the created links with vendor information
     const createdLinksResponse = await amplifyDataService.surveyLinks.listByProject(projectId);
-    
-    // Sort by creation date with null safety
+      // Sort by creation date with null safety
     const sortedLinks = createdLinksResponse.data
-      .filter(link => link.originalUrl === originalUrl)
+      .filter(link => {
+        // Check if metadata contains originalUrl
+        try {
+          const metadata = link.metadata ? JSON.parse(link.metadata as string) : {};
+          return metadata.originalUrl === originalUrl;
+        } catch (e) {
+          return false;
+        }
+      })
       .sort((a, b) => {
         // Fix: Add null safety for date comparison
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -182,33 +191,55 @@ export default async function handler(
     const vendorResults = vendorIds.length > 0 ? 
       await amplifyDataService.vendors.list({ filter: { id: { in: vendorIds } } }) : 
       { data: [] };
-    
-    const vendors = vendorResults.data.reduce((acc, vendor) => {
+      const vendors = vendorResults.data.reduce((acc, vendor) => {
       // Fix: Add null safety for vendor id index access
       if (vendor && vendor.id) {
+        // Extract vendor code from settings if it exists
+        let vendorCode = '';
+        try {
+          const settings = vendor.settings ? JSON.parse(vendor.settings as string) : {};
+          vendorCode = settings.code || '';
+        } catch (e) {
+          // If parsing fails, use an empty string
+          vendorCode = '';
+        }
+        
         acc[vendor.id] = { 
           name: vendor.name || '', 
-          code: vendor.code || '' 
+          code: vendorCode
         };
       }
       return acc;
     }, {} as Record<string, { name: string; code: string }>);
 
     // Use the custom domain for link generation
-    const baseUrl = `https://${DOMAIN}`;
-
-    // Format the response with complete URLs
+    const baseUrl = `https://${DOMAIN}`;    // Format the response with complete URLs
     const formattedLinks = sortedLinks.map(link => {
       const fullUrl = `${baseUrl}/s/${projectId}/${link.uid}`;
+      
+      // Extract data from metadata JSON
+      let linkMetadata: any = {};
+      try {
+        linkMetadata = link.metadata ? JSON.parse(link.metadata as string) : {};
+      } catch (e) {
+        // If parsing fails, use an empty object
+        linkMetadata = {};
+      }
+      
+      // Get geo restriction data
+      let geoRestrictionData = null;
+      if (linkMetadata.geoRestriction) {
+        geoRestrictionData = linkMetadata.geoRestriction;
+      }
       
       return {
         id: link.id,
         uid: link.uid,
-        originalUrl: link.originalUrl,
+        originalUrl: linkMetadata.originalUrl || '', // Get originalUrl from metadata
         status: link.status,
-        linkType: link.linkType,
+        linkType: linkMetadata.linkType || 'LIVE',
         fullUrl: fullUrl,
-        geoRestriction: link.geoRestriction ? JSON.parse(link.geoRestriction) : null,
+        geoRestriction: geoRestrictionData,
         vendor: link.vendorId ? vendors[link.vendorId] : null,
         createdAt: link.createdAt
       };

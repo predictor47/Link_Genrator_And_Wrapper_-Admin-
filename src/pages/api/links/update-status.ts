@@ -6,6 +6,9 @@ interface UpdateStatusRequest {
   uid: string;
   status: string;
   vendorId?: string;
+  token?: string;
+  questionId?: string;
+  answer?: string;
   metadata?: Record<string, any>;
 }
 
@@ -28,9 +31,8 @@ export default async function handler(
       message: 'Method not allowed' 
     });
   }
-
   try {
-    const { projectId, uid, status, vendorId, metadata } = req.body as UpdateStatusRequest;
+    const { projectId, uid, status, vendorId, metadata, token, questionId, answer } = req.body as UpdateStatusRequest;
 
     if (!projectId || !uid || !status) {
       return res.status(400).json({ 
@@ -108,31 +110,49 @@ export default async function handler(
     if (!surveyLink.id) {
       throw new Error('Survey link ID is null or undefined');
     }
-    await amplifyDataService.surveyLinks.update(surveyLink.id, updateData);
-
-    // Get vendor info if available
+    await amplifyDataService.surveyLinks.update(surveyLink.id, updateData);    // Get vendor info if available
     let vendorCode = null;
     if (surveyLink.vendorId || updateData.vendorId) {
       const vendorId = updateData.vendorId || surveyLink.vendorId;
       if (vendorId) {
         const vendorResult = await amplifyDataService.vendors.get(vendorId);
-        vendorCode = vendorResult.data?.code || null;
+        if (vendorResult?.data?.settings) {
+          try {
+            const settings = JSON.parse(vendorResult.data.settings as string);
+            vendorCode = settings.code || null;
+          } catch (e) {
+            console.error('Error parsing vendor settings:', e);
+          }
+        }
       }
     }
 
     // Store metadata if provided
     if (metadata) {
-      // Create a response record with the status update metadata
-      await amplifyDataService.responses.create({
-        surveyLinkId: surveyLink.id,
-        projectId,
-        questionId: '00000000-0000-0000-0000-000000000000', // Placeholder for status update metadata
-        answer: status,
-        metadata: JSON.stringify({
-          statusUpdateTimestamp: new Date().toISOString(),
-          previousStatus: surveyLink.status,
-          ...(metadata || {})
-        })
+      // Store response data in the link's metadata field instead of creating a separate response record
+      const currentMetadata = surveyLink.metadata ? 
+        JSON.parse(surveyLink.metadata as string) : {};
+      
+      const updatedMetadata = {
+        ...currentMetadata,
+        responses: [
+          ...(currentMetadata.responses || []),
+          {
+            timestamp: new Date().toISOString(),
+            status,
+            questionId: questionId || '00000000-0000-0000-0000-000000000000',
+            answer: answer || null,            metadata: {
+              statusUpdateTimestamp: new Date().toISOString(),
+              previousStatus: surveyLink.status,
+              ...(metadata || {})
+            }
+          }
+        ]
+      };
+      
+      // Update the link with the new metadata
+      await amplifyDataService.surveyLinks.update(surveyLink.id, {
+        metadata: JSON.stringify(updatedMetadata)
       });
     }
 

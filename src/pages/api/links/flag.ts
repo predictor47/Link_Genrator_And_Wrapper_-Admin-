@@ -27,21 +27,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         success: false, 
         message: 'Survey link not found' 
       });
-    }
-
-    // Create a flag for this response using Amplify
-    await amplifyDataService.flags.create({
-      surveyLinkId: surveyLink.id,
-      projectId,
-      reason,
-      metadata: JSON.stringify(metadata || {})
-    });
-
+    }    // Store flag information directly in the survey link's metadata
     if (!surveyLink.id) {
       throw new Error('Survey link ID is null or undefined');
     }
+    
+    // Prepare the metadata with flag information
+    const currentMetadata = surveyLink.metadata ? 
+      (typeof surveyLink.metadata === 'string' ? 
+        JSON.parse(surveyLink.metadata) : surveyLink.metadata) 
+      : {};
+    
+    const flagMetadata = {
+      ...currentMetadata,
+      flagged: true,
+      flagReason: reason,
+      flaggedAt: new Date().toISOString(),
+      ...(metadata || {})
+    };
+
+    // Update the survey link status and store flag info in metadata
     await amplifyDataService.surveyLinks.update(surveyLink.id, { 
-      status: 'FLAGGED' 
+      status: 'FLAGGED',
+      metadata: JSON.stringify(flagMetadata)
     });
 
     return res.status(200).json({

@@ -1,297 +1,208 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import axios from 'axios';
-import HCaptchaComponent from '@hcaptcha/react-hcaptcha';
+import { GetServerSideProps } from 'next';
 import { amplifyDataService } from '@/lib/amplify-data-service';
+import SurveyFlow from '@/components/SurveyFlow';
+import { detectVPN } from '@/lib/vpn-detection';
 
-// Types for our component props and state
+// Types
 interface Question {
   id: string;
   text: string;
   options: string[];
 }
 
-interface Answer {
-  questionId: string;
-  value: string;
-}
-
 interface PageProps {
   projectId: string;
   uid: string;
-  questions: Question[];
+  project: {
+    name: string;
+    surveyUrl: string;
+  } | null;
+  surveyLink: {
+    status: string;
+    vendorId?: string | null;
+  } | null;
   isValid: boolean;
   errorMessage?: string;
 }
 
-// Client-side metadata collection
-const collectClientMetadata = () => {
-  return {
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    fingerprint: window.navigator.userAgent, // Basic fingerprint, could be enhanced
-    screenSize: {
-      width: window.screen.width,
-      height: window.screen.height
-    },
-    colorDepth: window.screen.colorDepth,
-    language: window.navigator.language,
-    hasLocalStorage: !!window.localStorage,
-    hasSessionStorage: !!window.sessionStorage,
-  };
-};
-
 export default function SurveyLandingPage({ 
   projectId, 
   uid, 
-  questions, 
+  project,
+  surveyLink,
   isValid, 
   errorMessage 
 }: PageProps) {
   const router = useRouter();
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [answers, setAnswers] = useState<Answer[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(errorMessage || null);
-  const [step, setStep] = useState<'captcha' | 'questions' | 'processing'>('captcha');
-
-  // Handle CAPTCHA verification
-  const handleCaptchaVerify = (token: string) => {
-    setCaptchaToken(token);
-    if (questions.length === 0) {
-      // If no questions, submit directly
-      handleSubmit();
-    } else {
-      // Move to questions step
-      setStep('questions');
-    }
-  };
-
-  // Handle answer changes
-  const handleAnswerChange = (questionId: string, value: string) => {
-    setAnswers(prev => {
-      const existing = prev.find(a => a.questionId === questionId);
-      
-      if (existing) {
-        return prev.map(a => a.questionId === questionId ? { ...a, value } : a);
-      } else {
-        return [...prev, { questionId, value }];
-      }
-    });
-  };
-
-  // Handle form submission
-  const handleSubmit = async () => {
-    if (!captchaToken) {
-      setError('Please complete the CAPTCHA verification');
-      return;
-    }
-
-    if (questions.length > 0 && answers.length < questions.length) {
-      setError('Please answer all questions');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-    setStep('processing');
-
-    try {
-      const clientMetadata = collectClientMetadata();
-      
-      const response = await axios.post('/api/verify/captcha', {
-        token: captchaToken,
-        projectId,
-        uid,
-        clientMetadata,
-        answers
-      });
-
-      if (response.data.success) {
-        // Update link status to STARTED
-        await axios.post('/api/links/update-status', {
-          projectId,
-          uid,
-          status: 'STARTED',
-          token: response.data.sessionToken
-        });
-        
-        // Store session token and answer data in sessionStorage for mid-survey validation
-        sessionStorage.setItem('surveySession', JSON.stringify({
-          token: response.data.sessionToken,
-          projectId,
-          uid,
-          answers
-        }));
-        
-        // Redirect to the actual survey in iframe wrapper
-        router.push(`/survey/${projectId}/${uid}`);
-      } else {
-        setError(response.data.message || 'Verification failed');
-        setStep('captcha');
-      }
-    } catch (error: any) {
-      setError(error?.response?.data?.message || 'An error occurred during verification');
-      setStep('captcha');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // If not valid, show error
-  if (!isValid) {
+  
+  // If link is invalid, show an error
+  if (!isValid || !project) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
-          <p className="text-gray-700">{error || 'This survey link is invalid or has expired.'}</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Invalid Survey Link</h1>
+          <p className="text-gray-600 mb-6">
+            {errorMessage || "This survey link is invalid or has expired."}
+          </p>
+          <div className="text-center">
+            <button
+              onClick={() => window.location.href = 'https://protegeresearch.com'}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Return to ProtegeResearch
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Survey Verification</h1>
-        
-        {step === 'captcha' && (
-          <div className="space-y-6">
-            <p className="text-gray-600 mb-4">Please complete the verification below to access the survey.</p>
-            
-            <div className="flex justify-center">
-              <HCaptchaComponent
-                sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY || '10000000-ffff-ffff-ffff-000000000001'}
-                onVerify={handleCaptchaVerify}
-              />
-            </div>
-          </div>
-        )}
-        
-        {step === 'questions' && (
-          <div className="space-y-6">
-            <p className="text-gray-600 mb-4">Please answer the following questions before proceeding to the survey:</p>
-            
-            {questions.map(question => (
-              <div key={question.id} className="mb-4">
-                <p className="font-medium mb-2">{question.text}</p>
-                <div className="space-y-2">
-                  {question.options.map((option, index) => (
-                    <div key={index} className="flex items-center">
-                      <input
-                        type="radio"
-                        id={`q${question.id}-${index}`}
-                        name={`question-${question.id}`}
-                        value={option}
-                        onChange={() => handleAnswerChange(question.id, option)}
-                        className="mr-2"
-                      />
-                      <label htmlFor={`q${question.id}-${index}`}>{option}</label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-            
+  // If survey was already completed, show that message
+  if (surveyLink?.status === 'COMPLETED') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
+          <h1 className="text-2xl font-bold text-green-600 mb-4">Survey Already Completed</h1>
+          <p className="text-gray-600 mb-6">
+            You have already completed this survey. Thank you for your participation!
+          </p>
+          <div className="text-center">
             <button
-              onClick={handleSubmit}
-              disabled={isSubmitting || answers.length < questions.length}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50"
+              onClick={() => window.location.href = 'https://protegeresearch.com'}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {isSubmitting ? 'Processing...' : 'Continue to Survey'}
+              Return to ProtegeResearch
             </button>
           </div>
-        )}
+        </div>
+      </div>
+    );
+  }
+
+  // Use our SurveyFlow component to handle everything
+  return (
+    <div className="min-h-screen bg-gray-100">
+      <div className="container mx-auto py-8 px-4">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-800">{project.name}</h1>
+        </div>
         
-        {step === 'processing' && (
-          <div className="text-center">
-            <p className="text-gray-600 mb-4">Verifying your information...</p>
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-          </div>
-        )}
-        
-        {error && (
-          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-md">
-            {error}
-          </div>
-        )}
+        <div className="bg-white rounded-lg shadow-lg p-2 md:p-6">
+          <SurveyFlow 
+            projectId={projectId}
+            uid={uid}
+            surveyUrl={project.surveyUrl}
+            vendorId={surveyLink?.vendorId || undefined}
+          />
+        </div>
       </div>
     </div>
   );
 }
 
-// Server-side props to validate the survey link and get questions
-export async function getServerSideProps(context: any) {
-  const { projectId, uid } = context.params;
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { projectId, uid } = context.params as { projectId: string; uid: string };
   
-  if (!projectId || !uid) {
-    return {
-      props: {
-        isValid: false,
-        errorMessage: 'Invalid URL parameters',
-        projectId: '',
-        uid: '',
-        questions: [],
-      },
-    };
-  }
-
   try {
-    // Check if survey link exists and is valid using Amplify Data Service
-    const surveyLinkResult = await amplifyDataService.surveyLinks.list({
-      filter: {
-        and: [
-          { projectId: { eq: projectId } },
-          { uid: { eq: uid } },
-          { status: { eq: 'PENDING' } }
-        ]
-      }
-    });
-
-    const surveyLink = surveyLinkResult.data && surveyLinkResult.data.length > 0 
-      ? surveyLinkResult.data[0] 
-      : null;
-
+    // Get project details
+    const projectResult = await amplifyDataService.projects.get(projectId);
+    const project = projectResult?.data || null;
+    
+    if (!project) {
+      return {
+        props: {
+          projectId,
+          uid,
+          isValid: false,
+          errorMessage: 'Project not found',
+          project: null,
+          surveyLink: null
+        }
+      };
+    }
+    
+    // Get survey link details
+    const linkResult = await amplifyDataService.surveyLinks.getByUid(uid);
+    const surveyLink = linkResult?.data || null;
+    
     if (!surveyLink) {
       return {
         props: {
-          isValid: false,
-          errorMessage: 'This survey link is invalid or has already been used',
           projectId,
           uid,
-          questions: [],
-        },
+          isValid: false,
+          errorMessage: 'Survey link not found',
+          project: null,
+          surveyLink: null
+        }
       };
     }
-
-    // Get pre-survey questions for this project using Amplify Data Service
-    const questionsResult = await amplifyDataService.questions.listByProject(projectId);
-    const questions = questionsResult.data || [];
-
-    // Parse the options JSON string for each question
-    const parsedQuestions = questions.map(question => ({
-      id: question.id,
-      text: question.text,
-      options: JSON.parse(question.options || '[]')
-    }));
-
+    
+    // Check if the link belongs to this project
+    if (surveyLink.projectId !== projectId) {
+      return {
+        props: {
+          projectId,
+          uid,
+          isValid: false,
+          errorMessage: 'Invalid project link combination',
+          project: null,
+          surveyLink: null
+        }
+      };
+    }
+    
+    // Check if link is already marked as completed
+    if (surveyLink.status === 'COMPLETED') {
+      return {
+        props: {
+          projectId,
+          uid,
+          isValid: true,
+          project: {
+            name: project.name,
+            surveyUrl: project.surveyUrl
+          },
+          surveyLink: {
+            status: surveyLink.status,
+            vendorId: surveyLink.vendorId || null
+          }
+        }
+      };
+    }
+    
+    // All checks passed
     return {
       props: {
+        projectId,
+        uid,
         isValid: true,
-        projectId,
-        uid,
-        questions: JSON.parse(JSON.stringify(parsedQuestions)), // Serialize for Next.js
-      },
+        project: {
+          name: project.name,
+          surveyUrl: project.surveyUrl
+        },
+        surveyLink: {
+          status: surveyLink.status || 'UNUSED',
+          vendorId: surveyLink.vendorId || null
+        }
+      }
     };
+    
   } catch (error) {
-    console.error('Error fetching survey data:', error);
+    console.error('Error fetching survey details:', error);
+    
     return {
       props: {
-        isValid: false,
-        errorMessage: 'Failed to load survey information',
         projectId,
         uid,
-        questions: [],
-      },
+        isValid: false,
+        errorMessage: 'An error occurred while loading the survey',
+        project: null,
+        surveyLink: null
+      }
     };
   }
-}
+};

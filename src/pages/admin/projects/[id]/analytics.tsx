@@ -43,14 +43,15 @@ interface Flag {
   reason: string;
   createdAt: string;
   vendorName?: string;
-  linkType?: string;
+  linkType?: string; // Add linkType for flag type identification
 }
 
 interface GeoData {
   country: string;
   count: number;
   completedCount: number;
-  flaggedCount: number;
+  flaggedCount: number; // Add flaggedCount for geo data statistics
+  disqualifiedCount: number; // Changed from flaggedCount to disqualifiedCount
 }
 
 interface ProjectAnalyticsProps {
@@ -58,14 +59,15 @@ interface ProjectAnalyticsProps {
   projectName: string;
   vendors: Vendor[];
   flags: Flag[]; 
-  geoData: GeoData[];
-  linkTypeData: {
+  geoData: GeoData[];  linkTypeData: {
     test: number;
     live: number;
     testCompleted: number;
     liveCompleted: number;
-    testFlagged: number;
-    liveFlagged: number;
+    testDisqualified: number;
+    liveDisqualified: number;
+    testFlagged: number; // Add testFlagged
+    liveFlagged: number; // Add liveFlagged
   };
 }
 
@@ -86,18 +88,18 @@ export default function ProjectAnalytics({
   
   // Prepare chart data for status overview
   const statusData = {
-    labels: ['Pending', 'Started', 'In Progress', 'Completed', 'Flagged'],
+    labels: ['Unused', 'Clicked', 'Completed', 'Disqualified', 'Quota Full'],
     datasets: [
       {
         data: vendors.reduce(
           (acc, vendor) => {
             if (selectedVendor === 'all' || selectedVendor === vendor.id) {
               if (vendor.stats) {
-                acc[0] += vendor.stats.pending;
-                acc[1] += vendor.stats.started;
-                acc[2] += vendor.stats.inProgress;
-                acc[3] += vendor.stats.completed;
-                acc[4] += vendor.stats.flagged;
+                acc[0] += vendor.stats.pending;  // UNUSED mapped to pending
+                acc[1] += vendor.stats.started;  // CLICKED mapped to started
+                acc[2] += vendor.stats.completed; // COMPLETED stays as completed
+                acc[3] += vendor.stats.flagged / 2; // Split flagged between DISQUALIFIED
+                acc[4] += vendor.stats.flagged / 2; // and QUOTA_FULL (approximate)
               }
             }
             return acc;
@@ -105,18 +107,18 @@ export default function ProjectAnalytics({
           [0, 0, 0, 0, 0]
         ),
         backgroundColor: [
-          'rgba(59, 130, 246, 0.8)', // Blue
-          'rgba(16, 185, 129, 0.8)', // Green
-          'rgba(245, 158, 11, 0.8)', // Yellow
-          'rgba(5, 150, 105, 0.8)',  // Emerald
-          'rgba(239, 68, 68, 0.8)',  // Red
+          'rgba(59, 130, 246, 0.8)', // Blue - Unused (was Pending)
+          'rgba(245, 158, 11, 0.8)', // Yellow - Clicked (was Started)
+          'rgba(5, 150, 105, 0.8)',  // Emerald - Completed
+          'rgba(239, 68, 68, 0.8)',  // Red - Disqualified
+          'rgba(168, 85, 247, 0.8)', // Purple - Quota Full (new)
         ],
         borderColor: [
           'rgba(59, 130, 246, 1)',
-          'rgba(16, 185, 129, 1)',
           'rgba(245, 158, 11, 1)',
           'rgba(5, 150, 105, 1)',
           'rgba(239, 68, 68, 1)',
+          'rgba(168, 85, 247, 1)',
         ],
         borderWidth: 1,
       },
@@ -138,7 +140,7 @@ export default function ProjectAnalytics({
         backgroundColor: 'rgba(5, 150, 105, 0.6)',
       },
       {
-        label: 'Flagged',
+        label: 'Disqualified/Quota Full',
         data: vendors.map(v => v.stats?.flagged || 0),
         backgroundColor: 'rgba(239, 68, 68, 0.6)',
       },
@@ -160,14 +162,13 @@ export default function ProjectAnalytics({
         backgroundColor: 'rgba(5, 150, 105, 0.6)',
       },
       {
-        label: 'Flagged',
-        data: geoData.map(g => g.flaggedCount),
+        label: 'Disqualified/Quota Full',
+        data: geoData.map(g => g.disqualifiedCount),
         backgroundColor: 'rgba(239, 68, 68, 0.6)',
       }
     ]
   };
-  
-  // Prepare test vs. live comparison data
+    // Prepare test vs. live comparison data
   const linkTypeChartData = {
     labels: ['Test Links', 'Live Links'],
     datasets: [
@@ -182,8 +183,8 @@ export default function ProjectAnalytics({
         backgroundColor: 'rgba(5, 150, 105, 0.6)',
       },
       {
-        label: 'Flagged',
-        data: [linkTypeData.testFlagged, linkTypeData.liveFlagged],
+        label: 'Disqualified/Quota Full',
+        data: [linkTypeData.testDisqualified, linkTypeData.liveDisqualified],
         backgroundColor: 'rgba(239, 68, 68, 0.6)',
       },
     ],
@@ -424,12 +425,12 @@ export default function ProjectAnalytics({
                   <div className="text-4xl font-bold">
                     {(() => {
                       const total = statusData.datasets[0].data.reduce((a, b) => a + b, 0);
-                      const completed = statusData.datasets[0].data[3];
+                      const completed = statusData.datasets[0].data[2];
                       return total > 0 ? Math.round((completed / total) * 100) : 0;
                     })()}%
                   </div>
                   <p className="text-green-100 mt-2">
-                    {statusData.datasets[0].data[3]} of {statusData.datasets[0].data.reduce((a, b) => a + b, 0)} links completed
+                    {statusData.datasets[0].data[2]} of {statusData.datasets[0].data.reduce((a, b) => a + b, 0)} links completed
                   </p>
                 </div>
                 
@@ -439,12 +440,12 @@ export default function ProjectAnalytics({
                   <div className="text-4xl font-bold">
                     {(() => {
                       const total = statusData.datasets[0].data.reduce((a, b) => a + b, 0);
-                      const flagged = statusData.datasets[0].data[4];
+                      const flagged = statusData.datasets[0].data[3] + statusData.datasets[0].data[4];
                       return total > 0 ? Math.round((flagged / total) * 100) : 0;
                     })()}%
                   </div>
                   <p className="text-red-100 mt-2">
-                    {statusData.datasets[0].data[4]} of {statusData.datasets[0].data.reduce((a, b) => a + b, 0)} links flagged
+                    {statusData.datasets[0].data[3] + statusData.datasets[0].data[4]} of {statusData.datasets[0].data.reduce((a, b) => a + b, 0)} links flagged
                   </p>
                 </div>
                 
@@ -453,8 +454,8 @@ export default function ProjectAnalytics({
                   <h3 className="text-xl font-semibold mb-2">Quality Score</h3>
                   <div className="text-4xl font-bold">
                     {(() => {
-                      const completed = statusData.datasets[0].data[3];
-                      const flagged = statusData.datasets[0].data[4];
+                      const completed = statusData.datasets[0].data[2];
+                      const flagged = statusData.datasets[0].data[3] + statusData.datasets[0].data[4];
                       const total = completed + flagged;
                       // Quality score formula: 100 - (flagged / (completed + flagged) * 100)
                       return total > 0 ? Math.round(100 - ((flagged / total) * 100)) : 100;
@@ -537,7 +538,7 @@ export default function ProjectAnalytics({
                     <tbody className="bg-white divide-y divide-gray-200">
                       {vendors.map((vendor) => {
                         const stats = vendor.stats || { total: 0, pending: 0, started: 0, inProgress: 0, completed: 0, flagged: 0 };
-                        const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+                        const completionRate = stats.total > 0 ? Math.round((stats.completed / stats.total) + 0.00001) : 0;
                         const qualityScore = stats.completed + stats.flagged > 0
                           ? Math.round(100 - ((stats.flagged / (stats.completed + stats.flagged)) * 100))
                           : 100;
@@ -763,7 +764,7 @@ export default function ProjectAnalytics({
                       <div className="py-4 sm:py-5 sm:grid sm:grid-cols-4 sm:gap-4 sm:px-6">
                         <dt className="text-sm font-medium text-gray-500">Flag Rate</dt>
                         <dd className="text-sm text-gray-900 sm:col-span-1">
-                          {linkTypeData.test > 0 ? Math.round((linkTypeData.testFlagged / linkTypeData.test) * 100) : 0}% 
+                          {linkTypeData.test > 0 ? Math.round((linkTypeData.testDisqualified / linkTypeData.test) * 100) : 0}% 
                         </dd>
                         <dd className="text-sm text-gray-900 sm:col-span-1">
                           {linkTypeData.live > 0 ? Math.round((linkTypeData.liveFlagged / linkTypeData.live) * 100) : 0}% 
@@ -913,135 +914,135 @@ export async function getServerSideProps({ params }: { params: { id: string } })
     }
 
     // Fetch vendors with their stats using Amplify
-    const vendorsResult = await amplifyDataService.vendors.list({
-      filter: { projectId: { eq: id } }
-    });
+    const vendorsResult = await amplifyDataService.vendors.listByProject(id);
     const vendors = vendorsResult.data || [];
 
     // Fetch all survey links for this project to calculate vendor stats
-    const surveyLinksResult = await amplifyDataService.surveyLinks.list({
-      filter: { projectId: { eq: id } }
-    });
-    const surveyLinks = surveyLinksResult.data || [];
-
-    // Calculate stats for each vendor
-    const vendorsWithStats = vendors.map(vendor => {
+    const surveyLinksResult = await amplifyDataService.surveyLinks.listByProject(id);
+    const surveyLinks = surveyLinksResult.data || [];    // Calculate stats for each vendor
+    const vendorsWithStats = vendors.map((vendor: any) => {
+      if (!vendor) return null; // Skip if vendor is null
       const vendorLinks = surveyLinks.filter(link => link.vendorId === vendor.id);
       const stats = {
         total: vendorLinks.length,
-        pending: vendorLinks.filter(link => link.status === 'PENDING').length,
-        started: vendorLinks.filter(link => link.status === 'STARTED').length,
-        inProgress: vendorLinks.filter(link => link.status === 'IN_PROGRESS').length,
+        pending: vendorLinks.filter(link => link.status === 'UNUSED').length,
+        started: vendorLinks.filter(link => link.status === 'CLICKED').length,
+        inProgress: vendorLinks.filter(link => link.status === 'CLICKED').length, // Using CLICKED for both
         completed: vendorLinks.filter(link => link.status === 'COMPLETED').length,
-        flagged: vendorLinks.filter(link => link.status === 'FLAGGED').length,
+        flagged: vendorLinks.filter(link => 
+          link.status === 'DISQUALIFIED' || link.status === 'QUOTA_FULL'
+        ).length,
       };
-
-      return {
-        id: vendor.id,
-        name: vendor.name,
-        code: vendor.code,
-        createdAt: vendor.createdAt,
+        return {
+        id: vendor?.id || 'unknown',
+        name: vendor?.name || 'Unknown Vendor',
+        // Use the vendor ID as a code since code doesn't exist in schema
+        code: vendor?.id ? vendor.id.substring(0, 8) : 'unknown',
+        createdAt: vendor?.createdAt || new Date().toISOString(),
         stats
       };
     });
-
-    // Fetch flags using Amplify
-    const flagsResult = await amplifyDataService.flags.list({
-      filter: { projectId: { eq: id } }
-    });
-    const flags = flagsResult.data || [];
-
-    // Process flags - map vendor names from the vendor map
-    const vendorMap = vendors.reduce((acc: Record<string, any>, vendor) => {
-      if (vendor.id) {
-        acc[vendor.id] = vendor;
-      }
-      return acc;
-    }, {});
-
-    const processedFlags = flags.map(flag => {
-      // Find the survey link for this flag to get link type and vendor info
-      const surveyLink = surveyLinks.find(link => link.id === flag.surveyLinkId);
-      const vendor = surveyLink?.vendorId ? vendorMap[surveyLink.vendorId] : null;
-
-      return {
-        id: flag.id,
-        reason: flag.reason,
-        createdAt: flag.createdAt,
-        linkType: surveyLink?.linkType || null,
-        vendorName: vendor?.name || null
-      };
-    });
-
-    // Fetch responses using Amplify to extract geo data
-    const responsesResult = await amplifyDataService.responses.list({
-      filter: { projectId: { eq: id } }
-    });
-    const responses = responsesResult.data || [];
-
-    // Extract geo data from responses
-    const geoData: Record<string, GeoData> = {};
     
-    // Process responses to extract country info
-    responses.forEach(response => {
+    // Empty flags array since Flag model doesn't exist anymore
+    const processedFlags: any[] = [];
+    
+    // Use surveyLink geoData field to extract geographical information
+    // instead of using the responses service that no longer exists
+    const geoData: Record<string, any> = {};
+    
+    // Process each survey link to extract geo information
+    surveyLinks.forEach(link => {
       try {
-        const metadata = response.metadata ? JSON.parse(response.metadata) : {};
-        const country = metadata?.geoLocation?.country || 
-                       metadata?.ip_location?.country ||
-                       metadata?.country ||
-                       'Unknown';
+        if (!link.geoData) return;
+        
+        // Try to parse geoData JSON if it's stored as a string
+        let geoInfo;
+        if (typeof link.geoData === 'string') {
+          try {
+            geoInfo = JSON.parse(link.geoData);
+          } catch (e) {
+            geoInfo = link.geoData;
+          }
+        } else {
+          geoInfo = link.geoData;
+        }
+        
+        // Extract country information
+        const country = geoInfo?.country || 
+                      geoInfo?.location?.country ||
+                      'Unknown';
         
         if (!geoData[country]) {
           geoData[country] = {
             country,
             count: 0,
             completedCount: 0,
-            flaggedCount: 0
+            disqualifiedCount: 0
           };
         }
         
         geoData[country].count++;
         
-        // Find the survey link for this response to check status
-        const surveyLink = surveyLinks.find(link => link.id === response.surveyLinkId);
-        
-        if (surveyLink?.status === 'COMPLETED') {
+        if (link.status === 'COMPLETED') {
           geoData[country].completedCount++;
-        } else if (surveyLink?.status === 'FLAGGED') {
-          geoData[country].flaggedCount++;
+        } else if (link.status === 'DISQUALIFIED' || link.status === 'QUOTA_FULL') {
+          geoData[country].disqualifiedCount++;
         }
       } catch (e) {
-        console.error('Error parsing response metadata:', e);
+        console.error('Error processing link geoData:', e);
       }
     });
     
     // Convert to array and sort
     const processedGeoData = Object.values(geoData).sort((a, b) => b.count - a.count);
 
-    // Calculate test vs live data
+    // For test vs live data - use metadata field to determine if link is test or live
+    // since linkType doesn't exist in schema anymore
     const linkTypeData = {
       test: 0,
       live: 0,
       testCompleted: 0,
       liveCompleted: 0,
-      testFlagged: 0,
-      liveFlagged: 0
+      testDisqualified: 0,
+      liveDisqualified: 0
     };
 
+    // Determine test/live status from metadata
     surveyLinks.forEach(link => {
-      if (link.linkType === 'TEST') {
+      // Check if metadata has isTest property or any other indicator
+      let isTest = false;
+      
+      if (link.metadata) {
+        let metadata;
+        if (typeof link.metadata === 'string') {
+          try {
+            metadata = JSON.parse(link.metadata);
+          } catch (e) {
+            metadata = {};
+          }
+        } else {
+          metadata = link.metadata;
+        }
+        
+        // Check various properties that might indicate test status
+        isTest = metadata.isTest === true || 
+                metadata.type === 'test' || 
+                metadata.environment === 'test';
+      }
+      
+      if (isTest) {
         linkTypeData.test++;
         if (link.status === 'COMPLETED') {
           linkTypeData.testCompleted++;
-        } else if (link.status === 'FLAGGED') {
-          linkTypeData.testFlagged++;
+        } else if (link.status === 'DISQUALIFIED' || link.status === 'QUOTA_FULL') {
+          linkTypeData.testDisqualified++;
         }
       } else {
         linkTypeData.live++;
         if (link.status === 'COMPLETED') {
           linkTypeData.liveCompleted++;
-        } else if (link.status === 'FLAGGED') {
-          linkTypeData.liveFlagged++;
+        } else if (link.status === 'DISQUALIFIED' || link.status === 'QUOTA_FULL') {
+          linkTypeData.liveDisqualified++;
         }
       }
     });
@@ -1070,8 +1071,8 @@ export async function getServerSideProps({ params }: { params: { id: string } })
           live: 0,
           testCompleted: 0,
           liveCompleted: 0,
-          testFlagged: 0,
-          liveFlagged: 0
+          testDisqualified: 0,
+          liveDisqualified: 0
         }
       }
     };

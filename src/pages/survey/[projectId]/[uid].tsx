@@ -650,37 +650,54 @@ export async function getServerSideProps(context: any) {
     
     // Get the questions for this project
     const questionsResult = await amplifyDataService.questions.listByProject(projectId);
-    const questionsData = questionsResult?.data || [];
-
-    // Get vendor code if available
+    const questionsData = questionsResult?.data || [];    // Get vendor code if available
     let vendorCode = null;
     if (link.vendorId) {
       const vendorResult = await amplifyDataService.vendors.get(link.vendorId);
-      vendorCode = vendorResult?.data?.code || null;
-    }
-    
-    // Parse geo-restriction from JSON string
-    let geoRestriction = null;
-    if (link.geoRestriction) {
-      try {
-        geoRestriction = JSON.parse(link.geoRestriction);
-      } catch (e) {
-        console.error('Error parsing geo-restriction:', e);
+      if (vendorResult?.data?.settings) {
+        try {
+          const settings = JSON.parse(vendorResult.data.settings as string);
+          vendorCode = settings.code || null;
+        } catch (e) {
+          console.error('Error parsing vendor settings:', e);
+        }
       }
     }
+      // Extract data from metadata field
+    let metadata = {};
+    let originalUrl = null;
+    let linkType = 'LIVE';
+    let geoRestriction = null;
     
-    // Parse question options from JSON string
-    const questions = questionsData.map(q => ({
-      ...q,
-      options: JSON.parse(q.options || '[]')
-    }));
-    
-    return {
+    if (link.metadata) {      try {
+        metadata = JSON.parse(link.metadata as string);
+        const typedMetadata = metadata as { originalUrl?: string; linkType?: 'TEST' | 'LIVE'; geoRestriction?: string[] };
+        originalUrl = typedMetadata.originalUrl || null;
+        linkType = typedMetadata.linkType || 'LIVE';
+        geoRestriction = typedMetadata.geoRestriction || null;
+      } catch (e) {
+        console.error('Error parsing link metadata:', e);
+      }
+    }
+      // Parse question options from JSON string
+    const questions = questionsData.map(q => {
+      let parsedOptions: string[] = [];
+      try {
+        parsedOptions = JSON.parse(q.options?.toString() || '[]');
+      } catch (e) {
+        console.error(`Error parsing options for question ${q.id}:`, e);
+      }
+      return {
+        ...q,
+        options: parsedOptions
+      };
+    });
+      return {
       props: {
         isValid: true,
-        originalUrl: link.originalUrl,
-        geoRestriction,
-        linkType: link.linkType,
+        originalUrl: originalUrl || null,
+        geoRestriction: geoRestriction || null,
+        linkType: linkType || 'LIVE',
         vendorCode,
         questions: JSON.parse(JSON.stringify(questions))
       }

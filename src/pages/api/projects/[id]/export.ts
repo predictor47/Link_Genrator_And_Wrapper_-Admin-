@@ -118,31 +118,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       vendorMap[vendor.id] = vendor;
     });
-    
-    // Fetch responses for these links
-    const responsesPromises = linkIds.map(linkId => 
-      amplifyDataService.responses.list({ filter: { surveyLinkId: { eq: linkId } } })
-    );
-    const responsesResults = await Promise.all(responsesPromises);
-    
-    // Fetch flags for these links
-    const flagsPromises = linkIds.map(linkId => 
-      amplifyDataService.flags.list({ filter: { surveyLinkId: { eq: linkId } } })
-    );
-    const flagsResults = await Promise.all(flagsPromises);
-    
-    // Create maps for responses and flags
+      // Extract responses and flags from the link metadata instead of using separate services
     const responseMap: Record<string, any[]> = {};
-    responsesResults.forEach((result, index) => {
-      if (result.data && result.data.length > 0) {
-        responseMap[linkIds[index]] = result.data;
-      }
-    });
-    
     const flagMap: Record<string, any[]> = {};
-    flagsResults.forEach((result, index) => {
-      if (result.data && result.data.length > 0) {
-        flagMap[linkIds[index]] = result.data;
+    
+    // Process each link's metadata to extract responses and flags
+    surveyLinks.forEach(link => {
+      if (link.id && link.metadata) {
+        try {
+          const metadata = JSON.parse(link.metadata as string);
+          
+          // Extract responses if they exist
+          if (metadata.responses && Array.isArray(metadata.responses)) {
+            responseMap[link.id] = metadata.responses;
+          }
+          
+          // Extract flags if they exist
+          if (metadata.flagged || (metadata.flags && Array.isArray(metadata.flags))) {
+            flagMap[link.id] = metadata.flags || [{
+              reason: metadata.flagReason || 'Unknown reason',
+              timestamp: metadata.flaggedAt || new Date().toISOString(),
+              metadata: metadata.flagMetadata || {}
+            }];
+          }
+        } catch (e) {
+          console.error(`Error parsing metadata for link ${link.id}:`, e);
+        }
       }
     });
 
@@ -176,16 +177,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const flagReasons = linkFlags.map((f: any) => f.reason).join('; ');
 
       // Determine vendor info from our vendor map
-      const vendor = link.vendorId && vendorMap[link.vendorId] ? vendorMap[link.vendorId] : null;
-      const vendorName = vendor ? vendor.name : 'None';
-      const vendorCode = vendor ? vendor.code : 'None';
+      const vendor = link.vendorId && vendorMap[link.vendorId] ? vendorMap[link.vendorId] : null;      const vendorName = vendor ? vendor.name : 'None';
+      
+      // Extract vendor code from settings if available
+      let vendorCode = 'None';
+      if (vendor && vendor.settings) {
+        try {
+          const settings = JSON.parse(vendor.settings as string);
+          vendorCode = settings.code || 'None';
+        } catch (e) {
+          console.error('Error parsing vendor settings:', e);
+        }
+      }
+      
+      // Extract link data from metadata
+      let originalUrl = '';
+      let linkType = 'LIVE';
+      
+      if (link.metadata) {
+        try {
+          const metadata = JSON.parse(link.metadata as string);
+          originalUrl = metadata.originalUrl || '';
+          linkType = metadata.linkType || 'LIVE';
+        } catch (e) {
+          console.error('Error parsing link metadata:', e);
+        }
+      }
 
       return {
         id: link.id,
         uid: link.uid,
-        originalUrl: link.originalUrl,
-        status: link.status || 'PENDING',
-        linkType: link.linkType || 'LIVE',
+        originalUrl,
+        status: link.status || 'UNUSED',
+        linkType,
         vendorName,
         vendorCode,
         country,

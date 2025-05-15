@@ -5,7 +5,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
-
   try {
     const { name, description, questions } = req.body;
 
@@ -16,7 +15,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Create a new project using Amplify Data service
+    console.log('Creating project with name:', name);
+      // Create a new project using Amplify Data service
     const projectResult = await amplifyDataService.projects.create({
       name,
       description: description || '',
@@ -48,12 +48,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       success: true,
       message: 'Project created successfully',
       project: projectResult.data
-    });
-  } catch (error) {
+    });  } catch (error: any) {
     console.error('Error creating project:', error);
+    
+    // Provide more detailed error information
+    const errorMessage = error.message || 'Unknown error';
+    const errorName = error.name || 'Error';
+    
+    console.error(`Project creation failed: ${errorName} - ${errorMessage}`);
+    
+    // Special handling for authentication errors
+    if (errorName.includes('Auth') || errorMessage.includes('auth') || errorMessage.includes('token')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication error. Please sign in again.',
+        error: `${errorName}: ${errorMessage}`
+      });
+    }
+    
+    // Handle sandbox-specific errors
+    if (process.env.NODE_ENV === 'development') {
+      return res.status(500).json({
+        success: false,
+        message: 'Development environment error: ' + errorMessage,
+        error: error,
+        hint: 'In sandbox environment, make sure to login first and have the Amplify sandbox running with "npx ampx sandbox"'
+      });
+    }
+    
     return res.status(500).json({ 
       success: false, 
-      message: 'Failed to create project. Please ensure you are authenticated and have correct permissions.' 
+      message: 'Failed to create project. Please ensure you are authenticated and have correct permissions.',
+      error: `${errorName}: ${errorMessage}`
     });
   }
 }

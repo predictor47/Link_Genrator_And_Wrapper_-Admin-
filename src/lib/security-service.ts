@@ -133,28 +133,35 @@ export const securityService = {
           reason: 'LINK_ALREADY_USED',
           securityContext
         };
-      }
-      
-      // Check geo-restrictions if set
-      if (surveyLink.data && surveyLink.data.geoRestriction && securityContext.geoLocation) {
-        try {
-          const allowedCountries = JSON.parse(surveyLink.data.geoRestriction);
-          if (Array.isArray(allowedCountries) && 
-              allowedCountries.length > 0 && 
-              !allowedCountries.includes(securityContext.geoLocation.country)) {
-            return {
-              allowed: false,
-              reason: 'GEO_RESTRICTED',
-              securityContext
-            };
+      }        // Check geo-restrictions if set in project settings
+      if (surveyLink.data && surveyLink.data.projectId && securityContext.geoLocation) {          // Get project to check geo-restrictions
+          try {
+            const project = await amplifyDataService.projects.get(surveyLink.data.projectId);
+                // Get geo-restrictions from project settings if available
+            const settings = project.data?.settings as any;
+            const geoRestriction = settings?.geoRestriction;
+          
+          if (geoRestriction) {
+            const allowedCountries = typeof geoRestriction === 'string' 
+              ? JSON.parse(geoRestriction) 
+              : geoRestriction;
+              
+            if (Array.isArray(allowedCountries) && 
+                allowedCountries.length > 0 && 
+                !allowedCountries.includes(securityContext.geoLocation.country)) {
+              return {
+                allowed: false,
+                reason: 'GEO_RESTRICTED',
+                securityContext
+              };
+            }
           }
         } catch (e) {
           console.error('Error parsing geo restrictions:', e);
         }
       }
-      
-      // Check VPN usage (if detected and link type is LIVE)
-      if (securityContext.detectedVpn && surveyLink.data && surveyLink.data.linkType === 'LIVE') {
+        // Check VPN usage if detected (linkType field no longer exists in model)
+      if (securityContext.detectedVpn && surveyLink.data) {
         return {
           allowed: false,
           reason: 'VPN_DETECTED',

@@ -18,17 +18,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Get the survey link
     const surveyLinkResult = await amplifyDataService.surveyLinks.getByUid(uid);
-    const surveyLink = surveyLinkResult?.data;
-
-    if (!surveyLink) {
+    const surveyLink = surveyLinkResult?.data;    if (!surveyLink) {
       return res.status(404).json({ 
         success: false, 
         message: 'Survey link not found' 
       });
     }
 
-    // Only allow completion if the survey is in STARTED or IN_PROGRESS state
-    if (surveyLink.status !== 'STARTED' && surveyLink.status !== 'IN_PROGRESS') {
+    // Only allow completion if the survey is in CLICKED state (previously STARTED or IN_PROGRESS)
+    if (surveyLink.status !== 'CLICKED') {
       return res.status(400).json({
         success: false,
         message: `Cannot complete survey from ${surveyLink.status} status`
@@ -56,22 +54,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         shouldFlag = true;
         flagReason = 'IP address changed during survey';
       }
-    }
-
-    // If suspicious activity detected, flag but still mark as completed
-    if (shouldFlag) {
-      await amplifyDataService.flags.create({
-        surveyLinkId: surveyLink.id,
-        projectId,
-        reason: flagReason,
-        metadata: JSON.stringify(metadata || {})
-      });
-    }
-
-    // Prepare update data
+    }    // Prepare update data
     const updateData: any = { 
-      status: 'COMPLETED' 
+      status: 'COMPLETED',
+      completedAt: new Date().toISOString()
     };
+    
+    // Store metadata, including any flag info if suspicious activity detected
+    const metadataToStore: any = {
+      ...metadata,
+      completionTimestamp: new Date().toISOString()
+    };
+    
+    if (shouldFlag) {
+      metadataToStore.flagged = true;
+      metadataToStore.flagReason = flagReason;
+      metadataToStore.flaggedAt = new Date().toISOString();
+    }
+    
+    updateData.metadata = JSON.stringify(metadataToStore);
     
     // Update vendor information if provided and different from current
     if (vendorId && vendorId !== surveyLink.vendorId) {
@@ -89,24 +90,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         updateData.vendorId = vendorId;
       }
     }
+    
     if (!surveyLink.id) {
       throw new Error('Survey link ID is null or undefined');
     }
+    
     await amplifyDataService.surveyLinks.update(surveyLink.id, updateData);
-
-    // Store completion metadata if provided
-    if (metadata) {
-      await amplifyDataService.responses.create({
-        surveyLinkId: surveyLink.id,
-        projectId,
-        questionId: '00000000-0000-0000-0000-000000000000', // Placeholder for completion metadata
-        answer: 'COMPLETION',
-        metadata: JSON.stringify({
-          completionTimestamp: new Date().toISOString(),
-          ...(metadata || {})
-        })
-      });
-    }
 
     return res.status(200).json({
       success: true,

@@ -12,13 +12,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'GET') {
     try {
       const questionsResult = await amplifyDataService.questions.listByProject(projectId);
-      const questions = questionsResult.data || [];
-
-      // Parse options from JSON string to array
-      const parsedQuestions = questions.map(q => ({
-        ...q,
-        options: JSON.parse(q.options || '[]')
-      }));
+      const questions = questionsResult.data || [];      // Parse options from JSON string to array
+      const parsedQuestions = questions.map(q => {
+        let parsedOptions: string[] = [];
+        try {
+          parsedOptions = JSON.parse(q.options?.toString() || '[]');
+        } catch (e) {
+          console.error(`Error parsing options for question ${q.id}:`, e);
+        }
+        return {
+          ...q,
+          options: parsedOptions
+        };
+      });
 
       // Sort by creation date descending
       const sortedQuestions = parsedQuestions.sort((a, b) => {

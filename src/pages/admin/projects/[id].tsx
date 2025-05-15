@@ -560,13 +560,11 @@ export async function getServerSideProps({ params }: { params: { id: string } })
 
     // Get survey links for this project
     const surveyLinksResult = await amplifyDataService.surveyLinks.listByProject(id);
-    const surveyLinks = surveyLinksResult.data || [];
-
-    // Get flags for this project
-    const flagsResult = await amplifyDataService.flags.list({
-      filter: { projectId: { eq: id } }
-    });
-    const flags = flagsResult.data || [];
+    const surveyLinks = surveyLinksResult.data || [];    // Flags model no longer exists, so we use an empty array
+    // const flagsResult = await amplifyDataService.flags.list({
+    //   filter: { projectId: { eq: id } }
+    // });
+    const flags: any[] = [];
 
     // Initialize stats
     const stats = {
@@ -576,24 +574,22 @@ export async function getServerSideProps({ params }: { params: { id: string } })
       inProgress: 0,
       completed: 0,
       flagged: 0
-    };
-
-    // Calculate stats from survey links
+    };    // Calculate stats from survey links using the new status enum
     surveyLinks.forEach(link => {
       switch (link.status) {
-        case 'PENDING':
+        case 'UNUSED':
           stats.pending++;
           break;
-        case 'STARTED':
+        case 'CLICKED':
+          // Map both started and inProgress to CLICKED since we don't have separate statuses anymore
           stats.started++;
-          break;
-        case 'IN_PROGRESS':
           stats.inProgress++;
           break;
         case 'COMPLETED':
           stats.completed++;
           break;
-        case 'FLAGGED':
+        case 'DISQUALIFIED':
+        case 'QUOTA_FULL':
           stats.flagged++;
           break;
       }
@@ -615,13 +611,19 @@ export async function getServerSideProps({ params }: { params: { id: string } })
             id: q.id,
             text: q.text,
             options: q.options // This is already a string in your schema
-          })),
-          vendors: vendors.map(v => ({
-            id: v.id,
-            name: v.name,
-            code: v.code,
-            createdAt: v.createdAt
-          })),
+          })),          vendors: vendors
+            .filter(v => v !== null)
+            .map(v => {
+              // Create a vendor object with only the properties that exist in the schema
+              return {
+                id: v.id,
+                name: v.name || 'Unknown Vendor',
+                // code is not in the schema anymore, but we need it for backwards compatibility
+                // We'll use the vendor id as the code if needed
+                code: (v as any).code || v.id.substring(0, 8),
+                createdAt: v.createdAt || new Date().toISOString()
+              };
+            }),
           stats
         }
       }

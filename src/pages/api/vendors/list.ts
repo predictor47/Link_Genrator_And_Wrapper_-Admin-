@@ -28,11 +28,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Get all vendors for this project using Amplify
     const vendorsResult = await amplifyDataService.vendors.listByProject(projectId);
-    
-    // Sort vendors by name
-    const vendors = vendorsResult.data.sort((a, b) => 
-      (a.name || '').localeCompare(b.name || '')
-    );
+      // Sort vendors by name with proper null checks
+    const vendors = vendorsResult.data
+      .filter(v => v !== null)
+      .sort((a, b) => 
+        ((a && a.name) || '').localeCompare((b && b.name) || '')
+      );
 
     return res.status(200).json({ 
       success: true, 

@@ -1,14 +1,25 @@
-# Survey Link Wrapper & Admin Tool
+# Mass Survey Link Wrapper Tool - AWS Amplify Gen 2
 
-A comprehensive tool for generating, managing, and analyzing survey links with AWS Amplify Gen 2 backend.
+A comprehensive tool for generating, managing, and analyzing survey links with AWS Amplify Gen 2 backend. This tool helps detect bots, track survey completions through iframe domain monitoring, and collect detailed metadata.
+
+## Features
+
+- Custom CAPTCHA verification (JS-only solution, no paid services)
+- Behavior tracking for bot detection (mouse movements, keyboard events, etc.)
+- Trap questions to verify human respondents
+- Iframe domain monitoring for survey completion detection
+- Metadata collection (IP, browser, device, timing, etc.)
+- VPN/Proxy detection
+- Survey outcome tracking (completed, quota full, disqualified)
 
 ## Architecture
 
 This application uses AWS Amplify Gen 2 with the following components:
 
 - **Backend:** AWS AppSync GraphQL API with DynamoDB
-- **Authentication:** Amazon Cognito User Pools
+- **Authentication:** Amazon Cognito User Pools (for admin access only)
 - **Frontend:** Next.js with React
+- **Security:** Custom bot detection, CAPTCHA, and metadata collection
 
 ## Prerequisites
 
@@ -46,10 +57,23 @@ This application uses AWS Amplify Gen 2 with the following components:
   - `data/` - GraphQL schema and data models
 - `src/`
   - `components/` - Reusable React components
+    - `BehaviorTracker.tsx` - Tracks user behavior for bot detection
+    - `CustomCaptcha.tsx` - JS-only CAPTCHA solution with multiple difficulty levels
+    - `IframeMonitor.tsx` - Monitors iframe domain changes to detect survey completion
+    - `SurveyFlow.tsx` - Manages the complete survey flow
+    - `TrapQuestion.tsx` - Presents trap questions to verify human respondents
   - `lib/` - Utility functions and services
+    - `metadata.ts` - Utilities for collecting user metadata
+    - `security-service.ts` - Security-related utilities
+    - `use-domain.ts` - Domain monitoring and utilities
+    - `vpn-detection.ts` - VPN and proxy detection
   - `pages/` - Next.js pages
     - `admin/` - Admin dashboard
     - `api/` - API routes
+      - `links/` - Survey link management API endpoints
+      - `verify/` - Verification API endpoints
+    - `completion/` - Survey completion handling
+    - `s/` - Survey entry points
     - `survey/` - Survey pages
   - `styles/` - CSS styles
   - `types/` - TypeScript type definitions
@@ -123,12 +147,84 @@ Run the API test script:
 npm run test-api
 ```
 
+## Testing with Amplify Sandbox
+
+The Amplify Sandbox provides a local development environment that simulates AWS services without deploying to the cloud.
+
+### Setting up the sandbox
+
+```bash
+npx ampx sandbox
+```
+
+This command:
+1. Creates a local DynamoDB instance
+2. Sets up local authentication
+3. Creates a local AppSync API endpoint
+
+### Testing the Survey Flow
+
+1. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+2. Access the admin interface (http://localhost:3000/admin)
+3. Create a test project with a survey URL
+4. Generate test links
+5. Open a survey link in a new browser tab or incognito window
+6. Complete the CAPTCHA, trap questions, and view the survey
+7. To test survey completion, modify the URL to include `/completion/[projectId]/[uid]` which simulates survey completion
+
+### Testing Bot Detection
+
+The application uses multiple layers of bot detection:
+
+1. **Behavioral Analysis:**
+   - Open the browser console to see behavior tracking logs
+   - Test with unusual mouse movements or rapid keyboard inputs
+   - Try copying and pasting text to trigger detection
+
+2. **Verification Challenges:**
+   - Test different CAPTCHA difficulty levels
+   - Try incorrect answers to trap questions
+   - Test mid-survey verification 
+
+3. **Domain Monitoring:**
+   - Use browser developer tools to inspect the iframe monitoring
+   - Test by manually navigating to completion URLs
+   - Verify status updates in the database
+
 ## Troubleshooting
 
-### General Issues
-- **Deployment Issues**: Run the precheck script first: `npm run precheck`
-- **Auth Issues**: Check Cognito configuration in `amplify/auth/resource.ts`
-- **API Issues**: Verify that environment variables are set correctly
+### Common Issues
+
+1. **Authentication Issues:**
+   - Verify Cognito User Pool is configured correctly
+   - Check your local environment variables
+   - Run `npx ampx auth rebuild` to reset local authentication
+
+2. **API Errors:**
+   - Run `npx ampx status` to check deployment status
+   - Verify API key permissions
+   - Check GraphQL schema for errors with `npx ampx data validate`
+
+3. **Iframe Not Loading:**
+   - Check browser console for CORS errors
+   - Verify the survey URL is accessible
+   - Test with a simple HTML page as the survey URL
+
+4. **Bot Detection Too Strict:**
+   - Adjust sensitivity thresholds in `BehaviorTracker.tsx`
+   - Modify CAPTCHA difficulty in the admin settings
+   - Check VPN detection settings
+
+### Logs and Debugging
+
+- Server-side logs: Check your terminal running the Next.js server
+- Client-side logs: Browser console
+- Amplify logs: `npx ampx logs`
+- Database inspection: `npx ampx data db:inspect`
 
 ### CDK Asset Publishing Errors
 

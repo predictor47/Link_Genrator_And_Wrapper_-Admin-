@@ -184,14 +184,30 @@ export async function getServerSideProps(context: any) {
         }
       };
     }
-    
-    // Get vendor code if applicable
+      // Get vendor code if applicable
     let vendorCode = null;
     if (surveyLink.vendorId) {
       const vendorResult = await amplifyDataService.vendors.get(surveyLink.vendorId);
-      vendorCode = vendorResult.data?.code || null;
+      if (vendorResult?.data?.settings) {
+        try {
+          const settings = JSON.parse(vendorResult.data.settings as string);
+          vendorCode = settings.code || null;
+        } catch (e) {
+          console.error('Error parsing vendor settings:', e);
+        }
+      }
     }
-    
+      // Extract originalUrl from metadata
+    let originalUrl = '';
+    if (surveyLink.metadata) {
+      try {
+        const metadata = JSON.parse(surveyLink.metadata as string);
+        originalUrl = metadata.originalUrl || '';
+      } catch (e) {
+        console.error('Error parsing link metadata:', e);
+      }
+    }
+
     return {
       props: {
         project: {
@@ -201,7 +217,7 @@ export async function getServerSideProps(context: any) {
         surveyLink: {
           uid: surveyLink.uid,
           status: surveyLink.status || 'PENDING',
-          originalUrl: surveyLink.originalUrl,
+          originalUrl,
           vendorCode
         },
         error: null

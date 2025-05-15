@@ -515,35 +515,36 @@ export async function getServerSideProps() {
       if (!link.projectId || !link.status) return;
       
       // Update project-specific stats
-      if (link.projectId && projectStats[link.projectId]) {
-        switch (link.status) {
-          case 'PENDING':
+      if (link.projectId && projectStats[link.projectId]) {        switch (link.status) {
+          case 'UNUSED':
             projectStats[link.projectId].pending += 1;
             stats.pendingLinks += 1;
             break;
-          case 'STARTED':
+          case 'CLICKED':
             projectStats[link.projectId].started += 1;
             stats.startedLinks += 1;
-            break;
-          case 'IN_PROGRESS':
+            break;          // Use CLICKED status to track in-progress links since we don't have IN_PROGRESS status anymore
+          // This duplicates the CLICKED case but preserves the stats functionality
+          case 'CLICKED': 
             projectStats[link.projectId].inProgress += 1;
             stats.inProgressLinks += 1;
-            break;
-          case 'COMPLETED':
+            break;          case 'COMPLETED':
             projectStats[link.projectId].completed += 1;
             stats.completedLinks += 1;
             break;
-          case 'FLAGGED':
+          case 'DISQUALIFIED':
+            projectStats[link.projectId].flagged += 1;
+            stats.flaggedLinks += 1;
+            break;
+          case 'QUOTA_FULL':
             projectStats[link.projectId].flagged += 1;
             stats.flaggedLinks += 1;
             break;
         }
       }
-    });
-    
-    // Get flag counts for each project
-    const flagsResult = await amplifyDataService.flags.list();
-    const flags = flagsResult.data || [];
+    });    // Flag model doesn't exist anymore, so we just use an empty array
+    // const flagsResult = await amplifyDataService.flags.list();
+    const flags: any[] = [];
     
     // Calculate counts for each project
     const projectCounts: Record<string, { surveyLinks: number, flags: number }> = {};

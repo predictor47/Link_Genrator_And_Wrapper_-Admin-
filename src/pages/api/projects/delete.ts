@@ -23,41 +23,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         success: false, 
         message: 'Project not found' 
       });
-    }
-
-    // With Amplify, we need to delete related records first to avoid foreign key constraint issues
+    }    // With Amplify, we need to delete related records first to avoid foreign key constraint issues
     
-    // Get all flags associated with the project and delete them
-    const flagsResult = await amplifyDataService.flags.list({
-      filter: { projectId: { eq: id } }
-    });
-    
-    if (flagsResult.data && flagsResult.data.length > 0) {
-      const flagDeletions = flagsResult.data.map(flag => {
-        if (flag && flag.id) {
-          return amplifyDataService.flags.delete(flag.id);
-        }
-        return Promise.resolve();
-      }).filter(Boolean);
-      
-      await Promise.all(flagDeletions);
-    }
-
-    // Get all responses associated with the project and delete them
-    const responsesResult = await amplifyDataService.responses.list({
-      filter: { projectId: { eq: id } }
-    });
-    
-    if (responsesResult.data && responsesResult.data.length > 0) {
-      const responseDeletions = responsesResult.data.map(response => {
-        if (response && response.id) {
-          return amplifyDataService.responses.delete(response.id);
-        }
-        return Promise.resolve();
-      }).filter(Boolean);
-      
-      await Promise.all(responseDeletions);
-    }
+    // Note: Flags and responses are now stored in the SurveyLink metadata fields
+    // so we don't need to delete them separately
 
     // Get all questions associated with the project and delete them
     const questionsResult = await amplifyDataService.questions.list({

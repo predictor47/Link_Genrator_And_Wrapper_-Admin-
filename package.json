@@ -7,8 +7,9 @@
     "amplify-deploy"
   ],
   "engines": {
-    "node": ">=22.15.0"
-  },  "scripts": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -32,6 +33,7 @@
     "@aws-amplify/ui-react": "^6.11.1",
     "@aws-sdk/client-cognito-identity-provider": "^3.797.0",
     "@aws-sdk/client-dynamodb": "^3.797.0",
+    "@fingerprintjs/fingerprintjs": "^4.2.1",
     "@hcaptcha/react-hcaptcha": "^1.12.0",
     "@modelcontextprotocol/sdk": "^1.11.2",
     "@types/node": "^20.11.30",
@@ -42,7 +44,6 @@
     "aws-amplify": "^6.14.3",
     "axios": "^1.6.8",
     "chart.js": "^4.4.9",
-    "fingerprintjs": "^0.5.3",
     "hcaptcha": "^0.1.1",
     "jsonwebtoken": "^9.0.2",
     "jwt-decode": "^4.0.0",
@@ -60,7 +61,6 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@types/jwt-decode": "^2.2.1",
     "@types/node-fetch": "^2.6.12",
     "@types/uuid": "^9.0.8",
     "eslint": "^8.57.0",
