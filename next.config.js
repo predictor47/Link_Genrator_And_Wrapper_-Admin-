@@ -1,5 +1,14 @@
 /** @type {import('next').NextConfig} */
 
+// Load Amplify environment variables if we're in a build environment
+if (process.env.NODE_ENV === 'production') {
+  try {
+    require('./amplify-env.js');
+  } catch (e) {
+    console.warn('Failed to load amplify-env.js:', e);
+  }
+}
+
 // Domain configuration
 const MAIN_DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
 const ADMIN_DOMAIN = process.env.NEXT_PUBLIC_ADMIN_DOMAIN || `admin.${MAIN_DOMAIN}`;
