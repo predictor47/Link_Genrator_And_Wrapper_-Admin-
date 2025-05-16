@@ -15,12 +15,15 @@ const PUBLIC_PATHS = [
   '/',
   '/favicon.ico',
   '/_next/',  // Next.js static assets
+  '/api/',    // API routes
+  '/assets/', // Static assets
   '/s/',       // Short link route (public-facing)
   '/survey/',  // Survey link route (public-facing)
   '/completion/', // Completion route (public-facing)
   '/sorry-quota-full',
   '/sorry-disqualified',
-  '/thank-you-completed'
+  '/thank-you-completed',
+  '/amplify_outputs.json' // Allow access to amplify outputs for configuration
 ];
 
 // Domain configuration

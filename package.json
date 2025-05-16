@@ -8,8 +8,7 @@
   ],
   "engines": {
     "node": ">=18.0.0"
-  },
-  "scripts": {
+  },  "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -18,6 +17,7 @@
     "create-admin": "node scripts/create-admin-user.js",
     "deploy": "npx ampx deploy --force",
     "deploy:sandbox": "npx ampx sandbox",
+    "check-routing": "node scripts/check-routing.js",
     "test-api": "node test-api.js",
     "validate-api": "node scripts/validate-api.js",
     "validate-api-node": "node scripts/validate-api-node.js",

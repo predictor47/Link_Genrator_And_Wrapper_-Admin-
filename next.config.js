@@ -28,8 +28,7 @@ const nextConfig = {
   images: {
     domains: [MAIN_DOMAIN, ADMIN_DOMAIN, 'localhost'],
   },
-  
-  // Handle redirects
+    // Handle redirects
   async redirects() {
     const redirects = [
       // Redirect root on admin domain to /admin directly
@@ -43,6 +42,12 @@ const nextConfig = {
             value: ADMIN_DOMAIN,
           },
         ],
+      },
+      // Add explicit redirect for /admin/login to ensure it works
+      {
+        source: '/admin/login',
+        destination: '/admin/login',
+        permanent: false,
       },
       // Redirect default survey routes to the main domain
       {

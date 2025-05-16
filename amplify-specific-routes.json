@@ -1,0 +1,47 @@
+[
+  {
+    "source": "/admin",
+    "target": "/admin/index.html",
+    "status": "200"
+  },
+  {
+    "source": "/admin/login",
+    "target": "/admin/login.html",
+    "status": "200"
+  },
+  {
+    "source": "/admin/signup",
+    "target": "/admin/signup.html",
+    "status": "200"
+  },
+  {
+    "source": "/admin/verify",
+    "target": "/admin/verify.html",
+    "status": "200"
+  },
+  {
+    "source": "/admin/projects",
+    "target": "/admin/projects/index.html",
+    "status": "200"
+  },
+  {
+    "source": "/admin/projects/new",
+    "target": "/admin/projects/new.html",
+    "status": "200"
+  },
+  {
+    "source": "/s/<*>",
+    "target": "/s/[...slug].html",
+    "status": "200"
+  },
+  {
+    "source": "/survey/<*>",
+    "target": "/survey/[...slug].html",
+    "status": "200"
+  },
+  {
+    "source": "/<*>",
+    "target": "/index.html",
+    "status": "404"
+  }
+]

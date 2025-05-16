@@ -14,6 +14,32 @@ frontend:
     build:
       commands:
         - npm run build
+  customHeaders:
+    - pattern: '**/*'
+      headers:
+        - key: 'Strict-Transport-Security'
+          value: 'max-age=31536000; includeSubDomains'
+        - key: 'X-Frame-Options'
+          value: 'SAMEORIGIN'
+        - key: 'X-XSS-Protection'
+          value: '1; mode=block'
+        - key: 'X-Content-Type-Options'
+          value: 'nosniff'
+        - key: 'Content-Security-Policy'
+          value: "default-src 'self'; connect-src 'self' https://*.amazonaws.com https://*.amplifyapp.com https://*.execute-api.*.amazonaws.com https://*.appsync-api.*.amazonaws.com wss://*.appsync-realtime-api.*.amazonaws.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;"
+  rewrites:
+    - source: </^\/admin\/?>$/
+      target: /admin/index.html
+      status: '200'
+    - source: </^\/admin\/login\/?.*$/
+      target: /admin/login/index.html
+      status: '200'
+    - source: </^\/admin\/.*$/
+      target: /admin/[...path].html
+      status: '200'
+    - source: '/<*>'
+      target: /index.html
+      status: '404'
   artifacts:
     baseDirectory: .next
     files:
