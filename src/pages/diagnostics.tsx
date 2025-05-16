@@ -15,7 +15,10 @@ export default function DiagnosticPage() {
     userPoolId: amplifyConfig?.Auth?.Cognito?.userPoolId || 'not-found',
     apiEndpoint: amplifyConfig?.API?.GraphQL?.endpoint || 'not-found',
     headers: {},
-    cookies: {}
+    cookies: {},
+    redirectHistory: [],
+    middlewareChecks: 0,
+    isAdminDomain: false
   });
 
   useEffect(() => {
@@ -26,6 +29,10 @@ export default function DiagnosticPage() {
       if (key) headers[key] = value || 'empty';
     });
 
+    // Add additional diagnostics
+    const redirectCount = sessionStorage.getItem('redirect_count') || '0';
+    const redirectHistory = JSON.parse(sessionStorage.getItem('redirect_history') || '[]');
+    
     setDiagnostics(prev => ({
       ...prev,
       domain: window.location.hostname,
@@ -34,7 +41,10 @@ export default function DiagnosticPage() {
       cookies: parseCookies(),
       amplifyConfigured: !!amplifyConfig,
       authConfigured: !!(amplifyConfig?.Auth?.Cognito?.userPoolId),
-      apiConfigured: !!(amplifyConfig?.API?.GraphQL?.endpoint)
+      apiConfigured: !!(amplifyConfig?.API?.GraphQL?.endpoint),
+      middlewareChecks: parseInt(redirectCount, 10),
+      redirectHistory,
+      isAdminDomain: window.location.hostname.startsWith('admin.')
     }));
   }, []);
   
@@ -98,6 +108,21 @@ export default function DiagnosticPage() {
           <h2 className="text-xl font-semibold mb-3">Cookie Information</h2>
           <pre className="bg-gray-100 p-3 rounded overflow-auto max-h-60">
             {JSON.stringify(diagnostics.cookies, null, 2)}
+          </pre>
+        </div>
+        
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-3">Redirect Information</h2>
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="font-medium">Is Admin Domain:</div>
+            <div>{diagnostics.isAdminDomain ? 'Yes' : 'No'}</div>
+            <div className="font-medium">Middleware Check Count:</div>
+            <div>{diagnostics.middlewareChecks}</div>
+          </div>
+          
+          <h3 className="text-lg font-medium mb-2">Redirect History:</h3>
+          <pre className="bg-gray-100 p-3 rounded overflow-auto max-h-60">
+            {JSON.stringify(diagnostics.redirectHistory, null, 2)}
           </pre>
         </div>
       </div>

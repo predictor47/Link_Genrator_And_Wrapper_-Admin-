@@ -4,6 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { AuthService } from '@/lib/auth-service';
 import { configureAmplify } from '@/lib/amplify-config';
+import { useAuth } from '@/lib/auth'; // Import useAuth
 
 // Initialize Amplify
 configureAmplify();
@@ -14,11 +15,10 @@ const ADMIN_DOMAIN = process.env.NEXT_PUBLIC_ADMIN_DOMAIN || `admin.${DOMAIN}`;
 
 export default function LoginPage() {
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth(); // Get isAuthenticated and isLoading from useAuth
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { redirect } = router.query;
 
   // Check if user is already authenticated
@@ -26,7 +26,6 @@ export default function LoginPage() {
     const checkAuth = async () => {
       try {
         const authenticated = await AuthService.isAuthenticated();
-        setIsAuthenticated(authenticated);
         
         if (authenticated) {
           router.replace(typeof redirect === 'string' ? redirect : '/admin');
@@ -57,7 +56,6 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
     
     try {
@@ -67,28 +65,17 @@ export default function LoginPage() {
       router.push(typeof redirect === 'string' ? redirect : '/admin');
     } catch (error: any) {
       setError(error.message || 'Failed to sign in. Please check your credentials.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // If already authenticated, show loading state
-  if (isAuthenticated) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100">
-        <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold">Already logged in</h2>
-            <p className="mt-2 text-gray-600">Redirecting to admin dashboard...</p>
-          </div>
-          <div className="flex justify-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // Redirect to admin dashboard if already authenticated
+  useEffect(() => {
+    // Only redirect if authenticated and not already redirecting
+    if (isAuthenticated && !isLoading && !router.query.redirect) {
+      router.push('/admin');
+    }
+  }, [isAuthenticated, isLoading, router]);
+  
   return (
     <>
       <Head>
