@@ -49,6 +49,31 @@ This guide covers common issues you might encounter when deploying and running t
 1. Ensure user is properly signed in through Cognito
 2. Check if the user has the required permissions
 3. Try signing out and signing back in
+
+### Issue: Redirect Loop ("ERR_TOO_MANY_REDIRECTS") on Admin Login
+
+**Possible causes:**
+- Invalid authentication cookies
+- Cookie domain issues between main domain and admin subdomain
+- Session token storage issues in Amplify
+- Auth middleware redirect configuration issues
+
+**Quick Solution:**
+1. Visit https://admin.protegeresearchsurvey.com/diagnostics
+2. Click "Clear Auth Cookies" button
+3. Click "Go to Login Page"
+4. Try to log in again
+
+**Manual Fix:**
+1. Open browser developer tools (F12)
+2. Go to Application tab → Storage → Cookies
+3. Delete all cookies related to protegeresearchsurvey.com
+4. Reload the page
+
+**For Developers:**
+- Check middleware.ts for redirect logic issues
+- Verify Auth token storage in amplify-config.ts
+- Use cookie-manager.ts utilities to debug cookie issues
 4. Check console for auth-related errors
 
 ## Deployment Issues

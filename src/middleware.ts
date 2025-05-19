@@ -2,6 +2,16 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtDecode } from 'jwt-decode';
 
+// Next.js automatically inlines environment variables for Edge Runtime
+// For development type safety, declare the global process
+declare const process: {
+  env: {
+    NODE_ENV: 'development' | 'production' | 'test';
+    NEXT_PUBLIC_DOMAIN?: string;
+    NEXT_PUBLIC_ADMIN_DOMAIN?: string;
+  }
+};
+
 // Define admin paths that need protection
 const ADMIN_PATHS = ['/admin'];
 
@@ -15,6 +25,7 @@ const PUBLIC_PATHS = [
   '/',
   '/favicon.ico',
   '/_next/',  // Next.js static assets
+  '/public/',  // Public assets
   '/api/',    // API routes
   '/assets/', // Static assets
   '/s/',       // Short link route (public-facing)
@@ -23,6 +34,7 @@ const PUBLIC_PATHS = [
   '/sorry-quota-full',
   '/sorry-disqualified',
   '/thank-you-completed',
+  '/diagnostics',
   '/amplify_outputs.json' // Allow access to amplify outputs for configuration
 ];
 
@@ -112,7 +124,7 @@ function validateToken(token: string): boolean {
       console.log('Development mode: Simplified token validation');
       return true;
     }
-      // In production, check the exact issuer
+    // In production, check the exact issuer
     if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test') {
       if (decodedToken.iss !== `https://cognito-idp.us-east-1.amazonaws.com/${COGNITO_USER_POOL_ID}`) {
         console.log('Token issuer mismatch');
@@ -137,13 +149,13 @@ function isPublicPath(pathname: string): boolean {
     return true;
   }
   
-  // Check auth routes first since they must remain accessible
+  // Always allow access to authentication and public routes
   const authRoutes = ['/admin/login', '/admin/signup', '/admin/verify', '/admin/forgot-password'];
   if (authRoutes.some(route => pathname === route)) {
     return true;
   }
   
-  // Check path prefixes
+  // Check path prefixes for static assets and public paths
   return PUBLIC_PATHS.some(publicPath => 
     pathname.startsWith(publicPath) && 
     // Ensure we don't accidentally match admin paths that should be protected
@@ -160,6 +172,9 @@ function isAdminRoute(pathname: string): boolean {
   // Admin routes start with /admin, but exclude login-related routes to prevent loops
   return pathname.startsWith('/admin') && 
     !pathname.includes('/admin/login') && 
+    !pathname.includes('/admin/signup') &&
+    !pathname.includes('/admin/verify') &&
+    !pathname.includes('/admin/forgot-password') &&
     !pathname.includes('/api/auth');
 }
 
@@ -168,46 +183,121 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get('host') || '';
   
-  // Special case for diagnostics page - always allow access
+  // Always allow access to diagnostics page - useful for debugging
   if (pathname === '/diagnostics') {
+    console.log('Allowing access to diagnostics page');
     return NextResponse.next();
   }
   
   // Check if we're on the admin domain
-  const isAdminDomain = hostname.startsWith('admin.');
+  const isAdminDomain = hostname.startsWith('admin.') || hostname === 'admin.protegeresearchsurvey.com';
   
   // Log request details to help debug
   console.log(`Middleware processing: ${pathname} on host: ${hostname}`);
   
-  // If we're on admin domain
-  if (isAdminDomain) {
-    console.log('Admin domain detected');
-    
-    // Handle login page specifically - always allow access
-    if (pathname.includes('/login') || pathname === '/') {
-      console.log('Auth route detected: allowing access to login');
-      return NextResponse.next();
-    }
-    
-    // Other admin routes need authentication
-    if (isAdminRoute(pathname)) {
-      console.log('Protected admin route - checking auth');
-      
-      // Check token - add token validation logic here
-      // ...
-      
-      // For now, just continue
-      return NextResponse.next();
-    }
-    
-    // Prevent access to non-admin routes on admin domain
-    if (!pathname.startsWith('/admin') && !pathname.startsWith('/api')) {
-      console.log('Redirecting to admin route');
-      return NextResponse.redirect(new URL('/admin', request.url));
-    }
+  // Add redirect count to help debug redirect loops
+  const redirectCount = request.cookies.get('redirect_count');
+  let count = redirectCount ? parseInt(redirectCount.value, 10) : 0;
+  count++;
+  
+  // Always clear redirect count cookie for login routes
+  if (pathname === '/admin/login') {
+    const response = NextResponse.next();
+    response.cookies.set('redirect_count', '0', {
+      maxAge: 60 * 60 * 24, // 24 hours
+      path: '/',
+    });
+    console.log('On login page, resetting redirect count');
+    return response;
   }
   
-  return NextResponse.next();
+  // If count gets too high, we're probably in a loop - allow the request through
+  if (count > 5) {
+    console.log('Detected potential redirect loop (count: ' + count + ') - allowing request');
+    const response = NextResponse.next();
+    response.cookies.set('redirect_count', '0', {
+      maxAge: 60 * 60 * 24, // 24 hours
+      path: '/',
+    });
+    return response;
+  }
+  
+  // Store the updated redirect count
+  const response = NextResponse.next();
+  response.cookies.set('redirect_count', count.toString(), {
+    maxAge: 60 * 60 * 24, // 24 hours
+    path: '/',
+  });
+  
+  // Handle public paths - no auth needed
+  if (isPublicPath(pathname)) {
+    console.log(`Public path detected [${pathname}]: allowing access`);
+    return applySecurityHeaders(response, false);
+  }
+  
+  // If we're on admin domain and this isn't an admin route,
+  // redirect to admin dashboard (except for API routes)
+  if (isAdminDomain && !pathname.startsWith('/admin') && !pathname.startsWith('/api')) {
+    console.log('Non-admin path on admin domain - redirecting to admin');
+    const url = new URL('/admin', request.url);
+    const redirectResponse = NextResponse.redirect(url);
+    return applySecurityHeaders(redirectResponse, true);
+  }
+  
+  // If this is an admin route on the admin domain, we need to check authentication
+  if (isAdminDomain && isAdminRoute(pathname)) {
+    console.log('Protected admin route - checking auth');
+    
+    // Check for authentication token in cookies
+    const authCookie = request.cookies.get('idToken')?.value;
+    const accessToken = request.cookies.get('accessToken')?.value;
+    
+    // If no token found, redirect to login
+    if (!authCookie && !accessToken) {
+      console.log('No auth token found - redirecting to login');
+      
+      // Redirect to login page with return URL
+      const url = new URL('/admin/login', request.url);
+      url.searchParams.set('redirect', pathname);
+      
+      const redirectResponse = NextResponse.redirect(url);
+      
+      // Update redirect count
+      redirectResponse.cookies.set('redirect_count', count.toString(), {
+        maxAge: 60 * 60 * 24, // 24 hours
+        path: '/',
+      });
+      
+      return applySecurityHeaders(redirectResponse, true);
+    }
+
+    // Use the first available token
+    const token = authCookie || accessToken || '';
+    
+    // If token is invalid or empty, redirect to login
+    if (!token || !validateToken(token)) {
+      console.log('Invalid token - redirecting to login');
+      
+      // Redirect to login page with return URL
+      const url = new URL('/admin/login', request.url);
+      url.searchParams.set('redirect', pathname);
+      
+      const redirectResponse = NextResponse.redirect(url);
+      
+      // Clear invalid token
+      redirectResponse.cookies.delete('idToken');
+      redirectResponse.cookies.delete('accessToken');
+      
+      return applySecurityHeaders(redirectResponse, true);
+    }
+    
+    // Token is valid, allow access to admin routes
+    console.log('Valid token found - allowing admin access');
+    return applySecurityHeaders(response, true);
+  }
+  
+  // Default: apply security headers and continue
+  return applySecurityHeaders(response, pathname.startsWith('/admin'));
 }
 
 // Configure matchers to run middleware on all paths

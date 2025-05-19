@@ -8,7 +8,8 @@
   ],
   "engines": {
     "node": ">=18.0.0"
-  },  "scripts": {
+  },
+  "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -36,7 +37,6 @@
     "@fingerprintjs/fingerprintjs": "^4.2.1",
     "@hcaptcha/react-hcaptcha": "^1.12.0",
     "@modelcontextprotocol/sdk": "^1.11.2",
-    "@types/node": "^20.11.30",
     "@types/papaparse": "^5.3.15",
     "@types/react": "^18.2.67",
     "@types/react-dom": "^18.2.22",
@@ -61,6 +61,7 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@types/node": "^22.15.19",
     "@types/node-fetch": "^2.6.12",
     "@types/uuid": "^9.0.8",
     "eslint": "^8.57.0",

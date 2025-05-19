@@ -1,0 +1,209 @@
+2025-05-16T12:09:58.676Z [INFO]: # Cloning repository: git@github.com:predictor47/Link_Genrator_And_Wrapper_-Admin-.git
+2025-05-16T12:10:04.975Z [INFO]: 
+2025-05-16T12:10:05.060Z [INFO]: Cloning into 'Link_Genrator_And_Wrapper_-Admin-'...
+2025-05-16T12:10:05.060Z [INFO]: # Switching to commit: fa9850cd322fb955a1106c63e7529ee16756e902
+2025-05-16T12:10:05.630Z [INFO]: Note: switching to 'fa9850cd322fb955a1106c63e7529ee16756e902'.
+                                 You are in 'detached HEAD' state. You can look around, make experimental
+                                 changes and commit them, and you can discard any commits you make in this
+                                 state without impacting any branches by switching back to a branch.
+                                 If you want to create a new branch to retain commits you create, you may
+                                 do so (now or later) by using -c with the switch command. Example:
+                                 git switch -c <new-branch-name>
+                                 Or undo this operation with:
+                                 git switch -
+                                 Turn off this advice by setting config variable advice.detachedHead to false
+                                 HEAD is now at fa9850c Refactor authentication and diagnostics logic
+2025-05-16T12:10:05.702Z [INFO]: Successfully cleaned up Git credentials
+2025-05-16T12:10:05.702Z [INFO]: # Checking for Git submodules at: /codebuild/output/src3705587047/src/Link_Genrator_And_Wrapper_-Admin-/.gitmodules
+2025-05-16T12:10:05.713Z [INFO]: # Retrieving environment cache...
+2025-05-16T12:10:05.787Z [INFO]: # Retrieved environment cache
+2025-05-16T12:10:05.787Z [INFO]: ---- Setting Up SSM Secrets ----
+2025-05-16T12:10:05.788Z [INFO]: SSM params {"Path":"/amplify/d2y35v4er719de/main/","WithDecryption":true}
+2025-05-16T12:10:06.510Z [INFO]: # No package override configuration found.
+2025-05-16T12:10:06.516Z [INFO]: # Retrieving cache...
+2025-05-16T12:10:30.158Z [INFO]: # Extracting cache...
+2025-05-16T12:11:12.240Z [INFO]: # Extraction completed
+2025-05-16T12:11:12.490Z [INFO]: # Retrieved cache
+2025-05-16T12:11:16.089Z [INFO]: ## Starting Backend Build
+                                 # Starting phase: build
+                                 # Executing command: npm ci
+2025-05-16T12:11:37.897Z [WARNING]: npm warn EBADENGINE Unsupported engine {
+                                    npm warn EBADENGINE   package: 'glob@11.0.2',
+                                    npm warn EBADENGINE   required: { node: '20 || >=22' },
+                                    npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+                                    npm warn EBADENGINE }
+2025-05-16T12:11:37.903Z [WARNING]: npm warn EBADENGINE Unsupported engine {
+                                    npm warn EBADENGINE   package: 'jackspeak@4.1.0',
+                                    npm warn EBADENGINE   required: { node: '20 || >=22' },
+                                    npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+                                    npm warn EBADENGINE }
+                                    npm warn EBADENGINE Unsupported engine {
+                                    npm warn EBADENGINE   package: 'lru-cache@11.1.0',
+                                    npm warn EBADENGINE   required: { node: '20 || >=22' },
+                                    npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+                                    npm warn EBADENGINE }
+                                    npm warn EBADENGINE Unsupported engine {
+                                    npm warn EBADENGINE   package: 'minimatch@10.0.1',
+                                    npm warn EBADENGINE   required: { node: '20 || >=22' },
+                                    npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+                                    npm warn EBADENGINE }
+                                    npm warn EBADENGINE Unsupported engine {
+                                    npm warn EBADENGINE   package: 'path-scurry@2.0.0',
+                                    npm warn EBADENGINE   required: { node: '20 || >=22' },
+                                    npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+                                    npm warn EBADENGINE }
+                                    npm warn EBADENGINE Unsupported engine {
+                                    npm warn EBADENGINE   package: 'glob@11.0.2',
+                                    npm warn EBADENGINE   required: { node: '20 || >=22' },
+                                    npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+                                    npm warn EBADENGINE }
+                                    npm warn EBADENGINE Unsupported engine {
+                                    npm warn EBADENGINE   package: 'jackspeak@4.1.0',
+                                    npm warn EBADENGINE   required: { node: '20 || >=22' },
+                                    npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+                                    npm warn EBADENGINE }
+                                    npm warn EBADENGINE Unsupported engine {
+                                    npm warn EBADENGINE   package: 'lru-cache@11.1.0',
+                                    npm warn EBADENGINE   required: { node: '20 || >=22' },
+                                    npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+                                    npm warn EBADENGINE }
+                                    npm warn EBADENGINE Unsupported engine {
+                                    npm warn EBADENGINE   package: 'minimatch@10.0.1',
+                                    npm warn EBADENGINE   required: { node: '20 || >=22' },
+                                    npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+                                    npm warn EBADENGINE }
+                                    npm warn EBADENGINE Unsupported engine {
+                                    npm warn EBADENGINE   package: 'path-scurry@2.0.0',
+                                    npm warn EBADENGINE   required: { node: '20 || >=22' },
+                                    npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+                                    npm warn EBADENGINE }
+2025-05-16T12:11:37.913Z [WARNING]: npm warn EBADENGINE Unsupported engine {
+                                    npm warn EBADENGINE   package: 'glob@11.0.2',
+                                    npm warn EBADENGINE   required: { node: '20 || >=22' },
+                                    npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+                                    npm warn EBADENGINE }
+                                    npm warn EBADENGINE Unsupported engine {
+                                    npm warn EBADENGINE   package: 'jackspeak@4.1.0',
+                                    npm warn EBADENGINE   required: { node: '20 || >=22' },
+                                    npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+                                    npm warn EBADENGINE }
+                                    npm warn EBADENGINE Unsupported engine {
+                                    npm warn EBADENGINE   package: 'lru-cache@11.1.0',
+                                    npm warn EBADENGINE   required: { node: '20 || >=22' },
+                                    npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+                                    npm warn EBADENGINE }
+                                    npm warn EBADENGINE Unsupported engine {
+                                    npm warn EBADENGINE   package: 'minimatch@10.0.1',
+                                    npm warn EBADENGINE   required: { node: '20 || >=22' },
+                                    npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+                                    npm warn EBADENGINE }
+                                    npm warn EBADENGINE Unsupported engine {
+                                    npm warn EBADENGINE   package: 'path-scurry@2.0.0',
+                                    npm warn EBADENGINE   required: { node: '20 || >=22' },
+                                    npm warn EBADENGINE   current: { node: 'v18.20.8', npm: '10.8.2' }
+                                    npm warn EBADENGINE }
+2025-05-16T12:13:21.841Z [WARNING]: npm warn deprecated @babel/plugin-proposal-class-properties@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-class-properties instead.
+2025-05-16T12:13:22.614Z [WARNING]: npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+2025-05-16T12:13:23.647Z [WARNING]: npm warn deprecated @babel/plugin-proposal-object-rest-spread@7.20.7: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-object-rest-spread instead.
+2025-05-16T12:13:23.891Z [WARNING]: npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+2025-05-16T12:13:44.034Z [WARNING]: npm warn deprecated react-beautiful-dnd@13.1.1: react-beautiful-dnd is now deprecated. Context and options: https://github.com/atlassian/react-beautiful-dnd/issues/2672
+2025-05-16T12:13:50.011Z [WARNING]: npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+2025-05-16T12:14:11.052Z [INFO]: added 2327 packages, and audited 2997 packages in 3m
+2025-05-16T12:14:11.057Z [INFO]: 238 packages are looking for funding
+                                 run `npm fund` for details
+                                 found 0 vulnerabilities
+2025-05-16T12:14:11.096Z [INFO]: # Executing command: npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+2025-05-16T12:14:15.349Z [INFO]: 12:14:15 PM Synthesizing backend...
+2025-05-16T12:14:15.354Z [INFO]: 
+2025-05-16T12:14:16.549Z [WARNING]: Bundling asset amplify-d2y35v4er719de-main-branch-b51c249d7c/AmplifyBranchLinker/CustomResourceLambda/Code/Stage...
+2025-05-16T12:14:16.976Z [WARNING]: ...ea75666e99a95841b0b46d8ca5c22fa9657e58c42d073a-building/index.js  860.6kb
+                                    ⚡ Done in 61ms
+2025-05-16T12:14:18.372Z [INFO]: 12:14:18 PM ✔ Backend synthesized in 3.36 seconds
+2025-05-16T12:14:18.372Z [INFO]: 12:14:18 PM Running type checks...
+2025-05-16T12:14:24.690Z [INFO]: 12:14:24 PM ✔ Type checks completed in 6.31 seconds
+2025-05-16T12:14:24.694Z [INFO]: 
+2025-05-16T12:14:24.705Z [INFO]: 12:14:24 PM Building and publishing assets...
+2025-05-16T12:14:24.705Z [INFO]: 
+2025-05-16T12:14:26.781Z [INFO]: 12:14:26 PM ✔ Built and published assets
+2025-05-16T12:14:26.781Z [INFO]: 
+2025-05-16T12:14:40.244Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c | 0/4 | 12:14:38 PM | UPDATE_IN_PROGRESS | AWS::CloudFormation::Stack | amplify-d2y35v4er719de-main-branch-b51c249d7c User Initiated
+2025-05-16T12:14:44.525Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c | 0/4 | 12:14:42 PM | UPDATE_IN_PROGRESS | AWS::CloudFormation::Stack | auth.NestedStack/auth.NestedStackResource (auth179371D7)
+2025-05-16T12:14:44.530Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c | 1/4 | 12:14:43 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | auth.NestedStack/auth.NestedStackResource (auth179371D7)
+                                 amplify-d2y35v4er719de-main-branch-b51c249d7c | 1/4 | 12:14:44 PM | UPDATE_IN_PROGRESS | AWS::CloudFormation::Stack | data.NestedStack/data.NestedStackResource (data7552DF31)
+2025-05-16T12:14:46.719Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 1/4 | 12:14:44 PM | UPDATE_IN_PROGRESS | AWS::CloudFormation::Stack | amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 User Initiated
+2025-05-16T12:14:51.190Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 1/4 | 12:14:50 PM | UPDATE_IN_PROGRESS | AWS::CloudFormation::Stack | data/amplifyData/AmplifyTableManager.NestedStack/AmplifyTableManager.NestedStackResource (amplifyDataAmplifyTableManagerNestedStackAmplifyTableManagerNestedStackResource86290833)
+2025-05-16T12:14:51.194Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 1/4 | 12:14:50 PM | UPDATE_IN_PROGRESS | AWS::AppSync::ApiKey | data/amplifyData/GraphQLAPI/DefaultApiKey (amplifyDataGraphQLAPIDefaultApiKey1C8ED374)
+2025-05-16T12:14:53.858Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 2/4 | 12:14:51 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | data/amplifyData/AmplifyTableManager.NestedStack/AmplifyTableManager.NestedStackResource (amplifyDataAmplifyTableManagerNestedStackAmplifyTableManagerNestedStackResource86290833)
+2025-05-16T12:14:53.858Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 3/4 | 12:14:51 PM | UPDATE_COMPLETE | AWS::AppSync::ApiKey | data/amplifyData/GraphQLAPI/DefaultApiKey (amplifyDataGraphQLAPIDefaultApiKey1C8ED374)
+                                 amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 3/4 | 12:14:52 PM | UPDATE_IN_PROGRESS | AWS::CloudFormation::Stack | data/amplifyData/Vendor.NestedStack/Vendor.NestedStackResource (amplifyDataVendorNestedStackVendorNestedStackResource83158BCE)
+2025-05-16T12:14:53.858Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 3/4 | 12:14:52 PM | UPDATE_IN_PROGRESS | AWS::CloudFormation::Stack | data/amplifyData/Question.NestedStack/Question.NestedStackResource (amplifyDataQuestionNestedStackQuestionNestedStackResourceBA3FF7B9)
+2025-05-16T12:14:53.859Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 3/4 | 12:14:52 PM | UPDATE_IN_PROGRESS | AWS::CloudFormation::Stack | data/amplifyData/ProjectVendor.NestedStack/ProjectVendor.NestedStackResource (amplifyDataProjectVendorNestedStackProjectVendorNestedStackResourceC0E5353F)
+2025-05-16T12:14:53.859Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 3/4 | 12:14:52 PM | UPDATE_IN_PROGRESS | AWS::CloudFormation::Stack | data/amplifyData/Project.NestedStack/Project.NestedStackResource (amplifyDataProjectNestedStackProjectNestedStackResourceCF4E56E3)
+2025-05-16T12:14:53.859Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 3/4 | 12:14:52 PM | UPDATE_IN_PROGRESS | AWS::CloudFormation::Stack | data/amplifyData/SurveyLink.NestedStack/SurveyLink.NestedStackResource (amplifyDataSurveyLinkNestedStackSurveyLinkNestedStackResource60551951)
+2025-05-16T12:14:53.859Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 4/4 | 12:14:52 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | data/amplifyData/Project.NestedStack/Project.NestedStackResource (amplifyDataProjectNestedStackProjectNestedStackResourceCF4E56E3)
+2025-05-16T12:14:53.859Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 5/4 | 12:14:52 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | data/amplifyData/Question.NestedStack/Question.NestedStackResource (amplifyDataQuestionNestedStackQuestionNestedStackResourceBA3FF7B9)
+2025-05-16T12:14:53.859Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 6/4 | 12:14:52 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | data/amplifyData/Vendor.NestedStack/Vendor.NestedStackResource (amplifyDataVendorNestedStackVendorNestedStackResource83158BCE)
+2025-05-16T12:14:53.859Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 7/4 | 12:14:52 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | data/amplifyData/ProjectVendor.NestedStack/ProjectVendor.NestedStackResource (amplifyDataProjectVendorNestedStackProjectVendorNestedStackResourceC0E5353F)
+2025-05-16T12:14:53.860Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 8/4 | 12:14:52 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | data/amplifyData/SurveyLink.NestedStack/SurveyLink.NestedStackResource (amplifyDataSurveyLinkNestedStackSurveyLinkNestedStackResource60551951)
+2025-05-16T12:14:56.497Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 9/4 | 12:14:55 PM | UPDATE_COMPLETE_CLEANUP_IN_PROGRESS | AWS::CloudFormation::Stack | amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6
+2025-05-16T12:15:07.231Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c | 10/4 | 12:15:06 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | data.NestedStack/data.NestedStackResource (data7552DF31)
+2025-05-16T12:15:09.898Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c | 11/4 | 12:15:07 PM | UPDATE_COMPLETE_CLEANUP_IN_PROGRESS | AWS::CloudFormation::Stack | amplify-d2y35v4er719de-main-branch-b51c249d7c
+2025-05-16T12:15:12.522Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 10/4 | 12:15:10 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | data/amplifyData/Vendor.NestedStack/Vendor.NestedStackResource (amplifyDataVendorNestedStackVendorNestedStackResource83158BCE)
+2025-05-16T12:15:12.528Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 9/4 | 12:15:10 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | data/amplifyData/Question.NestedStack/Question.NestedStackResource (amplifyDataQuestionNestedStackQuestionNestedStackResourceBA3FF7B9)
+                                 amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 8/4 | 12:15:10 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | data/amplifyData/Project.NestedStack/Project.NestedStackResource (amplifyDataProjectNestedStackProjectNestedStackResourceCF4E56E3)
+                                 amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 7/4 | 12:15:10 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | data/amplifyData/SurveyLink.NestedStack/SurveyLink.NestedStackResource (amplifyDataSurveyLinkNestedStackSurveyLinkNestedStackResource60551951)
+                                 amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 6/4 | 12:15:10 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | data/amplifyData/ProjectVendor.NestedStack/ProjectVendor.NestedStackResource (amplifyDataProjectVendorNestedStackProjectVendorNestedStackResourceC0E5353F)
+                                 amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 5/4 | 12:15:10 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | data/amplifyData/AmplifyTableManager.NestedStack/AmplifyTableManager.NestedStackResource (amplifyDataAmplifyTableManagerNestedStackAmplifyTableManagerNestedStackResource86290833)
+                                 amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6 | 6/4 | 12:15:10 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | amplify-d2y35v4er719de-main-branch-b51c249d7c-data7552DF31-15AGGU8XDZPP6
+2025-05-16T12:15:20.972Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c | 5/4 | 12:15:19 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | data.NestedStack/data.NestedStackResource (data7552DF31)
+2025-05-16T12:15:20.976Z [INFO]: amplify-d2y35v4er719de-main-branch-b51c249d7c | 4/4 | 12:15:19 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | auth.NestedStack/auth.NestedStackResource (auth179371D7)
+                                 amplify-d2y35v4er719de-main-branch-b51c249d7c | 5/4 | 12:15:19 PM | UPDATE_COMPLETE | AWS::CloudFormation::Stack | amplify-d2y35v4er719de-main-branch-b51c249d7c
+2025-05-16T12:15:23.803Z [INFO]: 12:15:23 PM ✔ Deployment completed in 57.022 seconds
+2025-05-16T12:15:23.803Z [INFO]: 12:15:23 PM AppSync API endpoint = https://vth6pntotrhvfpxo2gwn3kzqry.appsync-api.us-east-1.amazonaws.com/graphql
+2025-05-16T12:15:24.187Z [INFO]: 12:15:24 PM File written: amplify_outputs.json
+2025-05-16T12:15:24.622Z [INFO]: # Completed phase: build
+                                 ## Completed Backend Build
+2025-05-16T12:15:24.625Z [INFO]: ## Starting Frontend Build
+                                 # Starting phase: preBuild
+2025-05-16T12:15:24.626Z [INFO]: # Executing command: nvm use 20
+2025-05-16T12:15:30.296Z [INFO]: Now using node v20.19.0 (npm v10.8.2)
+2025-05-16T12:15:30.301Z [INFO]: # Executing command: npm ci
+2025-05-16T12:16:42.058Z [WARNING]: npm warn deprecated @babel/plugin-proposal-class-properties@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-class-properties instead.
+2025-05-16T12:16:43.140Z [WARNING]: npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+2025-05-16T12:16:44.772Z [WARNING]: npm warn deprecated @babel/plugin-proposal-object-rest-spread@7.20.7: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-object-rest-spread instead.
+2025-05-16T12:16:49.175Z [WARNING]: npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+2025-05-16T12:16:56.651Z [WARNING]: npm warn deprecated react-beautiful-dnd@13.1.1: react-beautiful-dnd is now deprecated. Context and options: https://github.com/atlassian/react-beautiful-dnd/issues/2672
+2025-05-16T12:17:04.604Z [WARNING]: npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+2025-05-16T12:17:32.570Z [INFO]: added 2327 packages, and audited 2997 packages in 2m
+2025-05-16T12:17:32.575Z [INFO]: 238 packages are looking for funding
+                                 run `npm fund` for details
+                                 found 0 vulnerabilities
+2025-05-16T12:17:32.660Z [INFO]: # Completed phase: preBuild
+                                 # Starting phase: build
+                                 # Executing command: npm run build
+2025-05-16T12:17:32.777Z [INFO]: > survey-link-wrapper@0.1.0 build
+                                 > next build
+2025-05-16T12:17:33.375Z [INFO]: Found amplify_outputs.json at /codebuild/output/src3705587047/src/Link_Genrator_And_Wrapper_-Admin-/amplify_outputs.json
+2025-05-16T12:17:33.375Z [INFO]: Environment variables set from amplify_outputs.json
+2025-05-16T12:17:33.443Z [INFO]: ▲ Next.js 14.2.28
+2025-05-16T12:17:33.443Z [INFO]: - Environments: .env.local, .env
+2025-05-16T12:17:33.444Z [INFO]: Linting and checking validity of types ...
+2025-05-16T12:17:45.032Z [WARNING]: Failed to compile.
+2025-05-16T12:17:45.039Z [WARNING]: ./src/pages/admin/login.tsx:7:25
+                                    Type error: Cannot find module '@/lib/auth' or its corresponding type declarations.
+                                    [0m [90m  5 |[39m [36mimport[39m { [33mAuthService[39m } [36mfrom[39m [32m'@/lib/auth-service'[39m[33m;[39m[0m
+                                    [0m [90m  6 |[39m [36mimport[39m { configureAmplify } [36mfrom[39m [32m'@/lib/amplify-config'[39m[33m;[39m[0m
+                                    [0m[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { useAuth } [36mfrom[39m [32m'@/lib/auth'[39m[33m;[39m [90m// Import useAuth[39m[0m
+                                    [0m [90m    |[39m                         [31m[1m^[22m[39m[0m
+                                    [0m [90m  8 |[39m[0m
+                                    [0m [90m  9 |[39m [90m// Initialize Amplify[39m[0m
+                                    [0m [90m 10 |[39m configureAmplify()[33m;[39m[0m
+2025-05-16T12:17:45.083Z [WARNING]: Next.js build worker exited with code: 1 and signal: null
+2025-05-16T12:17:45.142Z [ERROR]: !!! Build failed
+2025-05-16T12:17:45.142Z [INFO]: Please read more about Amplify Hosting's support for SSR frameworks to find if your build failure is related to an unsupported feature: https://docs.aws.amazon.com/amplify/latest/userguide/amplify-ssr-framework-support.html. You may also find this troubleshooting guide useful: https://docs.aws.amazon.com/amplify/latest/userguide/troubleshooting-ssr-deployment.html
+2025-05-16T12:17:45.142Z [ERROR]: !!! Error: Command failed with exit code 1
+2025-05-16T12:17:45.142Z [INFO]: # Starting environment caching...
+2025-05-16T12:17:45.143Z [INFO]: # Uploading environment cache artifact...
+2025-05-16T12:17:45.242Z [INFO]: # Uploaded environment cache artifact
+2025-05-16T12:17:45.242Z [INFO]: # Environment caching completed
+

@@ -3,6 +3,23 @@ import { generateClient } from 'aws-amplify/data';
 // Fix import path to use relative path instead of alias
 import { Schema } from '../../amplify/data/resource';
 
+// Define process type for Next.js environment variables
+declare const process: {
+  env: {
+    NODE_ENV: 'development' | 'production' | 'test';
+    NEXT_PUBLIC_DOMAIN?: string;
+    NEXT_PUBLIC_ADMIN_DOMAIN?: string;
+    NEXT_PUBLIC_AUTH_USER_POOL_ID?: string;
+    NEXT_PUBLIC_AUTH_REGION?: string;
+    NEXT_PUBLIC_API_REGION?: string;
+    NEXT_PUBLIC_AUTH_USER_POOL_CLIENT_ID?: string;
+    NEXT_PUBLIC_AUTH_IDENTITY_POOL_ID?: string;
+    NEXT_PUBLIC_API_ENDPOINT?: string;
+    NEXT_PUBLIC_AMPLIFY_API_KEY?: string;
+  };
+  cwd(): string;
+};
+
 // Environment detection (for logging purposes)
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
@@ -80,15 +97,38 @@ export function configureAmplify() {
         return;
       }
 
-      // For production, try to load the amplify_outputs.json
+      // For production, try to load the amplify_outputs.json or use environment variables
       try {
-        // In browser context, we need to use a webpack-compatible require
-        const amplifyOutputsPath = require.resolve('../../amplify_outputs.json');
-        const outputs = require(amplifyOutputsPath);
-        amplifyOutputs = outputs;
-        console.log('Loaded amplify_outputs.json on client');
-        // Configure Amplify with the loaded outputs
-        doConfiguration();
+        // First try to load from environment variables which should be set in AWS Amplify
+        if (process.env.NEXT_PUBLIC_AUTH_USER_POOL_ID && 
+            process.env.NEXT_PUBLIC_AUTH_REGION && 
+            process.env.NEXT_PUBLIC_AUTH_USER_POOL_CLIENT_ID &&
+            process.env.NEXT_PUBLIC_API_ENDPOINT) {
+          
+          console.log('Using environment variables for Amplify configuration');
+          amplifyOutputs = {
+            auth: {
+              user_pool_id: process.env.NEXT_PUBLIC_AUTH_USER_POOL_ID,
+              aws_region: process.env.NEXT_PUBLIC_AUTH_REGION,
+              user_pool_client_id: process.env.NEXT_PUBLIC_AUTH_USER_POOL_CLIENT_ID
+            },
+            data: {
+              url: process.env.NEXT_PUBLIC_API_ENDPOINT,
+              aws_region: process.env.NEXT_PUBLIC_AUTH_REGION,
+              api_key: process.env.NEXT_PUBLIC_AMPLIFY_API_KEY,
+              authorization_types: ["API_KEY", "AMAZON_COGNITO_USER_POOLS"]
+            }
+          };
+          doConfiguration();
+        } else {
+          // Fallback to loading from file
+          const amplifyOutputsPath = require.resolve('../../amplify_outputs.json');
+          const outputs = require(amplifyOutputsPath);
+          amplifyOutputs = outputs;
+          console.log('Loaded amplify_outputs.json on client');
+          // Configure Amplify with the loaded outputs
+          doConfiguration();
+        }
         return;
       } catch (err) {
         console.warn('Failed to load amplify_outputs.json on client:', err);
@@ -96,69 +136,102 @@ export function configureAmplify() {
       }
     }
   }
-    // Proceed with configuration using available outputs or environment variables
+  
+  // Proceed with configuration using available outputs or environment variables
   doConfiguration();
 }
 
-  function doConfiguration() {
-    // If no outputs file was found, use environment variables as fallback
-    if (!amplifyOutputs) {
-      console.log('Using environment variables for Amplify configuration');
-      amplifyOutputs = {
-        auth: {
-          user_pool_id: process.env.NEXT_PUBLIC_AUTH_USER_POOL_ID,
-          user_pool_client_id: process.env.NEXT_PUBLIC_AUTH_USER_POOL_CLIENT_ID,
-          identity_pool_id: process.env.NEXT_PUBLIC_AUTH_IDENTITY_POOL_ID,
-          aws_region: process.env.NEXT_PUBLIC_AUTH_REGION || 'us-east-1',
-        },
-        data: {
-          url: process.env.NEXT_PUBLIC_API_ENDPOINT,
-          aws_region: process.env.NEXT_PUBLIC_API_REGION || 'us-east-1',
-          api_key: process.env.NEXT_PUBLIC_AMPLIFY_API_KEY,
-        }
-      };
-    }
-
-    // Get the region from outputs or environment variables
-    const region = amplifyOutputs.auth?.aws_region || amplifyOutputs.data?.aws_region || 'us-east-1';
-    
-    // Configure Amplify with the retrieved settings
-    try {
-      const config: any = {
-        // Auth Configuration
-        Auth: {
-          Cognito: {
-            userPoolId: amplifyOutputs.auth?.user_pool_id || '',
-            userPoolClientId: amplifyOutputs.auth?.user_pool_client_id || '',
-            identityPoolId: amplifyOutputs.auth?.identity_pool_id || '',
-            region: amplifyOutputs.auth?.aws_region || region,
-          }
-        },
-        // API Configuration for GraphQL
-        API: {
-          GraphQL: {
-            endpoint: amplifyOutputs.data?.url || '',
-            region: amplifyOutputs.data?.aws_region || region,
-            defaultAuthMode: 'apiKey',
-            apiKey: amplifyOutputs.data?.api_key || ''
-          }
-        }
-      };
-      
-      // Add region at root level for Amplify v6
-      config.region = region;
-      
-      // Apply configuration
-      Amplify.configure(config);
-      
-      configurationDone = true;
-      console.log(`Amplify configured in ${isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'} environment`);
-      console.log('Using User Pool ID:', amplifyOutputs.auth?.user_pool_id);
-      console.log('API Key configured:', amplifyOutputs.data?.api_key ? 'Yes (masked)' : 'No');
-    } catch (error) {
-      console.error('Error configuring Amplify:', error);
-    }
+function doConfiguration() {
+  // If no outputs file was found, use environment variables as fallback
+  if (!amplifyOutputs) {
+    console.log('Using environment variables for Amplify configuration');
+    amplifyOutputs = {
+      auth: {
+        user_pool_id: process.env.NEXT_PUBLIC_AUTH_USER_POOL_ID,
+        user_pool_client_id: process.env.NEXT_PUBLIC_AUTH_USER_POOL_CLIENT_ID,
+        identity_pool_id: process.env.NEXT_PUBLIC_AUTH_IDENTITY_POOL_ID,
+        aws_region: process.env.NEXT_PUBLIC_AUTH_REGION || 'us-east-1',
+      },
+      data: {
+        url: process.env.NEXT_PUBLIC_API_ENDPOINT,
+        aws_region: process.env.NEXT_PUBLIC_API_REGION || 'us-east-1',
+        api_key: process.env.NEXT_PUBLIC_AMPLIFY_API_KEY,
+      }
+    };
   }
+
+  // Get the region from outputs or environment variables
+  const region = amplifyOutputs.auth?.aws_region || amplifyOutputs.data?.aws_region || 'us-east-1';
+  
+  // Determine if we're running on a custom domain
+  const isCustomDomain = typeof window !== 'undefined' && 
+    window.location.hostname !== 'localhost' && 
+    !window.location.hostname.includes('amplifyapp.com');
+  
+  // Get domain parts for cookie configuration
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  const cookieDomain = isCustomDomain ? hostname.split('.').slice(-2).join('.') : undefined;
+  
+  // Configure Amplify with the retrieved settings
+  try {
+    const config: any = {
+      // Auth Configuration
+      Auth: {
+        Cognito: {
+          userPoolId: amplifyOutputs.auth?.user_pool_id || '',
+          userPoolClientId: amplifyOutputs.auth?.user_pool_client_id || '',
+          identityPoolId: amplifyOutputs.auth?.identity_pool_id || '',
+          region: amplifyOutputs.auth?.aws_region || region,
+          loginWith: {
+            oauth: false,
+            email: true,
+            phone: false,
+            username: true
+          },
+          // Use session storage as primary token storage to avoid cookie issues
+          // and configure secure cookie options
+          tokenProvider: {
+            storage: typeof window !== 'undefined' ? window.sessionStorage : undefined,
+            // Enhanced cookie settings to prevent redirect loops
+            cookieStorage: {
+              domain: cookieDomain,
+              path: '/',
+              expires: 365, // days
+              secure: isCustomDomain, // secure cookies only on HTTPS
+              sameSite: 'strict' // Prevent CSRF
+            },
+            // Avoid axios defaults that could interfere with token handling
+            disableCookieStorage: false,
+            enableCookieStorage: true
+          }
+        }
+      },
+      // API Configuration for GraphQL
+      API: {
+        GraphQL: {
+          endpoint: amplifyOutputs.data?.url || '',
+          region: amplifyOutputs.data?.aws_region || region,
+          defaultAuthMode: 'apiKey',
+          apiKey: amplifyOutputs.data?.api_key || ''
+        }
+      }
+    };
+    
+    // Add region at root level for Amplify v6
+    config.region = region;
+    
+    // Apply configuration
+    Amplify.configure(config);
+    
+    configurationDone = true;
+    console.log(`Amplify configured in ${isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'} environment`);
+    console.log('Using User Pool ID:', amplifyOutputs.auth?.user_pool_id);
+    console.log('API Key configured:', amplifyOutputs.data?.api_key ? 'Yes (masked)' : 'No');
+    console.log('Cookie domain:', cookieDomain || 'default');
+  } catch (error) {
+    console.error('Error configuring Amplify:', error);
+  }
+}
 
 
 // Export the raw Amplify config for use elsewhere

@@ -43,12 +43,12 @@ const nextConfig = {
           },
         ],
       },
-      // Add explicit redirect for /admin/login to ensure it works
-      {
-        source: '/admin/login',
-        destination: '/admin/login',
-        permanent: false,
-      },
+      // Remove the self-redirect for /admin/login that can cause loops
+      // {
+      //  source: '/admin/login',
+      //  destination: '/admin/login',
+      //  permanent: false,
+      // },
       // Redirect default survey routes to the main domain
       {
         source: '/survey/:projectId/:uid',
