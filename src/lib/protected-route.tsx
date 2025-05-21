@@ -26,11 +26,11 @@ export default function ProtectedRoute({
     }
   }, [isAuthenticated, isLoading, redirectTo, router]);
 
-  // Show nothing while loading
+  // Show loading spinner while checking authentication
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }

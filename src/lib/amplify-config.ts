@@ -4,12 +4,9 @@ import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/data';
 import { Schema } from '../../amplify/data/resource';
 
-// Initialize configuration state
+// Initialize configuration state once
 let isConfigured = false;
 let amplifyOutputs: any = null;
-
-// Create a data client for interacting with your Amplify backend
-export const client = generateClient<Schema>();
 
 // Export configuration object for diagnostics
 export const amplifyConfig = {
@@ -49,19 +46,17 @@ export async function configureAmplify() {
         const possiblePaths = [
           path.join(process.cwd(), 'amplify_outputs.json'),
           path.join(process.cwd(), '.amplify', 'amplify_outputs.json'),
-          path.join(process.cwd(), 'src', 'amplify_outputs.json')
         ];
         
         for (const possiblePath of possiblePaths) {
           if (fs.existsSync(possiblePath)) {
             const outputsContent = fs.readFileSync(possiblePath, 'utf8');
             amplifyOutputs = JSON.parse(outputsContent);
-            console.log(`Loaded amplify_outputs.json from ${possiblePath}`);
             break;
           }
         }
       } catch (error) {
-        console.warn('Failed to load amplify_outputs.json on server:', error);
+        console.warn('Failed to load amplify_outputs.json on server');
       }
     } else {
       // Client-side configuration
@@ -72,9 +67,8 @@ export async function configureAmplify() {
         try {
           const response = await fetch('/amplify_outputs.json');
           amplifyOutputs = await response.json();
-          console.log('Successfully loaded sandbox amplify_outputs.json');
         } catch (err) {
-          console.warn('Failed to load sandbox amplify_outputs.json:', err);
+          console.warn('Failed to load sandbox amplify_outputs.json');
         }
       }
     }
@@ -118,9 +112,7 @@ export async function configureAmplify() {
     // Configure Amplify with the generated config
     Amplify.configure(config);
     isConfigured = true;
-    console.log('Amplify configured successfully');
   } catch (error) {
-    console.error('Error configuring Amplify:', error);
-    throw error;
+    console.error('Error configuring Amplify');
   }
 }

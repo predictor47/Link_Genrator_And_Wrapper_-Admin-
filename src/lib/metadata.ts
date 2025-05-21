@@ -13,8 +13,8 @@ export interface UserMetadata {
   screen?: {
     width: number;
     height: number;
-    colorDepth: number;
-    pixelRatio: number;
+    colorDepth?: number;
+    pixelRatio?: number;
   };
   plugins?: string[];
   fonts?: string[];
@@ -24,7 +24,7 @@ export interface UserMetadata {
     mouseMovements: number;
     keyboardEvents: number;
     totalTime: number;
-    clickPattern: number[];
+    clickPattern?: number[];
     formCompletionTime?: number;
     idleTime?: number;
   };
@@ -33,7 +33,7 @@ export interface UserMetadata {
     isProxy?: boolean;
     isTor?: boolean;
     isHosting?: boolean;
-    details: any;
+    details?: any;
   };
   geoLocation?: {
     country: string;
@@ -41,7 +41,7 @@ export interface UserMetadata {
     city: string;
     latitude?: number;
     longitude?: number;
-    isMismatch?: boolean; // True if browser geo doesn't match IP geo
+    isMismatch?: boolean;
   };
 }
 

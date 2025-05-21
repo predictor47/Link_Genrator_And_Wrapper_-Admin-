@@ -62,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
     
     // Set up a refresh interval to periodically check authentication status
+    // Only check every 10 minutes instead of 5 for better performance
     const interval = setInterval(async () => {
       try {
         const authenticated = await AuthService.isAuthenticated();
@@ -69,9 +70,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           checkAuth();
         }
       } catch (error) {
-        console.error('Error refreshing authentication status:', error);
+        console.error('Error refreshing authentication status');
       }
-    }, 5 * 60 * 1000); // Check every 5 minutes
+    }, 10 * 60 * 1000); // Check every 10 minutes
     
     return () => clearInterval(interval);
   }, [isAuthenticated]);

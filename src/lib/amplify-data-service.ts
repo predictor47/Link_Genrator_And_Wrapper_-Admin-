@@ -10,37 +10,20 @@ const isLocalhost = typeof window !== 'undefined' &&
 
 // NOTE: Don't configure Amplify here - it's already configured in amplify-config.ts
 // The amplify-config.ts handles loading the outputs from the sandbox
-if (isDevelopment && isLocalhost) {
-  console.log('Using Amplify Data Service in sandbox environment');
-  // In sandbox development, Amplify is configured by amplify-config.ts with sandbox outputs
-} else {
-  console.log('Using Amplify Data Service in production environment');
+if (!isDevelopment || !isLocalhost) {
   Amplify.configure(amplifyConfig as any);
 }
 
 // In sandbox mode, always use userPool authMode since the sandbox uses Cognito
 // In production, use apiKey for most operations 
-//
-// NOTE: For sandbox environment with local sign-ins, using 'userPool' is critical
 const authMode = (isDevelopment && isLocalhost) ? 'userPool' : 'apiKey';
 
-console.log(`Using authMode: ${authMode} for data client in ${isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'} environment`);
-
 // Generate a type-safe client for data operations with the appropriate authMode
-// Use type assertion to avoid TypeScript errors
 const clientOptions: any = {
   authMode: authMode as any
-  // Remove retryConfig as it's not a valid property of DefaultCommonClientOptions
 };
 
 const client = generateClient<Schema>(clientOptions);
-
-// Debug log for sandbox environment
-if (isDevelopment && isLocalhost) {
-  console.log('Sandbox environment detected - using userPool auth mode with Amplify client');
-  console.log('Make sure you have logged in via the UI first to get valid tokens');
-  console.log('If API calls fail, check that the sandbox is running with "npx ampx sandbox"');
-}
 
 // Helper to safely unwrap data from Amplify responses
 const unwrapData = <T>(result: { data: T | null }): T | null => result.data;
@@ -51,12 +34,6 @@ const handleAmplifyError = (error: any, operation: string) => {
   const errorName = error.name || 'Error';
   
   console.error(`Amplify Error (${operation}):`, { name: errorName, message: errorMessage });
-  
-  // Special handling for authentication errors in sandbox
-  if (isDevelopment && isLocalhost && 
-      (errorName.includes('Auth') || errorMessage.includes('auth') || errorMessage.includes('token'))) {
-    console.error('Authentication error in sandbox environment. Try logging in again or restarting the sandbox.');
-  }
   
   throw error;
 };
@@ -71,9 +48,7 @@ export const amplifyDataService = {
   projects: {
     create: async (data: any) => {
       try {
-        console.log(`Creating project with name: ${data.name} in ${isDevelopment ? 'development' : 'production'} environment`);
         const result = await client.models.Project.create(data);
-        console.log('Project created successfully:', result.data?.id);
         return { data: unwrapData(result) };
       } catch (error) {
         handleAmplifyError(error, 'projects.create');

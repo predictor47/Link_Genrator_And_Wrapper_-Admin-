@@ -97,7 +97,6 @@ export class AuthService {
     try {
       const { username, password } = params;
       
-      console.log('Attempting to sign in user:', username);
       const result = await signIn({
         username,
         password
@@ -107,7 +106,6 @@ export class AuthService {
       await new Promise(resolve => setTimeout(resolve, 500));
       await this.waitForSession();
 
-      console.log('Sign in successful, next step:', result.nextStep?.signInStep);
       return {
         isSuccess: true,
         message: 'Successfully signed in',
@@ -269,16 +267,12 @@ export class AuthService {
    */
   static async completeNewPassword(newPassword: string): Promise<AuthResult> {
     try {
-      console.log('Completing new password challenge');
-      
       const result = await confirmSignIn({
         challengeResponse: newPassword
       });
       
       // Wait for session to be established after password change
       await this.waitForSession();
-      
-      console.log('Password challenge completed successfully:', result.isSignedIn);
       
       return {
         isSuccess: result.isSignedIn,
