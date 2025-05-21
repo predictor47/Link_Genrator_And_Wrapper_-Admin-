@@ -8,7 +8,6 @@ declare const process: {
   env: {
     NODE_ENV: 'development' | 'production' | 'test';
     NEXT_PUBLIC_DOMAIN?: string;
-    NEXT_PUBLIC_ADMIN_DOMAIN?: string;
     NEXT_PUBLIC_AUTH_USER_POOL_ID?: string;
     NEXT_PUBLIC_AUTH_REGION?: string;
     NEXT_PUBLIC_API_REGION?: string;
@@ -24,9 +23,8 @@ declare const process: {
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
 
-// Domain configuration
+// Domain configuration - simplified for single domain approach
 export const MAIN_DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
-export const ADMIN_DOMAIN = process.env.NEXT_PUBLIC_ADMIN_DOMAIN || `admin.${MAIN_DOMAIN}`;
 
 let configurationDone = false;
 // Define amplifyOutputs at the module level
@@ -252,10 +250,9 @@ export const amplifyConfig = {
       apiKey: amplifyOutputs?.data?.api_key || process.env.NEXT_PUBLIC_AMPLIFY_API_KEY || ''
     }
   },
-  // Domain configuration
+  // Domain configuration - simplified for single domain
   domains: {
-    main: MAIN_DOMAIN,
-    admin: ADMIN_DOMAIN
+    main: MAIN_DOMAIN
   },
   // Environment information
   environment: isDevelopment ? 'development' : 'production'

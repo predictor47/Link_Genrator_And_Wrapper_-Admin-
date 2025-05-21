@@ -8,7 +8,6 @@ declare const process: {
   env: {
     NODE_ENV: 'development' | 'production' | 'test';
     NEXT_PUBLIC_DOMAIN?: string;
-    NEXT_PUBLIC_ADMIN_DOMAIN?: string;
   }
 };
 
@@ -40,7 +39,6 @@ const PUBLIC_PATHS = [
 
 // Domain configuration
 const MAIN_DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
-const ADMIN_DOMAIN = process.env.NEXT_PUBLIC_ADMIN_DOMAIN || `admin.${MAIN_DOMAIN}`;
 
 // Cognito User Pool ID - will be auto-detected in development mode
 const COGNITO_USER_POOL_ID = process.env.NODE_ENV === 'development' 
@@ -189,9 +187,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Check if we're on the admin domain
-  const isAdminDomain = hostname.startsWith('admin.') || hostname === 'admin.protegeresearchsurvey.com';
-  
   // Log request details to help debug
   console.log(`Middleware processing: ${pathname} on host: ${hostname}`);
   
@@ -235,17 +230,8 @@ export async function middleware(request: NextRequest) {
     return applySecurityHeaders(response, false);
   }
   
-  // If we're on admin domain and this isn't an admin route,
-  // redirect to admin dashboard (except for API routes)
-  if (isAdminDomain && !pathname.startsWith('/admin') && !pathname.startsWith('/api')) {
-    console.log('Non-admin path on admin domain - redirecting to admin');
-    const url = new URL('/admin', request.url);
-    const redirectResponse = NextResponse.redirect(url);
-    return applySecurityHeaders(redirectResponse, true);
-  }
-  
-  // If this is an admin route on the admin domain, we need to check authentication
-  if (isAdminDomain && isAdminRoute(pathname)) {
+  // If this is an admin route, we need to check authentication (works on any domain)
+  if (isAdminRoute(pathname)) {
     console.log('Protected admin route - checking auth');
     
     // Check for authentication token in cookies
@@ -256,9 +242,13 @@ export async function middleware(request: NextRequest) {
     if (!authCookie && !accessToken) {
       console.log('No auth token found - redirecting to login');
       
-      // Redirect to login page with return URL
+      // Create a login URL with proper redirect parameter
       const url = new URL('/admin/login', request.url);
-      url.searchParams.set('redirect', pathname);
+      
+      // Only add redirect if it's not already the login page to avoid loops
+      if (pathname !== '/admin/login') {
+        url.searchParams.set('redirect', pathname);
+      }
       
       const redirectResponse = NextResponse.redirect(url);
       

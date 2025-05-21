@@ -31,8 +31,13 @@ export default function Home() {
                   <span className="text-xl font-bold text-blue-600">Protege Research Survey</span>
                 </div>
               </div>
-              <div className="hidden sm:ml-6 sm:flex sm:items-center">
-                {/* Admin Login button removed from public home page */}
+              <div className="sm:ml-6 sm:flex sm:items-center">
+                <Link
+                  href="/admin"
+                  className="inline-block bg-blue-600 py-2 px-4 border border-transparent rounded-md text-base font-medium text-white hover:bg-blue-700"
+                >
+                  Admin Panel
+                </Link>
               </div>
             </div>
           </div>

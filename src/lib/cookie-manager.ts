@@ -87,13 +87,8 @@ export function getCookieDomain(): string | undefined {
     return hostname;
   }
   
-  // For custom domains, use the top two levels (example.com)
-  const parts = hostname.split('.');
-  if (parts.length >= 2) {
-    return `.${parts.slice(-2).join('.')}`;
-  }
-  
-  return undefined;
+  // For custom domains, use the domain itself (no need to handle subdomains anymore)
+  return hostname;
 }
 
 // Clear all cookies related to authentication

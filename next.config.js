@@ -11,7 +11,6 @@ if (process.env.NODE_ENV === 'production') {
 
 // Domain configuration
 const MAIN_DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
-const ADMIN_DOMAIN = process.env.NEXT_PUBLIC_ADMIN_DOMAIN || `admin.${MAIN_DOMAIN}`;
 
 // Special outcome pages
 const OUTCOME_PAGES = [
@@ -24,103 +23,20 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   
-  // Domain configuration for multi-domain setup
+  // Simplified domain configuration (no subdomains)
   images: {
-    domains: [MAIN_DOMAIN, ADMIN_DOMAIN, 'localhost'],
+    domains: [MAIN_DOMAIN, 'localhost'],
   },
     // Handle redirects
   async redirects() {
-    const redirects = [
-      // Redirect root on admin domain to /admin directly
-      {
-        source: '/',
-        destination: '/admin',
-        permanent: false,
-        has: [
-          {
-            type: 'host',
-            value: ADMIN_DOMAIN,
-          },
-        ],
-      },
-      // Remove the self-redirect for /admin/login that can cause loops
-      // {
-      //  source: '/admin/login',
-      //  destination: '/admin/login',
-      //  permanent: false,
-      // },
-      // Redirect default survey routes to the main domain
-      {
-        source: '/survey/:projectId/:uid',
-        destination: `https://${MAIN_DOMAIN}/survey/:projectId/:uid`,
-        permanent: true,
-        has: [
-          {
-            type: 'host',
-            value: ADMIN_DOMAIN,
-          },
-        ],
-      },
-      // Redirect short links to the main domain
-      {
-        source: '/s/:projectId/:uid',
-        destination: `https://${MAIN_DOMAIN}/s/:projectId/:uid`,
-        permanent: true,
-        has: [
-          {
-            type: 'host',
-            value: ADMIN_DOMAIN,
-          },
-        ],
-      },
-      // Redirect completion pages to the main domain
-      {
-        source: '/completion/:projectId/:uid',
-        destination: `https://${MAIN_DOMAIN}/completion/:projectId/:uid`,
-        permanent: true,
-        has: [
-          {
-            type: 'host',
-            value: ADMIN_DOMAIN,
-          },
-        ],
-      },
-    ];
-
-    // Add redirects for special outcome pages when accessed from admin domain
-    OUTCOME_PAGES.forEach(page => {
-      redirects.push({
-        source: `/${page}`,
-        destination: `https://${MAIN_DOMAIN}/${page}`,
-        permanent: false,
-        has: [
-          {
-            type: 'host',
-            value: ADMIN_DOMAIN,
-          },
-        ],
-      });
-    });
-
-    return redirects;
+    // No redirects needed for single-domain architecture
+    return [];
   },
   
   // Handle rewrites
   async rewrites() {
     return {
-      beforeFiles: [
-        // Handle admin subdomain routing - simpler approach
-        {
-          source: '/:path*',
-          destination: '/admin/:path*',
-          has: [
-            {
-              type: 'host',
-              value: ADMIN_DOMAIN,
-            },
-          ],
-        },
-      ],
+      beforeFiles: [],
       afterFiles: [],
       fallback: [],
     };
@@ -175,7 +91,6 @@ const nextConfig = {
   // Environment configuration
   env: {
     NEXT_PUBLIC_DOMAIN: MAIN_DOMAIN,
-    NEXT_PUBLIC_ADMIN_DOMAIN: ADMIN_DOMAIN,
     NEXT_PUBLIC_SURVEY_SHORT_URL: `https://${MAIN_DOMAIN}/s`,
   },
 };

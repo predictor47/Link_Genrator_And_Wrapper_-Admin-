@@ -10,9 +10,8 @@ import { fixProblemCookies, clearAuthCookies, initCookieFixes } from '@/lib/cook
 // Initialize Amplify
 configureAmplify();
 
-// Domain configuration
+// Domain configuration - simplified for single domain approach
 const DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
-const ADMIN_DOMAIN = process.env.NEXT_PUBLIC_ADMIN_DOMAIN || `admin.${DOMAIN}`;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -58,19 +57,11 @@ export default function LoginPage() {
     checkAuth();
   }, [redirect, router]);
 
-  // Check if we're on the admin subdomain
+  // No longer need to check for admin subdomain since we're using a single domain approach
   useEffect(() => {
-    // Only run on the client side
+    // Only log for debugging purposes
     if (typeof window !== 'undefined') {
-      const hostname = window.location.hostname;
-      const isLocalhost = hostname === 'localhost' || hostname.startsWith('127.0.0.1');
-      const isAmplifyDomain = hostname.includes('amplifyapp.com');
-      const isAdminDomain = hostname === ADMIN_DOMAIN;
-      
-      // If we're in production environment and not on the admin subdomain, redirect
-      if (!isLocalhost && !isAmplifyDomain && !isAdminDomain) {
-        window.location.href = `https://${ADMIN_DOMAIN}/admin/login`;
-      }
+      console.log('Login page loaded on domain:', window.location.hostname);
     }
   }, []);
 
