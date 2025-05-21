@@ -13,6 +13,7 @@ import { Chart as ChartJS,
   Title
 } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
+import ProtectedRoute from '@/lib/protected-route';
 
 ChartJS.register(
   ArcElement, 
@@ -225,7 +226,8 @@ export default function ProjectAnalytics({
   };
   
   return (
-    <div className="min-h-screen bg-gray-100">
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-100">
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -895,7 +897,8 @@ export default function ProjectAnalytics({
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }
 

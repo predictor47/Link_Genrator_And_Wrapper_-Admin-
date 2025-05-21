@@ -1,15 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import { AuthService } from '@/lib/auth-service';
-import { configureAmplify } from '@/lib/amplify-config';
-
-// Initialize Amplify
-configureAmplify();
+import { useAuth } from '@/lib/auth';
+import AuthRedirectCheck from '@/lib/auth-redirect-check';
 
 export default function SignUpPage() {
   const router = useRouter();
+  const { signUp } = useAuth();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,26 +16,7 @@ export default function SignUpPage() {
   const [lastName, setLastName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  // Check if user is already authenticated
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const authenticated = await AuthService.isAuthenticated();
-        setIsAuthenticated(authenticated);
-        
-        if (authenticated) {
-          router.replace('/admin');
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-      }
-    };
-    
-    checkAuth();
-  }, [router]);
 
   const validateForm = () => {
     if (password !== confirmPassword) {
@@ -50,7 +29,7 @@ export default function SignUpPage() {
       return false;
     }
 
-    // Check for at least one number, one uppercase letter, and one special character
+      // Check for at least one number, one uppercase letter, and one special character
     const passwordRegex = /^(?=.*\d)(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>])/;
     if (!passwordRegex.test(password)) {
       setError('Password must contain at least one number, one uppercase letter, and one special character');
@@ -72,7 +51,7 @@ export default function SignUpPage() {
     }
     
     try {
-      const result = await AuthService.signUp({
+      const result = await signUp({
         username,
         password,
         email,
@@ -96,22 +75,7 @@ export default function SignUpPage() {
     }
   };
 
-  // If already authenticated, show loading state
-  if (isAuthenticated) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100">
-        <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold">Already logged in</h2>
-            <p className="mt-2 text-gray-600">Redirecting to admin dashboard...</p>
-          </div>
-          <div className="flex justify-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <>
@@ -120,8 +84,9 @@ export default function SignUpPage() {
         <meta name="description" content="Create an account for the survey link management admin panel" />
       </Head>
       
-      <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-12 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md space-y-8">
+      <AuthRedirectCheck redirectTo="/admin">
+        <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-12 sm:px-6 lg:px-8">
+          <div className="w-full max-w-md space-y-8">
           <div>
             <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
               Create an Account
@@ -285,6 +250,7 @@ export default function SignUpPage() {
           </form>
         </div>
       </div>
+      </AuthRedirectCheck>
     </>
   );
 }

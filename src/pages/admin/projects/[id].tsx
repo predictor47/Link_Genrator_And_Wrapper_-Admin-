@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { amplifyDataService } from '@/lib/amplify-data-service';
 import axios from 'axios';
+import ProtectedRoute from '@/lib/protected-route';
 
 // Define proper types based on your Amplify data schema
 interface Question {
@@ -198,49 +199,50 @@ export default function ProjectView({ project }: { project: ProjectData | null }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <Link 
-                href="/admin" 
-                className="text-blue-600 hover:text-blue-800 mb-2 inline-flex items-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-                </svg>
-                Back to Dashboard
-              </Link>
-              <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
-              {project.description && (
-                <p className="text-gray-600 mt-1">{project.description}</p>
-              )}
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-100">
+        {/* Header */}
+        <div className="bg-white shadow">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <Link 
+                  href="/admin" 
+                  className="text-blue-600 hover:text-blue-800 mb-2 inline-flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                  </svg>
+                  Back to Dashboard
+                </Link>
+                <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
+                {project.description && (
+                  <p className="text-gray-600 mt-1">{project.description}</p>
+                )}
+              </div>
+              <div className="flex space-x-3">
+                <Link 
+                  href={`/admin/projects/${project.id}/generate`} 
+                  className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
+                >
+                  Generate Links
+                </Link>
+                <button
+                  onClick={() => router.push(`/admin`)}
+                  className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+                >
+                  Delete Project
+                </button>
+              </div>
             </div>
-            <div className="flex space-x-3">
-              <Link 
-                href={`/admin/projects/${project.id}/generate`} 
-                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
-              >
-                Generate Links
-              </Link>
-              <button
-                onClick={() => router.push(`/admin`)}
-                className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
-              >
-                Delete Project
-              </button>
+            <div className="text-sm text-gray-500 mt-2">
+              Created on {new Date(project.createdAt).toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
             </div>
           </div>
-          <div className="text-sm text-gray-500 mt-2">
-            Created on {new Date(project.createdAt).toLocaleDateString('en-US', { 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </div>
-        </div>
       </div>
 
       <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -524,7 +526,8 @@ export default function ProjectView({ project }: { project: ProjectData | null }
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }
 

@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import axios from 'axios';
 import { amplifyDataService } from '@/lib/amplify-data-service';
+import ProtectedRoute from '@/lib/protected-route';
 
 // Types for our component
 interface Question {
@@ -96,8 +97,9 @@ export default function QuestionsPage({ project, initialQuestions }: QuestionsPa
   };
   
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
+    <ProtectedRoute>
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
         <Link 
           href={`/admin/projects/${project.id}`}
           className="text-blue-600 hover:text-blue-800"
@@ -222,7 +224,8 @@ export default function QuestionsPage({ project, initialQuestions }: QuestionsPa
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }
 

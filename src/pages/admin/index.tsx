@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { amplifyDataService } from '@/lib/amplify-data-service';
 import axios from 'axios';
+import ProtectedRoute from '@/lib/protected-route';
 
 interface Project {
   id: string;
@@ -142,12 +143,13 @@ export default function AdminDashboard({ projects: initialProjects, stats: initi
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="bg-white shadow">
-        <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-gray-900">Survey Link Wrapper Admin</h1>
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-100">
+        <div className="bg-white shadow">
+          <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <h1 className="text-3xl font-bold text-gray-900">Survey Link Wrapper Admin</h1>
+          </div>
         </div>
-      </div>
 
       <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {/* Overall Stats Cards with Circular Progress */}
@@ -460,6 +462,7 @@ export default function AdminDashboard({ projects: initialProjects, stats: initi
         </div>
       )}
     </div>
+    </ProtectedRoute>
   );
 }
 

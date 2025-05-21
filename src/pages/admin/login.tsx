@@ -2,25 +2,22 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import { AuthService } from '@/lib/auth-service';
-import { configureAmplify } from '@/lib/amplify-config';
-import { useAuth } from '@/lib/auth'; // Import useAuth
-import { fixProblemCookies, clearAuthCookies, initCookieFixes } from '@/lib/cookie-manager'; // Import cookie utils
-
-// Initialize Amplify
-configureAmplify();
+import { useAuth } from '@/lib/auth';
+import { fixProblemCookies, clearAuthCookies, initCookieFixes } from '@/lib/cookie-manager';
+import AuthRedirectCheck from '@/lib/auth-redirect-check';
 
 // Domain configuration - simplified for single domain approach
 const DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth(); // Get isAuthenticated and isLoading from useAuth
+  const { login, completeNewPassword, refreshAuthState } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isNewPasswordRequired, setIsNewPasswordRequired] = useState(false);
   const { redirect, fixed } = router.query;
 
@@ -35,34 +32,8 @@ export default function LoginPage() {
     }
   }, [fixed]);
 
-  // Check if user is already authenticated
+  // Only log domain for debugging
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        if (router.query.fixed === 'true') {
-          // Don't redirect automatically if we just fixed a redirect loop
-          return;
-        }
-        
-        const authenticated = await AuthService.isAuthenticated();
-        
-        if (authenticated) {
-          console.log('User is already authenticated, redirecting...');
-          router.replace(typeof redirect === 'string' ? redirect : '/admin');
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        // Clear any problematic cookies if auth check fails
-        fixProblemCookies();
-      }
-    };
-    
-    checkAuth();
-  }, [redirect, router]);
-
-  // No longer need to check for admin subdomain since we're using a single domain approach
-  useEffect(() => {
-    // Only log for debugging purposes
     if (typeof window !== 'undefined') {
       console.log('Login page loaded on domain:', window.location.hostname);
     }
@@ -71,32 +42,36 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setIsLoggingIn(true);
     
     try {
       // Clear any problematic cookies before attempting to sign in
       fixProblemCookies();
       
       console.log('Logging in user:', username);
-      const signInResponse = await AuthService.signIn({ username, password });
+      const signInResponse = await login(username, password);
       
       // Check if NEW_PASSWORD_REQUIRED challenge is present (for first-time login)
       if (signInResponse.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
         console.log('New password required, showing password change form');
         setIsNewPasswordRequired(true);
+        setIsLoggingIn(false);
         return;
       }
       
-      console.log('Sign in successful, redirecting to admin panel');
-      
-      // Wait for the session to be fully established
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Double-check authentication before redirecting
-      const authenticated = await AuthService.isAuthenticated();
-      if (authenticated) {
+      if (signInResponse.isSuccess) {
+        console.log('Sign in successful, redirecting to admin panel');
+        
+        // Wait for the session to be fully established
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Force a refresh of auth state before redirecting
+        await refreshAuthState();
+        
+        // Redirect to the intended page or admin dashboard
         router.push(typeof redirect === 'string' ? redirect : '/admin');
       } else {
-        setError('Failed to establish session. Please try again.');
+        setError(signInResponse.message || 'Failed to sign in. Please try again.');
       }
     } catch (error: any) {
       console.error('Login error:', error);
@@ -106,6 +81,8 @@ export default function LoginPage() {
         // If there's a token-related error, try clearing auth cookies
         clearAuthCookies();
       }
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -113,15 +90,17 @@ export default function LoginPage() {
   const handleNewPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setIsLoggingIn(true);
     
     if (newPassword !== confirmPassword) {
       setError('Passwords do not match');
+      setIsLoggingIn(false);
       return;
     }
     
     try {
       console.log('Submitting new password');
-      const result = await AuthService.completeNewPassword(newPassword);
+      const result = await completeNewPassword(newPassword);
       
       if (result.isSuccess) {
         console.log('Password changed successfully');
@@ -139,19 +118,13 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error('Password change error:', error);
       setError(error.message || 'Failed to set new password');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
-
-  // Redirect to admin dashboard if already authenticated
-  useEffect(() => {
-    // Only redirect if authenticated, not loading, and not already redirecting
-    if (isAuthenticated && !isLoading && !router.query.redirect && !router.query.fixed) {
-      router.push('/admin');
-    }
-  }, [isAuthenticated, isLoading, router]);
   
   return (
-    <>
+    <AuthRedirectCheck redirectTo="/admin">
       <Head>
         <title>Admin Login | Protege Research Survey</title>
         <meta name="description" content="Login to the Protege Research Survey admin panel" />
@@ -225,8 +198,7 @@ export default function LoginPage() {
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
-                    type="password"
-                    autoComplete="new-password"
+                                        autoComplete="new-password"
                     required
                     className="relative block w-full rounded-b-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                     placeholder="Confirm Password"
@@ -322,6 +294,6 @@ export default function LoginPage() {
           )}
         </div>
       </div>
-    </>
+    </AuthRedirectCheck>
   );
 }

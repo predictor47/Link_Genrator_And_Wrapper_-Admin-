@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import { amplifyDataService } from '@/lib/amplify-data-service';
 import CSVUploader from '@/components/CSVUploader';
+import ProtectedRoute from '@/lib/protected-route';
 
 // Type for vendor
 interface Vendor {
@@ -306,7 +307,8 @@ export default function GeneratePage({ project }: GeneratePageProps) {
   };
   
   return (
-    <div className="container mx-auto px-4 py-8">
+    <ProtectedRoute>
+      <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <Link 
           href={`/admin/projects/${project.id}`}
@@ -794,6 +796,7 @@ export default function GeneratePage({ project }: GeneratePageProps) {
         </div>
       )}
     </div>
+    </ProtectedRoute>
   );
 }
 

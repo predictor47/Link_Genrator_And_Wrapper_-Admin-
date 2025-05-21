@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import Link from 'next/link';
+import ProtectedRoute from '@/lib/protected-route';
 
 interface Question {
   text: string;
@@ -86,7 +87,8 @@ export default function NewProject() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-100">
       <div className="bg-white shadow">
         <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">Create New Project</h1>
@@ -229,6 +231,7 @@ export default function NewProject() {
           </form>
         </div>
       </div>
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }

@@ -1,39 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import { AuthService } from '@/lib/auth-service';
-import { configureAmplify } from '@/lib/amplify-config';
-
-// Initialize Amplify
-configureAmplify();
+import { useAuth } from '@/lib/auth';
+import AuthRedirectCheck from '@/lib/auth-redirect-check';
 
 export default function VerifyPage() {
   const router = useRouter();
   const { username } = router.query;
+  const { confirmSignUp } = useAuth();
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // Check if user is already authenticated
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const authenticated = await AuthService.isAuthenticated();
-        setIsAuthenticated(authenticated);
-        
-        if (authenticated) {
-          router.replace('/admin');
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-      }
-    };
-    
-    checkAuth();
-  }, [router]);
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +26,9 @@ export default function VerifyPage() {
     }
     
     try {
-      await AuthService.confirmSignUp(username, code);
+      // Assuming confirmSignUp doesn't return proper result object
+      await confirmSignUp(username, code);
+      // If it reaches here without throwing, it's a success
       setSuccess(true);
       
       // Redirect to login page after successful verification
@@ -61,22 +42,7 @@ export default function VerifyPage() {
     }
   };
 
-  // If already authenticated, show loading state
-  if (isAuthenticated) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100">
-        <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold">Already logged in</h2>
-            <p className="mt-2 text-gray-600">Redirecting to admin dashboard...</p>
-          </div>
-          <div className="flex justify-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <>
@@ -85,16 +51,17 @@ export default function VerifyPage() {
         <meta name="description" content="Verify your account for the survey link management admin panel" />
       </Head>
       
-      <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-12 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md space-y-8">
-          <div>
-            <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
-              Verify Your Account
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              Enter the verification code sent to your email
-            </p>
-          </div>
+      <AuthRedirectCheck redirectTo="/admin">
+        <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-12 sm:px-6 lg:px-8">
+          <div className="w-full max-w-md space-y-8">
+            <div>
+              <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
+                Verify Your Account
+              </h2>
+              <p className="mt-2 text-center text-sm text-gray-600">
+                Enter the verification code sent to your email
+              </p>
+            </div>
           
           {error && (
             <div className="rounded-md bg-red-50 p-4">
@@ -194,8 +161,9 @@ export default function VerifyPage() {
               </div>
             </form>
           )}
+          </div>
         </div>
-      </div>
+      </AuthRedirectCheck>
     </>
   );
 }
