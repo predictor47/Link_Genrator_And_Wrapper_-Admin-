@@ -1,6 +1,6 @@
 import { signIn, signUp, signOut, confirmSignUp, resetPassword, confirmResetPassword, 
   getCurrentUser, fetchUserAttributes, updateUserAttributes,
-  resendSignUpCode } from 'aws-amplify/auth';
+  resendSignUpCode, confirmSignIn } from 'aws-amplify/auth';
 import { configureAmplify } from './amplify-config';
 
 // Make sure Amplify is configured
@@ -353,6 +353,32 @@ export class AuthService {
       return null;
     } catch (error) {
       return null;
+    }
+  }
+
+  /**
+   * Complete new password challenge
+   * @param username User's username
+   * @param newPassword The new password to set
+   */
+  static async completeNewPassword(username: string, newPassword: string): Promise<AuthResult> {
+    try {
+      // For NEW_PASSWORD_REQUIRED challenge, we need to call confirmSignIn with the new password
+      await confirmSignIn({
+        challengeResponse: newPassword
+      });
+      
+      return {
+        isSuccess: true,
+        message: 'Password set successfully.'
+      };
+    } catch (error: any) {
+      console.error('Complete new password error:', error);
+      
+      return {
+        isSuccess: false,
+        message: error.message || 'Failed to set new password.'
+      };
     }
   }
 }
