@@ -112,10 +112,13 @@ export class AuthService {
     try {
       const { username, password } = params;
       
+      console.log('Attempting to sign in user:', username);
       const user = await signIn({
         username,
         password
       });
+      
+      console.log('Sign in successful, checking next steps:', user.nextStep?.signInStep);
       return user;
     } catch (error: any) {
       console.error('Sign in error:', error);
@@ -358,15 +361,18 @@ export class AuthService {
 
   /**
    * Complete new password challenge
-   * @param username User's username
    * @param newPassword The new password to set
    */
-  static async completeNewPassword(username: string, newPassword: string): Promise<AuthResult> {
+  static async completeNewPassword(newPassword: string): Promise<AuthResult> {
     try {
+      console.log('Completing new password challenge');
+      
       // For NEW_PASSWORD_REQUIRED challenge, we need to call confirmSignIn with the new password
-      await confirmSignIn({
+      const result = await confirmSignIn({
         challengeResponse: newPassword
       });
+      
+      console.log('Password challenge completed successfully:', result.isSignedIn);
       
       return {
         isSuccess: true,

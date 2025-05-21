@@ -76,17 +76,24 @@ export default function LoginPage() {
       // Clear any problematic cookies before attempting to sign in
       fixProblemCookies();
       
+      console.log('Logging in user:', username);
       const signInResponse = await AuthService.signIn({ username, password });
       
       // Check if NEW_PASSWORD_REQUIRED challenge is present (for first-time login)
       if (signInResponse.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+        console.log('New password required, showing password change form');
         setIsNewPasswordRequired(true);
         return;
       }
       
-      // Redirect after successful login
-      router.push(typeof redirect === 'string' ? redirect : '/admin');
+      console.log('Sign in successful, redirecting to admin panel');
+      
+      // Give the auth state a moment to update before redirecting
+      setTimeout(() => {
+        router.push(typeof redirect === 'string' ? redirect : '/admin');
+      }, 500);
     } catch (error: any) {
+      console.error('Login error:', error);
       setError(error.message || 'Failed to sign in. Please check your credentials.');
       
       if (error.message?.includes('Token') || error.message?.includes('authentication')) {
@@ -107,16 +114,24 @@ export default function LoginPage() {
     }
     
     try {
-      const result = await AuthService.completeNewPassword(username, newPassword);
+      console.log('Submitting new password');
+      const result = await AuthService.completeNewPassword(newPassword);
       
       if (result.isSuccess) {
-        // Reset the state and redirect
+        console.log('Password changed successfully');
+        // Reset the state
         setIsNewPasswordRequired(false);
-        router.push(typeof redirect === 'string' ? redirect : '/admin');
+        
+        // Give the auth state a moment to update before redirecting
+        setTimeout(() => {
+          router.push(typeof redirect === 'string' ? redirect : '/admin');
+        }, 1000);
       } else {
+        console.error('Failed to set new password:', result.message);
         setError(result.message);
       }
     } catch (error: any) {
+      console.error('Password change error:', error);
       setError(error.message || 'Failed to set new password');
     }
   };
