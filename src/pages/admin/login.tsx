@@ -88,10 +88,16 @@ export default function LoginPage() {
       
       console.log('Sign in successful, redirecting to admin panel');
       
-      // Give the auth state a moment to update before redirecting
-      setTimeout(() => {
+      // Wait for the session to be fully established
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Double-check authentication before redirecting
+      const authenticated = await AuthService.isAuthenticated();
+      if (authenticated) {
         router.push(typeof redirect === 'string' ? redirect : '/admin');
-      }, 500);
+      } else {
+        setError('Failed to establish session. Please try again.');
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       setError(error.message || 'Failed to sign in. Please check your credentials.');
