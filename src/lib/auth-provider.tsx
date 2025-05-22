@@ -114,6 +114,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await AuthService.refreshAuthState();
       // Then check auth status again
       await checkAuth();
+      
+      // If we've refreshed multiple times without success, try a hard reload
+      if (typeof window !== 'undefined') {
+        const win = window as any;
+        if (win._authRefreshCount === undefined) {
+          win._authRefreshCount = 1;
+        } else {
+          win._authRefreshCount++;
+        }
+        
+        if (win._authRefreshCount > 2) {
+          console.log('Multiple auth refreshes attempted, trying hard reload');
+          win._authRefreshCount = 0;
+          // Only reload if we're on a page that needs auth
+          if (window.location.pathname.startsWith('/admin') && 
+              !window.location.pathname.startsWith('/admin/login') && 
+              !window.location.pathname.startsWith('/admin/signup') && 
+              !window.location.pathname.startsWith('/admin/verify')) {
+            window.location.reload();
+          }
+        }
+      }
     } catch (error) {
       console.error('Error refreshing auth state:', error);
     }

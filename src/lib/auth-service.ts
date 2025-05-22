@@ -96,6 +96,18 @@ export class AuthService {
    */
   static async signIn(params: SignInParams): Promise<AuthResult> {
     try {
+      // Clear any existing auth cookies before signing in to prevent conflicts
+      if (typeof document !== 'undefined') {
+        document.cookie.split(';').forEach(cookie => {
+          const [name] = cookie.split('=').map(c => c.trim());
+          if (name.includes('CognitoIdentityServiceProvider') || 
+              name.includes('amplify') || 
+              name.includes('Token')) {
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          }
+        });
+      }
+      
       const { username, password } = params;
       
       const result = await signIn({
@@ -167,8 +179,40 @@ export class AuthService {
       await signOut({ global: true });
       this.lastSessionCheck = 0;
       this.sessionCheckPromise = null;
+      
+      // Clear all auth-related cookies manually after signout
+      if (typeof document !== 'undefined') {
+        document.cookie.split(';').forEach(cookie => {
+          const [name] = cookie.split('=').map(c => c.trim());
+          if (name.includes('CognitoIdentityServiceProvider') || 
+              name.includes('amplify') || 
+              name.includes('Token') ||
+              name.includes('auth')) {
+            console.log('Clearing cookie after signout:', name);
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          }
+        });
+      }
+      
+      // If we're in a browser, redirect to login page after signout
+      if (typeof window !== 'undefined') {
+        window.location.href = '/admin/login?fixed=true';
+      }
     } catch (error) {
       console.error('Sign out error:', error);
+      
+      // Even if there was an error, try to clear cookies
+      if (typeof document !== 'undefined') {
+        document.cookie.split(';').forEach(cookie => {
+          const [name] = cookie.split('=').map(c => c.trim());
+          if (name.includes('CognitoIdentityServiceProvider') || 
+              name.includes('amplify') || 
+              name.includes('Token')) {
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          }
+        });
+      }
+      
       throw error;
     }
   }
@@ -216,18 +260,31 @@ export class AuthService {
       this.sessionCheckPromise = null;
     }
     
-    // Return cached result if still valid
+    // Return cached result if still valid and not too old
     if (this.sessionCheckPromise && (now - this.lastSessionCheck) < this.sessionCheckInterval) {
       return this.sessionCheckPromise;
     }
 
-    // Create new check promise
+    // Create new check promise with better error handling
     this.sessionCheckPromise = (async () => {
       try {
         const session = await fetchAuthSession();
-        return !!session.tokens?.accessToken;
+        const isValid = !!session.tokens?.accessToken;
+        
+        if (isValid) {
+          console.log('Valid authentication session found');
+        } else {
+          console.log('No valid authentication session');
+        }
+        
+        return isValid;
       } catch (error) {
         console.error('Error checking authentication:', error);
+        // If we get a "No current user" error, definitely not authenticated
+        if (error instanceof Error && error.message.includes('No current user')) {
+          return false;
+        }
+        // For other errors, we can't be sure, default to not authenticated
         return false;
       }
     })();
@@ -320,9 +377,28 @@ export class AuthService {
     
     try {
       // Try to fetch the auth session to refresh the tokens
-      await fetchAuthSession();
+      const session = await fetchAuthSession();
+      console.log('Auth session refreshed successfully', {
+        hasIdToken: !!session.tokens?.idToken,
+        hasAccessToken: !!session.tokens?.accessToken,
+        // Check for tokens object existence instead of specific refreshToken property
+        hasTokens: !!session.tokens
+      });
     } catch (error) {
       console.error('Error refreshing auth session:', error);
+      
+      // Clear problematic cookies if there's an error
+      if (typeof window !== 'undefined') {
+        window.document.cookie.split(';').forEach(cookie => {
+          const [name] = cookie.split('=').map(c => c.trim());
+          if (name.includes('CognitoIdentityServiceProvider') || 
+              name.includes('amplify') || 
+              name.includes('Token')) {
+            console.log('Clearing problematic cookie:', name);
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          }
+        });
+      }
     }
   }
 }

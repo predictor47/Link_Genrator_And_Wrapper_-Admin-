@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { amplifyDataService } from '@/lib/amplify-data-service';
 import axios from 'axios';
 import ProtectedRoute from '@/lib/protected-route';
+import { logAuthDiagnostics, attemptAuthFix } from '@/lib/auth-debug';
 
 interface Project {
   id: string;
@@ -148,6 +149,16 @@ export default function AdminDashboard({ projects: initialProjects, stats: initi
         <div className="bg-white shadow">
           <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
             <h1 className="text-3xl font-bold text-gray-900">Survey Link Wrapper Admin</h1>
+            {/* Debug button */}
+            <button
+              onClick={() => {
+                logAuthDiagnostics();
+                alert('Auth diagnostics logged to console. Check browser dev tools.');
+              }}
+              className="text-xs text-gray-500 hover:text-indigo-600 mt-2"
+            >
+              Debug Auth
+            </button>
           </div>
         </div>
 

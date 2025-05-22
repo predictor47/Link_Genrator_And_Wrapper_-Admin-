@@ -271,12 +271,24 @@ export async function middleware(request: NextRequest) {
       // Redirect to login page with return URL
       const url = new URL('/admin/login', request.url);
       url.searchParams.set('redirect', pathname);
+      url.searchParams.set('fixed', 'true'); // Add fixed param to avoid loops
       
       const redirectResponse = NextResponse.redirect(url);
       
-      // Clear invalid token
-      redirectResponse.cookies.delete('idToken');
-      redirectResponse.cookies.delete('accessToken');
+      // Clear invalid tokens
+      const cookiesToClear = [
+        'idToken',
+        'accessToken',
+        'refreshToken',
+        'amplify-signin-with-hostedUI',
+        'amplify-redirected-from-hosted-ui',
+        'amplify.auth.tokens',
+        'Authorization'
+      ];
+      
+      cookiesToClear.forEach(cookie => {
+        redirectResponse.cookies.delete(cookie);
+      });
       
       return applySecurityHeaders(redirectResponse, true);
     }

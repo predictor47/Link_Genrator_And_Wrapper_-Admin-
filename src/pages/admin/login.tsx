@@ -3,8 +3,10 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { AuthService } from '@/lib/auth-service';
 import { fixProblemCookies, clearAuthCookies, initCookieFixes } from '@/lib/cookie-manager';
 import AuthRedirectCheck from '@/lib/auth-redirect-check';
+import { logAuthDiagnostics, attemptAuthFix } from '@/lib/auth-debug';
 
 // Domain configuration - simplified for single domain approach
 const DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
@@ -37,6 +39,14 @@ export default function LoginPage() {
     if (typeof window !== 'undefined') {
       console.log('Login page loaded on domain:', window.location.hostname);
     }
+    
+    // Add auth state debugging
+    const debugAuth = async () => {
+      const isAuth = await AuthService.isAuthenticated();
+      console.log('Current auth state from service:', isAuth);
+    };
+    
+    debugAuth();
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -292,6 +302,33 @@ export default function LoginPage() {
                     Don't have an account? Sign up
                   </Link>
                 </div>
+              </div>
+              
+              {/* Debug button for direct navigation */}
+              <div className="flex justify-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => window.location.href = '/admin'}
+                  className="text-sm text-gray-600 hover:text-indigo-600 mr-4"
+                >
+                  Debug: Go directly to dashboard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    logAuthDiagnostics();
+                    attemptAuthFix().then(fixed => {
+                      if (fixed) {
+                        alert('Authentication issues fixed. Page will reload.');
+                      } else {
+                        alert('Diagnostics logged to console. Check browser dev tools.');
+                      }
+                    });
+                  }}
+                  className="text-sm text-gray-600 hover:text-indigo-600"
+                >
+                  Debug: Fix Auth Issues
+                </button>
               </div>
             </form>
           )}

@@ -1,6 +1,7 @@
 import { useEffect, ReactNode, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from './auth';
+import { logAuthDiagnostics } from './auth-debug';
 
 interface AuthRedirectCheckProps {
   children: ReactNode;
@@ -23,6 +24,7 @@ export default function AuthRedirectCheck({
   useEffect(() => {
     // Force a refresh of auth state on component mount
     refreshAuthState();
+    console.log('Auth state refreshed, current state:', { isAuthenticated, isLoading });
   }, [refreshAuthState]);
 
   useEffect(() => {
@@ -31,10 +33,14 @@ export default function AuthRedirectCheck({
       console.log('User already authenticated, redirecting to dashboard');
       setIsRedirecting(true);
       
-      // Add a short delay to ensure state has time to be fully established
-      setTimeout(() => {
-        router.replace(redirectTo);
-      }, 500);
+      // Log diagnostics before redirecting
+      logAuthDiagnostics().then(() => {
+        // Add a short delay to ensure state has time to be fully established
+        setTimeout(() => {
+          // Use hard navigation instead of router.replace for more reliable redirect
+          window.location.href = redirectTo;
+        }, 1000);
+      });
     }
   }, [isAuthenticated, isLoading, redirect, fixed, redirectTo, router, isRedirecting]);
 
