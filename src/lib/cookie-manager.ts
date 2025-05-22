@@ -152,36 +152,12 @@ export function fixProblemCookies(): void {
     deleteCookie('Authorization');
   }
   
-  // Fix any Cognito cookies with bad domains or paths
-  document.cookie.split(';').forEach(cookie => {
-    const name = cookie.split('=')[0].trim();
-    if (name.includes('CognitoIdentityServiceProvider') || 
-        name.includes('amplify.auth') || 
-        name.includes('aws.cognito')) {
-      
-      // Get the cookie value
-      const value = getCookie(name);
-      if (value) {
-        // Delete the existing cookie
-        deleteCookie(name);
-        // Recreate it with proper domain and path
-        setCookie(name, value, { 
-          domain: getCookieDomain(),
-          path: '/',
-          days: 365,
-          secure: true,
-          sameSite: 'lax'
-        });
-      }
-    }
-  });
-  
   // Check for any infinite redirect related query params
   if (typeof window !== 'undefined') {
     const url = new URL(window.location.href);
     const hasRedirectLoopParam = url.searchParams.has('redirect_loop') ||
-                               url.searchParams.has('error') &&
-                               url.searchParams.get('error')?.includes('redirect');
+                                url.searchParams.has('error') &&
+                                url.searchParams.get('error')?.includes('redirect');
     
     if (hasRedirectLoopParam) {
       // Clear all auth cookies if we detect redirect loop parameters
@@ -195,8 +171,6 @@ export function fixProblemCookies(): void {
       window.history.replaceState({}, '', url.toString());
     }
   }
-  
-  console.log('Cookie fixes applied');
 }
 
 // Initialize cookie fixes when the page loads

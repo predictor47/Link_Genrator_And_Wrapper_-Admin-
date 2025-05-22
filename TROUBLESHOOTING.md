@@ -2,34 +2,6 @@
 
 This guide covers common issues you might encounter when deploying and running the Survey Link Wrapper application with AWS Amplify Gen 2.
 
-## Authentication Issues
-
-### Issue: "There is already a signed in user" but no redirection to dashboard
-
-**Possible causes:**
-- Cookie domain mismatch or invalid cookies
-- Authentication state not properly synchronized
-- Redirection logic in AuthRedirectCheck not executing
-
-**Solution:**
-1. The system now has improved handling for "already signed in" error messages
-2. Auth state refresh is more aggressive and bypasses caching when needed
-3. Cookie fixes are applied to ensure proper domain and security settings
-4. If you still encounter this issue, try clearing browser cookies and refreshing
-5. The login page now properly handles the "already signed in" state and redirects accordingly
-
-### Issue: Authentication redirect loops
-
-**Possible causes:**
-- Cookie configuration issues
-- Authentication service misconfiguration
-- AWS Amplify issues with cookie storage
-
-**Solution:**
-1. Clear browser cookies for your domain
-2. Visit `/admin/login?fixed=true` to apply additional cookie fixes
-3. If issues persist, sign out and sign in again with the latest code
-
 ## GitHub-based Deployment Issues
 
 ### Issue: "Deployment Failed" in Amplify Console

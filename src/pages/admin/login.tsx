@@ -71,27 +71,10 @@ export default function LoginPage() {
         // Redirect to the intended page or admin dashboard
         router.push(typeof redirect === 'string' ? redirect : '/admin');
       } else {
-        // Handle "already signed in" as a success case that should redirect
-        if (signInResponse.message && signInResponse.message.includes('already a signed in user')) {
-          console.log('User is already signed in, refreshing state and redirecting');
-          await refreshAuthState();
-          router.push(typeof redirect === 'string' ? redirect : '/admin');
-          return;
-        }
-        
         setError(signInResponse.message || 'Failed to sign in. Please try again.');
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      
-      // Handle "already signed in" error as a success case that should redirect
-      if (error.message?.includes('already a signed in user')) {
-        console.log('User is already signed in (from error), refreshing state and redirecting');
-        await refreshAuthState();
-        router.push(typeof redirect === 'string' ? redirect : '/admin');
-        return;
-      }
-      
       setError(error.message || 'Failed to sign in. Please check your credentials.');
       
       if (error.message?.includes('Token') || error.message?.includes('authentication')) {
