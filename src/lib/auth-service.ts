@@ -115,6 +115,15 @@ export class AuthService {
     } catch (error: any) {
       console.error('Sign in error:', error);
       
+      // Handle "already signed in" case as a successful login
+      if (error.message?.includes('already a signed in user')) {
+        return {
+          isSuccess: true,
+          message: 'User is already signed in',
+          data: { isSignedIn: true }
+        };
+      }
+      
       if (error.name === 'UserNotConfirmedException') {
         return {
           isSuccess: false,
@@ -217,14 +226,25 @@ export class AuthService {
     this.sessionCheckPromise = (async () => {
       try {
         const session = await fetchAuthSession();
-        return !!session.tokens?.accessToken;
+        const isAuth = !!session.tokens?.accessToken;
+        console.log('Auth check result:', isAuth);
+        return isAuth;
       } catch (error) {
+        console.error('Auth check failed:', error);
         return false;
       }
     })();
 
     this.lastSessionCheck = now;
     return this.sessionCheckPromise;
+  }
+
+  /**
+   * Reset the authentication session cache to force a fresh check
+   */
+  static resetSessionCache(): void {
+    this.lastSessionCheck = 0;
+    this.sessionCheckPromise = null;
   }
 
   /**

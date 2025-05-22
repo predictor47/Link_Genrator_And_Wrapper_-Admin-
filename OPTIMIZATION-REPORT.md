@@ -8,6 +8,10 @@
 - Simplified authentication error handling
 - Optimized authentication provider setup
 - Simplified new password challenge process
+- Fixed authentication redirection issue where users were stuck on login page with "There is already a signed in user" message
+- Improved cookie handling to prevent authentication redirect loops
+- Enhanced AuthRedirectCheck component for more reliable redirects
+- Added better handling for existing sessions in login flow
 
 ### 2. Amplify Configuration Optimizations
 - Removed redundant Amplify configuration calls
