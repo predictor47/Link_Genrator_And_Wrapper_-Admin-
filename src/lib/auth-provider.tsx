@@ -109,7 +109,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Function to manually refresh auth state
   const refreshAuthState = async () => {
-    await checkAuth();
+    try {
+      // Call the new method to force refresh token validation
+      await AuthService.refreshAuthState();
+      // Then check auth status again
+      await checkAuth();
+    } catch (error) {
+      console.error('Error refreshing auth state:', error);
+    }
   };
 
   // Provide the auth context value

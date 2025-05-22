@@ -63,13 +63,16 @@ export default function LoginPage() {
         console.log('Sign in successful, redirecting to admin panel');
         
         // Wait for the session to be fully established
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
         // Force a refresh of auth state before redirecting
         await refreshAuthState();
         
-        // Redirect to the intended page or admin dashboard
-        router.push(typeof redirect === 'string' ? redirect : '/admin');
+        // Clear any URL parameters to avoid redirect loops
+        const targetPath = typeof redirect === 'string' ? redirect : '/admin';
+        
+        // Use window.location for a full page reload to ensure clean state
+        window.location.href = targetPath;
       } else {
         setError(signInResponse.message || 'Failed to sign in. Please try again.');
       }

@@ -46,6 +46,7 @@ export class AuthService {
   private static sessionCheckPromise: Promise<boolean> | null = null;
   private static lastSessionCheck: number = 0;
   private static sessionCheckInterval = 30000; // 30 seconds
+  private static forceRefresh = false;
 
   /**
    * Sign up a new user
@@ -208,6 +209,13 @@ export class AuthService {
   static async isAuthenticated(): Promise<boolean> {
     const now = Date.now();
     
+    // Skip cache when force refresh happens
+    if (this.forceRefresh) {
+      this.forceRefresh = false;
+      this.lastSessionCheck = 0;
+      this.sessionCheckPromise = null;
+    }
+    
     // Return cached result if still valid
     if (this.sessionCheckPromise && (now - this.lastSessionCheck) < this.sessionCheckInterval) {
       return this.sessionCheckPromise;
@@ -219,6 +227,7 @@ export class AuthService {
         const session = await fetchAuthSession();
         return !!session.tokens?.accessToken;
       } catch (error) {
+        console.error('Error checking authentication:', error);
         return false;
       }
     })();
@@ -298,6 +307,22 @@ export class AuthService {
     } catch (error) {
       console.error('Error getting ID token:', error);
       return null;
+    }
+  }
+
+  /**
+   * Force a refresh of the authentication state
+   */
+  static async refreshAuthState(): Promise<void> {
+    this.forceRefresh = true;
+    this.lastSessionCheck = 0;
+    this.sessionCheckPromise = null;
+    
+    try {
+      // Try to fetch the auth session to refresh the tokens
+      await fetchAuthSession();
+    } catch (error) {
+      console.error('Error refreshing auth session:', error);
     }
   }
 }

@@ -152,6 +152,41 @@ export function fixProblemCookies(): void {
     deleteCookie('Authorization');
   }
   
+  // Get the current domain
+  const hostname = window.location.hostname;
+  
+  // Try to fix auth cookies - first check if we can detect any bad ones
+  const cookiesToCheck = [
+    'amplify-signin-with-hostedUI',
+    'amplify-redirected-from-hosted-ui',
+    'idToken',
+    'accessToken',
+    'refreshToken'
+  ];
+  
+  // Log cookie state for debugging
+  console.log('Checking cookies state...');
+  
+  // Check each cookie and fix if needed
+  let problemFound = false;
+  cookiesToCheck.forEach(cookieName => {
+    const cookieValue = getCookie(cookieName);
+    if (cookieValue) {
+      console.log(`Found potentially problematic cookie: ${cookieName}`);
+      problemFound = true;
+      
+      // Delete the cookie and set again with correct domain
+      deleteCookie(cookieName);
+      deleteCookie(cookieName, { domain: hostname });
+    }
+  });
+  
+  // If we found problems, attempt a more thorough cleanup
+  if (problemFound) {
+    console.log('Performing thorough cookie cleanup');
+    clearAuthCookies();
+  }
+  
   // Check for any infinite redirect related query params
   if (typeof window !== 'undefined') {
     const url = new URL(window.location.href);
@@ -191,6 +226,13 @@ export function initCookieFixes(): void {
       
       // Reload the page to break the loop
       window.location.href = window.location.origin + '/admin/login?fixed=true';
+    }
+    
+    // Check if there's a fixed=true parameter to handle a previously detected redirect loop
+    if (window.location.href.includes('fixed=true')) {
+      console.log('Fixed parameter detected, clearing all authentication cookies again');
+      // Double check that all cookies are cleared
+      clearAuthCookies();
     }
   };
   
