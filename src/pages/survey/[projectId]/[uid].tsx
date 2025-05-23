@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import { amplifyDataService } from '@/lib/amplify-data-service';
 import { detectVPN } from '@/lib/vpn-detection';
 import { collectClientMetadata } from '@/lib/metadata';
 
@@ -597,122 +596,7 @@ export default function SurveyPage({
   );
 }
 
-export async function getServerSideProps(context: any) {
-  const { projectId, uid } = context.params;
-  
-  try {
-    // Get the survey link using Amplify Data Service
-    const linkResult = await amplifyDataService.surveyLinks.getByUid(uid);
-    if (!linkResult || !linkResult.data) {
-      return {
-        props: {
-          isValid: false,
-          originalUrl: null,
-          geoRestriction: null,
-          linkType: null,
-          vendorCode: null,
-          questions: []
-        }
-      };
-    }
-    
-    const link = linkResult.data;
-    
-    if (link.projectId !== projectId) {
-      return {
-        props: {
-          isValid: false,
-          originalUrl: null,
-          geoRestriction: null,
-          linkType: null,
-          vendorCode: null,
-          questions: []
-        }
-      };
-    }
-    
-    // Get the project with questions
-    const projectResult = await amplifyDataService.projects.get(projectId);
-    if (!projectResult || !projectResult.data) {
-      return {
-        props: {
-          isValid: false,
-          originalUrl: null,
-          geoRestriction: null,
-          linkType: null,
-          vendorCode: null,
-          questions: []
-        }
-      };
-    }
-    
-    const project = projectResult.data;
-    
-    // Get the questions for this project
-    const questionsResult = await amplifyDataService.questions.listByProject(projectId);
-    const questionsData = questionsResult?.data || [];    // Get vendor code if available
-    let vendorCode = null;
-    if (link.vendorId) {
-      const vendorResult = await amplifyDataService.vendors.get(link.vendorId);
-      if (vendorResult?.data?.settings) {
-        try {
-          const settings = JSON.parse(vendorResult.data.settings as string);
-          vendorCode = settings.code || null;
-        } catch (e) {
-          console.error('Error parsing vendor settings:', e);
-        }
-      }
-    }
-      // Extract data from metadata field
-    let metadata = {};
-    let originalUrl = null;
-    let linkType = 'LIVE';
-    let geoRestriction = null;
-    
-    if (link.metadata) {      try {
-        metadata = JSON.parse(link.metadata as string);
-        const typedMetadata = metadata as { originalUrl?: string; linkType?: 'TEST' | 'LIVE'; geoRestriction?: string[] };
-        originalUrl = typedMetadata.originalUrl || null;
-        linkType = typedMetadata.linkType || 'LIVE';
-        geoRestriction = typedMetadata.geoRestriction || null;
-      } catch (e) {
-        console.error('Error parsing link metadata:', e);
-      }
-    }
-      // Parse question options from JSON string
-    const questions = questionsData.map(q => {
-      let parsedOptions: string[] = [];
-      try {
-        parsedOptions = JSON.parse(q.options?.toString() || '[]');
-      } catch (e) {
-        console.error(`Error parsing options for question ${q.id}:`, e);
-      }
-      return {
-        ...q,
-        options: parsedOptions
-      };
-    });
-      return {
-      props: {
-        isValid: true,
-        originalUrl: originalUrl || null,
-        geoRestriction: geoRestriction || null,
-        linkType: linkType || 'LIVE',
-        vendorCode,
-        questions: JSON.parse(JSON.stringify(questions))
-      }
-    };
-  } catch (error) {
-    console.error('Error fetching survey link:', error);
-    return {
-      props: {
-        isValid: false,
-        originalUrl: null,
-        geoRestriction: null,
-        linkType: null,
-        vendorCode: null,
-        questions: []
-      }
-    };
-  }
+export async function getServerSideProps() {
+  // All data fetching is now client-side. Do not use amplifyDataService here.
+  return { props: {} };
 }

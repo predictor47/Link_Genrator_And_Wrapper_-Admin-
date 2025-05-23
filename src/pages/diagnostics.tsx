@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { configureAmplify, amplifyConfig } from '@/lib/amplify-config';
+import { getAmplifyConfig } from '@/lib/amplify-config';
 import { clearAuthCookies, fixProblemCookies, getCookieDomain } from '@/lib/cookie-manager';
 
-// Initialize Amplify
-configureAmplify();
+// Removed configureAmplify as it's no longer needed
 
 export default function DiagnosticPage() {
   const router = useRouter();
@@ -15,9 +14,9 @@ export default function DiagnosticPage() {
     amplifyConfigured: false,
     authConfigured: false,
     apiConfigured: false,
-    userPoolId: amplifyConfig?.Auth?.Cognito?.userPoolId || 'not-found',
-    userPoolClientId: amplifyConfig?.Auth?.Cognito?.userPoolClientId || 'not-found',
-    apiEndpoint: amplifyConfig?.API?.GraphQL?.endpoint || 'not-found',
+    userPoolId: 'not-found',
+    userPoolClientId: 'not-found',
+    apiEndpoint: 'not-found',
     headers: {},
     cookies: {},
     cookieDomain: '',
@@ -30,6 +29,8 @@ export default function DiagnosticPage() {
   });
 
   useEffect(() => {
+    const amplifyConfig = getAmplifyConfig(); // Get the latest config
+
     // Gather client-side diagnostics
     const headers: Record<string, string> = {};
     document.cookie.split(';').forEach(cookie => {

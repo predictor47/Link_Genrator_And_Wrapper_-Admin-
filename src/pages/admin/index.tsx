@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { amplifyDataService } from '@/lib/amplify-data-service';
-import axios from 'axios';
 import ProtectedRoute from '@/lib/protected-route';
 import { logAuthDiagnostics, attemptAuthFix } from '@/lib/auth-debug';
+import { getAmplifyDataService } from '@/lib/amplify-data-service';
 
 interface Project {
   id: string;
@@ -100,29 +99,22 @@ export default function AdminDashboard({ projects: initialProjects, stats: initi
   const handleDelete = async (projectId: string) => {
     setIsDeleting(projectId);
     setDeleteError(null);
-    
     try {
-      const response = await axios.delete(`/api/projects/delete?id=${projectId}`);
-      
-      if (response.data.success) {
-        // Remove the project from the list
-        const updatedProjects = projects.filter(project => project.id !== projectId);
-        setProjects(updatedProjects);
-        
-        // Update stats
-        const projectToRemove = projects.find(project => project.id === projectId);
-        if (projectToRemove) {
-          setStats(prev => ({
-            ...prev,
-            totalProjects: prev.totalProjects - 1,
-          }));
-        }
-        
-        setShowDeleteModal(false);
-      } else {
-        setDeleteError('Failed to delete project. Please try again.');
+      const amplifyDataService = await getAmplifyDataService();
+      await amplifyDataService.projects.delete(projectId);
+      // Remove the project from the list
+      const updatedProjects = projects.filter(project => project.id !== projectId);
+      setProjects(updatedProjects);
+      // Update stats
+      const projectToRemove = projects.find(project => project.id === projectId);
+      if (projectToRemove) {
+        setStats(prev => ({
+          ...prev,
+          totalProjects: prev.totalProjects - 1,
+        }));
       }
-    } catch (error) {
+      setShowDeleteModal(false);
+    } catch (error: any) {
       console.error('Error deleting project:', error);
       setDeleteError('An error occurred while deleting the project. Please try again.');
     } finally {
@@ -184,7 +176,7 @@ export default function AdminDashboard({ projects: initialProjects, stats: initi
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-3xl font-bold text-gray-900">{stats.totalProjects}</div>
+                  <div className="text-3xl font-bold text-gray-900">{stats?.totalProjects ?? 0}</div>
                 </div>
               </div>
               <div className="text-sm font-medium text-gray-500">Total Projects</div>
@@ -207,7 +199,7 @@ export default function AdminDashboard({ projects: initialProjects, stats: initi
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-3xl font-bold text-gray-900">{stats.totalLinks}</div>
+                  <div className="text-3xl font-bold text-gray-900">{stats?.totalLinks ?? 0}</div>
                 </div>
               </div>
               <div className="text-sm font-medium text-gray-500">Total Links</div>
@@ -225,12 +217,12 @@ export default function AdminDashboard({ projects: initialProjects, stats: initi
                     stroke="#3B82F6" 
                     strokeWidth="8" 
                     strokeDasharray={2 * Math.PI * 40} 
-                    strokeDashoffset={2 * Math.PI * 40 * (1 - stats.pendingLinks / stats.totalLinks)}
+                    strokeDashoffset={2 * Math.PI * 40 * (1 - (stats?.pendingLinks ?? 0) / ((stats?.totalLinks ?? 1) || 1))}
                     transform="rotate(-90 48 48)"
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-3xl font-bold text-blue-600">{stats.pendingLinks}</div>
+                  <div className="text-3xl font-bold text-blue-600">{stats?.pendingLinks ?? 0}</div>
                 </div>
               </div>
               <div className="text-sm font-medium text-gray-500">Pending Links</div>
@@ -248,12 +240,12 @@ export default function AdminDashboard({ projects: initialProjects, stats: initi
                     stroke="#10B981" 
                     strokeWidth="8" 
                     strokeDasharray={2 * Math.PI * 40} 
-                    strokeDashoffset={2 * Math.PI * 40 * (1 - stats.startedLinks / stats.totalLinks)}
+                    strokeDashoffset={2 * Math.PI * 40 * (1 - (stats?.startedLinks ?? 0) / ((stats?.totalLinks ?? 1) || 1))}
                     transform="rotate(-90 48 48)"
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-3xl font-bold text-green-600">{stats.startedLinks}</div>
+                  <div className="text-3xl font-bold text-green-600">{stats?.startedLinks ?? 0}</div>
                 </div>
               </div>
               <div className="text-sm font-medium text-gray-500">Started Links</div>
@@ -271,12 +263,12 @@ export default function AdminDashboard({ projects: initialProjects, stats: initi
                     stroke="#059669" 
                     strokeWidth="8" 
                     strokeDasharray={2 * Math.PI * 40} 
-                    strokeDashoffset={2 * Math.PI * 40 * (1 - stats.completedLinks / stats.totalLinks)}
+                    strokeDashoffset={2 * Math.PI * 40 * (1 - (stats?.completedLinks ?? 0) / ((stats?.totalLinks ?? 1) || 1))}
                     transform="rotate(-90 48 48)"
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-3xl font-bold text-green-800">{stats.completedLinks}</div>
+                  <div className="text-3xl font-bold text-green-800">{stats?.completedLinks ?? 0}</div>
                 </div>
               </div>
               <div className="text-sm font-medium text-gray-500">Completed Links</div>
@@ -294,12 +286,12 @@ export default function AdminDashboard({ projects: initialProjects, stats: initi
                     stroke="#EF4444" 
                     strokeWidth="8" 
                     strokeDasharray={2 * Math.PI * 40} 
-                    strokeDashoffset={2 * Math.PI * 40 * (1 - stats.flaggedLinks / stats.totalLinks)}
+                    strokeDashoffset={2 * Math.PI * 40 * (1 - (stats?.flaggedLinks ?? 0) / ((stats?.totalLinks ?? 1) || 1))}
                     transform="rotate(-90 48 48)"
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-3xl font-bold text-red-600">{stats.flaggedLinks}</div>
+                  <div className="text-3xl font-bold text-red-600">{stats?.flaggedLinks ?? 0}</div>
                 </div>
               </div>
               <div className="text-sm font-medium text-gray-500">Flagged Links</div>
@@ -332,7 +324,7 @@ export default function AdminDashboard({ projects: initialProjects, stats: initi
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {projects.map((project) => {
+                {(projects ?? []).map((project) => {
                   // Get project stats
                   const projectStat = projectStats[project.id] || {
                     pending: 0,
@@ -418,7 +410,7 @@ export default function AdminDashboard({ projects: initialProjects, stats: initi
                   );
                 })}
                 
-                {projects.length === 0 && (
+                {(projects ?? []).length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
                       No projects found. Create your first project to get started.
@@ -478,145 +470,6 @@ export default function AdminDashboard({ projects: initialProjects, stats: initi
 }
 
 export async function getServerSideProps() {
-  try {
-    // Get all projects using Amplify Data Service
-    const projectsResult = await amplifyDataService.projects.list();
-    const projects = projectsResult.data || [];
-    
-    // Initialize stats
-    const stats = {
-      totalProjects: projects.length,
-      totalLinks: 0,
-      pendingLinks: 0,
-      startedLinks: 0,
-      inProgressLinks: 0,
-      completedLinks: 0,
-      flaggedLinks: 0,
-    };
-
-    // Initialize project stats object
-    const projectStats: Record<string, { 
-      pending: number, 
-      started: number,
-      inProgress: number,
-      completed: number,
-      flagged: number
-    }> = {};
-    
-    // Initialize counts for each project
-    projects.forEach(project => {
-      if (project && project.id) {
-        projectStats[project.id] = {
-          pending: 0,
-          started: 0,
-          inProgress: 0,
-          completed: 0,
-          flagged: 0
-        };
-      }
-    });
-
-    // Get all survey links to compute stats
-    const surveyLinksResult = await amplifyDataService.surveyLinks.list();
-    const surveyLinks = surveyLinksResult.data || [];
-    
-    // Calculate total links
-    stats.totalLinks = surveyLinks.length;
-    
-    // Process survey links to compute both overall and project-specific stats
-    surveyLinks.forEach(link => {
-      // Skip links without a project or status
-      if (!link.projectId || !link.status) return;
-      
-      // Update project-specific stats
-      if (link.projectId && projectStats[link.projectId]) {        switch (link.status) {
-          case 'UNUSED':
-            projectStats[link.projectId].pending += 1;
-            stats.pendingLinks += 1;
-            break;
-          case 'CLICKED':
-            projectStats[link.projectId].started += 1;
-            stats.startedLinks += 1;
-            break;          // Use CLICKED status to track in-progress links since we don't have IN_PROGRESS status anymore
-          // This duplicates the CLICKED case but preserves the stats functionality
-          case 'CLICKED': 
-            projectStats[link.projectId].inProgress += 1;
-            stats.inProgressLinks += 1;
-            break;          case 'COMPLETED':
-            projectStats[link.projectId].completed += 1;
-            stats.completedLinks += 1;
-            break;
-          case 'DISQUALIFIED':
-            projectStats[link.projectId].flagged += 1;
-            stats.flaggedLinks += 1;
-            break;
-          case 'QUOTA_FULL':
-            projectStats[link.projectId].flagged += 1;
-            stats.flaggedLinks += 1;
-            break;
-        }
-      }
-    });    // Flag model doesn't exist anymore, so we just use an empty array
-    // const flagsResult = await amplifyDataService.flags.list();
-    const flags: any[] = [];
-    
-    // Calculate counts for each project
-    const projectCounts: Record<string, { surveyLinks: number, flags: number }> = {};
-    projects.forEach(project => {
-      if (!project || !project.id) return;
-      
-      // Count survey links
-      const projectLinks = surveyLinks.filter(link => link.projectId === project.id);
-      
-      // Count flags
-      const projectFlags = flags.filter(flag => flag.projectId === project.id);
-      
-      projectCounts[project.id] = {
-        surveyLinks: projectLinks.length,
-        flags: projectFlags.length
-      };
-    });
-
-    // Format projects data for the frontend
-    const formattedProjects = projects.map(project => {
-      if (!project || !project.id) {
-        return null;
-      }
-      return {
-        id: project.id,
-        name: project.name,
-        description: project.description,
-        createdAt: project.createdAt,
-        _count: {
-          surveyLinks: projectCounts[project.id]?.surveyLinks || 0,
-          flags: projectCounts[project.id]?.flags || 0
-        }
-      };
-    }).filter(Boolean) as Project[];
-
-    return {
-      props: {
-        projects: JSON.parse(JSON.stringify(formattedProjects)),
-        stats,
-        projectStats
-      },
-    };
-  } catch (error) {
-    console.error('Error fetching admin dashboard data:', error);
-    return {
-      props: {
-        projects: [],
-        stats: {
-          totalProjects: 0,
-          totalLinks: 0,
-          pendingLinks: 0,
-          startedLinks: 0,
-          inProgressLinks: 0,
-          completedLinks: 0,
-          flaggedLinks: 0,
-        },
-        projectStats: {}
-      },
-    };
-  }
+  // All data fetching is now client-side. Do not use amplifyDataService here.
+  return { props: {} };
 }

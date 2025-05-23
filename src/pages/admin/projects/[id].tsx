@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { amplifyDataService } from '@/lib/amplify-data-service';
-import axios from 'axios';
+import { getAmplifyDataService } from '@/lib/amplify-data-service';
 import ProtectedRoute from '@/lib/protected-route';
 
 // Define proper types based on your Amplify data schema
@@ -91,15 +90,198 @@ const CircleProgress = ({ value, max, color, label, percentage }: {
   );
 }
 
-export default function ProjectView({ project }: { project: ProjectData | null }) {
+export default function ProjectView() {
   const router = useRouter();
   const { id } = router.query;
   const [activeTab, setActiveTab] = useState('stats');
   const [newVendor, setNewVendor] = useState({ name: '', code: '' });
   const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [project, setProject] = useState<ProjectData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Fetch project and related data client-side
+  useEffect(() => {
+    if (!id || id === 'new') return;
+    setIsLoading(true);
+    setError('');
+    (async () => {
+      try {
+        const amplifyDataService = await getAmplifyDataService();
+        // Fetch project
+        const projectResult = await amplifyDataService.projects.get(id as string);
+        const projectData = projectResult.data;
+        if (!projectData) {
+          setProject(null);
+          setIsLoading(false);
+          return;
+        }
+        // Fetch questions
+        const questionsResult = await amplifyDataService.questions.listByProject(id as string);
+        const questions = questionsResult.data || [];
+        // Fetch vendors
+        const vendorsResult = await amplifyDataService.vendors.listByProject(id as string);
+        const vendorsData = (vendorsResult.data || []).map((v: any) => ({
+          id: v.id,
+          name: v.name || 'Unknown Vendor',
+          code: v.code || (v.id ? v.id.substring(0, 8) : ''),
+          createdAt: v.createdAt || new Date().toISOString()
+        }));
+        setVendors(vendorsData);
+        // Fetch survey links
+        const surveyLinksResult = await amplifyDataService.surveyLinks.listByProject(id as string);
+        const surveyLinks = surveyLinksResult.data || [];
+        // Calculate stats
+        const stats = {
+          total: surveyLinks.length,
+          pending: 0,
+          started: 0,
+          inProgress: 0,
+          completed: 0,
+          flagged: 0
+        };
+        surveyLinks.forEach((link: any) => {
+          switch (link.status) {
+            case 'UNUSED':
+              stats.pending++;
+              break;
+            case 'CLICKED':
+              stats.started++;
+              stats.inProgress++;
+              break;
+            case 'COMPLETED':
+              stats.completed++;
+              break;
+            case 'DISQUALIFIED':
+            case 'QUOTA_FULL':
+              stats.flagged++;
+              break;
+          }
+        });
+        setProject({
+          id: projectData.id,
+          name: projectData.name,
+          description: projectData.description,
+          createdAt: projectData.createdAt,
+          questions: questions.map((q: any) => ({
+            id: q.id,
+            text: q.text,
+            options: q.options
+          })),
+          vendors: vendorsData,
+          stats
+        });
+      } catch (err: any) {
+        setError(err.message || 'Failed to load project');
+        setProject(null);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, [id]);
+
+  const fetchVendors = async () => {
+    if (!project) return;
+    try {
+      const amplifyDataService = await getAmplifyDataService();
+      const response = await amplifyDataService.vendors.listByProject(project.id);
+      const safeVendors = (response.data || []).map((v: any) => ({
+        id: v.id,
+        name: v.name || 'Unknown Vendor',
+        code: v.code || (v.id ? v.id.substring(0, 8) : ''),
+        createdAt: v.createdAt || new Date().toISOString()
+      }));
+      setVendors(safeVendors);
+    } catch (error) {
+      setError('Failed to fetch vendors');
+    }
+  };
+
+  const handleCreateVendor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setIsLoading(true);
+    if (!project) {
+      setError('Project not loaded');
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const amplifyDataService = await getAmplifyDataService();
+      if (!amplifyDataService || !amplifyDataService.vendors || typeof amplifyDataService.vendors.create !== 'function') {
+        setError('Vendor creation service is not available.');
+        setIsLoading(false);
+        return;
+      }
+      await amplifyDataService.vendors.create({
+        name: newVendor.name,
+        code: newVendor.code,
+        projectId: project.id
+      });
+      setNewVendor({ name: '', code: '' });
+      setSuccess('Vendor created successfully');
+      fetchVendors();
+    } catch (error: any) {
+      console.error('Error creating vendor:', error);
+      setError(error.message || 'Failed to create vendor');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteVendor = async (vendorId: string) => {
+    if (!confirm('Are you sure you want to delete this vendor?')) return;
+    setError('');
+    setSuccess('');
+    if (!project) {
+      setError('Project not loaded');
+      return;
+    }
+    try {
+      const amplifyDataService = await getAmplifyDataService();
+      await amplifyDataService.vendors.delete(vendorId);
+      setSuccess('Vendor deleted successfully');
+      fetchVendors();
+    } catch (error: any) {
+      console.error('Error deleting vendor:', error);
+      setError(error.message || 'Failed to delete vendor');
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!confirm('Are you sure you want to delete this project? This action cannot be undone.')) return;
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+    if (!project) {
+      setError('Project not loaded');
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const amplifyDataService = await getAmplifyDataService();
+      // Delete all questions
+      if (project.questions && project.questions.length > 0) {
+        await Promise.all(project.questions.map(q => amplifyDataService.questions.delete(q.id)));
+      }
+      // Delete all vendors
+      if (project.vendors && project.vendors.length > 0) {
+        await Promise.all(project.vendors.map(v => amplifyDataService.vendors.delete(v.id)));
+      }
+      // Delete all survey links (if you have them in state, otherwise skip)
+      // await Promise.all(surveyLinks.map(l => amplifyDataService.surveyLinks.delete(l.id)));
+      // Delete the project itself
+      await amplifyDataService.projects.delete(project.id);
+      setSuccess('Project deleted successfully');
+      router.push('/admin');
+    } catch (error: any) {
+      setError(error.message || 'Failed to delete project');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Handle the "new" path by redirecting to the proper new project page
   useEffect(() => {
@@ -108,7 +290,31 @@ export default function ProjectView({ project }: { project: ProjectData | null }
     }
   }, [id, router]);
 
-  // Handle case when project is not found
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-lg text-gray-700">Loading project...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
+          <p className="text-gray-700 mb-6">{error}</p>
+          <Link 
+            href="/admin" 
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+          >
+            Return to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (!project) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -127,12 +333,12 @@ export default function ProjectView({ project }: { project: ProjectData | null }
   }
   
   // Calculate percentages for circular progress bars
-  const totalLinks = project.stats.total;
-  const pendingPercentage = totalLinks > 0 ? (project.stats.pending / totalLinks) * 100 : 0;
-  const startedPercentage = totalLinks > 0 ? (project.stats.started / totalLinks) * 100 : 0;
-  const inProgressPercentage = totalLinks > 0 ? (project.stats.inProgress / totalLinks) * 100 : 0;
-  const completedPercentage = totalLinks > 0 ? (project.stats.completed / totalLinks) * 100 : 0;
-  const flaggedPercentage = totalLinks > 0 ? (project.stats.flagged / totalLinks) * 100 : 0;
+  const totalLinks = project.stats?.total ?? 0;
+  const pendingPercentage = totalLinks > 0 ? ((project.stats?.pending ?? 0) / totalLinks) * 100 : 0;
+  const startedPercentage = totalLinks > 0 ? ((project.stats?.started ?? 0) / totalLinks) * 100 : 0;
+  const inProgressPercentage = totalLinks > 0 ? ((project.stats?.inProgress ?? 0) / totalLinks) * 100 : 0;
+  const completedPercentage = totalLinks > 0 ? ((project.stats?.completed ?? 0) / totalLinks) * 100 : 0;
+  const flaggedPercentage = totalLinks > 0 ? ((project.stats?.flagged ?? 0) / totalLinks) * 100 : 0;
 
   // Fetch vendors when component mounts or when project changes
   useEffect(() => {
@@ -140,63 +346,6 @@ export default function ProjectView({ project }: { project: ProjectData | null }
       fetchVendors();
     }
   }, [project?.id]);
-
-  const fetchVendors = async () => {
-    try {
-      const response = await axios.get(`/api/vendors/list?projectId=${project.id}`);
-      if (response.data.success) {
-        setVendors(response.data.vendors);
-      }
-    } catch (error) {
-      console.error('Error fetching vendors:', error);
-      setError('Failed to fetch vendors');
-    }
-  };
-
-  const handleCreateVendor = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setIsLoading(true);
-    
-    try {
-      const response = await axios.post('/api/vendors/create', {
-        name: newVendor.name,
-        code: newVendor.code,
-        projectId: project.id
-      });
-
-      if (response.data.success) {
-        setNewVendor({ name: '', code: '' });
-        setSuccess('Vendor created successfully');
-        fetchVendors();
-      }
-    } catch (error: any) {
-      console.error('Error creating vendor:', error);
-      setError(error.response?.data?.message || 'Failed to create vendor');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteVendor = async (vendorId: string) => {
-    if (!confirm('Are you sure you want to delete this vendor?')) return;
-    
-    setError('');
-    setSuccess('');
-    
-    try {
-      const response = await axios.delete(`/api/vendors/delete?id=${vendorId}`);
-      
-      if (response.data.success) {
-        setSuccess('Vendor deleted successfully');
-        fetchVendors();
-      }
-    } catch (error: any) {
-      console.error('Error deleting vendor:', error);
-      setError(error.response?.data?.message || 'Failed to delete vendor');
-    }
-  };
 
   return (
     <ProtectedRoute>
@@ -228,7 +377,7 @@ export default function ProjectView({ project }: { project: ProjectData | null }
                   Generate Links
                 </Link>
                 <button
-                  onClick={() => router.push(`/admin`)}
+                  onClick={handleDeleteProject}
                   className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
                 >
                   Delete Project
@@ -303,43 +452,43 @@ export default function ProjectView({ project }: { project: ProjectData | null }
               <div className="p-6">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 justify-items-center">
                   <CircleProgress 
-                    value={project.stats.total} 
-                    max={project.stats.total} 
+                    value={project.stats?.total ?? 0} 
+                    max={project.stats?.total ?? 0} 
                     color="#6366F1" 
                     label="Total Links" 
                     percentage={100} 
                   />
                   <CircleProgress 
-                    value={project.stats.pending} 
-                    max={project.stats.total} 
+                    value={project.stats?.pending ?? 0} 
+                    max={project.stats?.total ?? 0} 
                     color="#3B82F6" 
                     label="Pending" 
                     percentage={pendingPercentage} 
                   />
                   <CircleProgress 
-                    value={project.stats.started} 
-                    max={project.stats.total} 
+                    value={project.stats?.started ?? 0} 
+                    max={project.stats?.total ?? 0} 
                     color="#10B981" 
                     label="Started" 
                     percentage={startedPercentage} 
                   />
                   <CircleProgress 
-                    value={project.stats.inProgress} 
-                    max={project.stats.total} 
+                    value={project.stats?.inProgress ?? 0} 
+                    max={project.stats?.total ?? 0} 
                     color="#F59E0B" 
                     label="In Progress" 
                     percentage={inProgressPercentage} 
                   />
                   <CircleProgress 
-                    value={project.stats.completed} 
-                    max={project.stats.total} 
+                    value={project.stats?.completed ?? 0} 
+                    max={project.stats?.total ?? 0} 
                     color="#059669" 
                     label="Completed" 
                     percentage={completedPercentage} 
                   />
                   <CircleProgress 
-                    value={project.stats.flagged} 
-                    max={project.stats.total} 
+                    value={project.stats?.flagged ?? 0} 
+                    max={project.stats?.total ?? 0} 
                     color="#EF4444" 
                     label="Flagged" 
                     percentage={flaggedPercentage} 
@@ -357,9 +506,9 @@ export default function ProjectView({ project }: { project: ProjectData | null }
               <h2 className="text-xl font-semibold text-gray-800">Pre-Survey Questions</h2>
             </div>
             <div className="p-6">
-              {project.questions.length > 0 ? (
+              {project.questions && project.questions.length > 0 ? (
                 <div className="space-y-6">
-                  {project.questions.map((question, index) => {
+                  {(project.questions ?? []).map((question, index) => {
                     // Parse options from JSON string
                     const options = JSON.parse(question.options || '[]');
                     
@@ -529,112 +678,4 @@ export default function ProjectView({ project }: { project: ProjectData | null }
       </div>
     </ProtectedRoute>
   );
-}
-
-export async function getServerSideProps({ params }: { params: { id: string } }) {
-  const { id } = params;
-
-  // Special handling for "new" path - we don't need to fetch data in this case
-  if (id === 'new') {
-    return {
-      redirect: {
-        destination: '/admin/projects/new',
-        permanent: false,
-      },
-    };
-  }
-
-  try {
-    // Fetch project data using Amplify Data Service
-    const projectResult = await amplifyDataService.projects.get(id);
-    const project = projectResult.data;
-
-    if (!project) {
-      return { props: { project: null } };
-    }
-
-    // Get questions for this project
-    const questionsResult = await amplifyDataService.questions.listByProject(id);
-    const questions = questionsResult.data || [];
-
-    // Get vendors for this project
-    const vendorsResult = await amplifyDataService.vendors.listByProject(id);
-    const vendors = vendorsResult.data || [];
-
-    // Get survey links for this project
-    const surveyLinksResult = await amplifyDataService.surveyLinks.listByProject(id);
-    const surveyLinks = surveyLinksResult.data || [];    // Flags model no longer exists, so we use an empty array
-    // const flagsResult = await amplifyDataService.flags.list({
-    //   filter: { projectId: { eq: id } }
-    // });
-    const flags: any[] = [];
-
-    // Initialize stats
-    const stats = {
-      total: surveyLinks.length,
-      pending: 0,
-      started: 0,
-      inProgress: 0,
-      completed: 0,
-      flagged: 0
-    };    // Calculate stats from survey links using the new status enum
-    surveyLinks.forEach(link => {
-      switch (link.status) {
-        case 'UNUSED':
-          stats.pending++;
-          break;
-        case 'CLICKED':
-          // Map both started and inProgress to CLICKED since we don't have separate statuses anymore
-          stats.started++;
-          stats.inProgress++;
-          break;
-        case 'COMPLETED':
-          stats.completed++;
-          break;
-        case 'DISQUALIFIED':
-        case 'QUOTA_FULL':
-          stats.flagged++;
-          break;
-      }
-    });
-
-    // Add flags count if not already counted in status
-    if (flags.length > stats.flagged) {
-      stats.flagged = flags.length;
-    }
-
-    return {
-      props: {
-        project: {
-          id: project.id,
-          name: project.name,
-          description: project.description,
-          createdAt: project.createdAt,
-          questions: questions.map(q => ({
-            id: q.id,
-            text: q.text,
-            options: q.options // This is already a string in your schema
-          })),          vendors: vendors
-            .filter(v => v !== null)
-            .map(v => {
-              // Create a vendor object with only the properties that exist in the schema
-              return {
-                id: v.id,
-                name: v.name || 'Unknown Vendor',
-                // code is not in the schema anymore, but we need it for backwards compatibility
-                // We'll use the vendor id as the code if needed
-                code: (v as any).code || v.id.substring(0, 8),
-                createdAt: v.createdAt || new Date().toISOString()
-              };
-            }),
-          stats
-        }
-      }
-    };
-  } catch (error) {
-    console.error('Error fetching project details:', error);
-    return {
-      props: { project: null }
-    };
-  }
 }

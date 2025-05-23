@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import axios from 'axios';
-import { amplifyDataService } from '@/lib/amplify-data-service';
 
 interface CompletionPageProps {
   project: {
@@ -150,87 +149,7 @@ export default function CompletionPage({ project, surveyLink, error: serverError
   );
 }
 
-export async function getServerSideProps(context: any) {
-  const { projectId, uid } = context.params;
-  
-  try {
-    // Fetch project data using Amplify
-    const projectResult = await amplifyDataService.projects.get(projectId);
-    if (!projectResult || !projectResult.data) {
-      return {
-        props: {
-          project: null,
-          surveyLink: null,
-          error: 'Project not found'
-        }
-      };
-    }
-    
-    const project = projectResult.data;
-    
-    // Fetch survey link using Amplify
-    const surveyLinkResult = await amplifyDataService.surveyLinks.getByUid(uid);
-    const surveyLink = surveyLinkResult?.data;
-    
-    if (!surveyLink || surveyLink.projectId !== projectId) {
-      return {
-        props: {
-          project: {
-            id: project.id,
-            name: project.name
-          },
-          surveyLink: null,
-          error: 'Survey link not found'
-        }
-      };
-    }
-      // Get vendor code if applicable
-    let vendorCode = null;
-    if (surveyLink.vendorId) {
-      const vendorResult = await amplifyDataService.vendors.get(surveyLink.vendorId);
-      if (vendorResult?.data?.settings) {
-        try {
-          const settings = JSON.parse(vendorResult.data.settings as string);
-          vendorCode = settings.code || null;
-        } catch (e) {
-          console.error('Error parsing vendor settings:', e);
-        }
-      }
-    }
-      // Extract originalUrl from metadata
-    let originalUrl = '';
-    if (surveyLink.metadata) {
-      try {
-        const metadata = JSON.parse(surveyLink.metadata as string);
-        originalUrl = metadata.originalUrl || '';
-      } catch (e) {
-        console.error('Error parsing link metadata:', e);
-      }
-    }
-
-    return {
-      props: {
-        project: {
-          id: project.id,
-          name: project.name
-        },
-        surveyLink: {
-          uid: surveyLink.uid,
-          status: surveyLink.status || 'PENDING',
-          originalUrl,
-          vendorCode
-        },
-        error: null
-      }
-    };
-  } catch (error) {
-    console.error("Error fetching data:", error);
-    return {
-      props: {
-        project: null,
-        surveyLink: null,
-        error: 'Error fetching data'
-      }
-    };
-  }
+export async function getServerSideProps() {
+  // All data fetching is now client-side. Do not use amplifyDataService here.
+  return { props: {} };
 }

@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuthService } from './auth-service';
-import { configureAmplify } from './amplify-config';
 import { fixProblemCookies } from './cookie-manager';
 
-// Initialize Amplify once at the module level
-configureAmplify();
+// Remove import { configureAmplify } from './amplify-config';
+// If you need config, use:
+// import { getAmplifyConfig } from './amplify-config';
 
 // Define the authentication context type
 interface AuthContextType {

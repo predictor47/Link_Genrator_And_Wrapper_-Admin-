@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import axios from 'axios';
 import Link from 'next/link';
 import ProtectedRoute from '@/lib/protected-route';
+import { getAmplifyDataService } from '@/lib/amplify-data-service';
 
 interface Question {
   text: string;
@@ -59,28 +59,52 @@ export default function NewProject() {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!name.trim()) {
       setError('Project name is required');
       return;
     }
-
     setIsSubmitting(true);
     setError('');
-
     try {
-      const response = await axios.post('/api/projects/create', {
+      const amplifyDataService = await getAmplifyDataService();
+      if (!amplifyDataService || !amplifyDataService.projects) {
+        console.error('amplifyDataService or amplifyDataService.projects is undefined:', { amplifyDataService });
+        setError('Project creation service is not available (projects undefined).');
+        setIsSubmitting(false);
+        return;
+      }
+      if (typeof amplifyDataService.projects.create !== 'function') {
+        console.error('amplifyDataService.projects.create is not a function:', amplifyDataService.projects);
+        setError('Project creation service is not available (create not a function).');
+        setIsSubmitting(false);
+        return;
+      }
+      // Create project directly on client
+      const projectResult = await amplifyDataService.projects.create({
         name,
         description,
-        questions
       });
-
-      if (response.data.success) {
-        // Redirect to the admin dashboard
-        router.push('/admin');
+      if (!projectResult || !projectResult.data) {
+        setError('Failed to create project. Project creation returned null.');
+        setIsSubmitting(false);
+        return;
       }
+      // Add questions if provided
+      if (questions && Array.isArray(questions) && questions.length > 0) {
+        const projectId = projectResult.data.id;
+        const questionPromises = questions.map((q: { text: string, options: string[] }) => 
+          amplifyDataService.questions.create({
+            projectId,
+            text: q.text,
+            options: JSON.stringify(q.options || [])
+          })
+        );
+        await Promise.all(questionPromises);
+      }
+      // Redirect to the admin dashboard
+      router.push('/admin');
     } catch (error: any) {
-      setError(error.response?.data?.message || 'Failed to create project');
+      setError(error.message || 'Failed to create project');
     } finally {
       setIsSubmitting(false);
     }

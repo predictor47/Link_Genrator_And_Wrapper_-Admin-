@@ -2,10 +2,10 @@ import { AppProps } from 'next/app';
 import Head from 'next/head';
 import '../styles/globals.css';
 import { AuthProvider } from '@/lib/auth-provider';
-import { configureAmplify } from '@/lib/amplify-config';
+import { getAmplifyConfig } from '@/lib/amplify-config';
 
-// Ensure Amplify is configured once at the app level
-configureAmplify();
+// If you need config, use:
+const amplifyConfig = getAmplifyConfig();
 
 export default function MyApp({ Component, pageProps }: AppProps) {
   return (

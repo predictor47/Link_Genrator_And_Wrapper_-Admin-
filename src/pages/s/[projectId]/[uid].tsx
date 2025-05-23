@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { GetServerSideProps } from 'next';
-import { amplifyDataService } from '@/lib/amplify-data-service';
 import SurveyFlow from '@/components/SurveyFlow';
-import { detectVPN } from '@/lib/vpn-detection';
 
 // Types
 interface Question {
@@ -103,106 +101,7 @@ export default function SurveyLandingPage({
   );
 }
 
-export const getServerSideProps: GetServerSideProps = async (context) => {
-  const { projectId, uid } = context.params as { projectId: string; uid: string };
-  
-  try {
-    // Get project details
-    const projectResult = await amplifyDataService.projects.get(projectId);
-    const project = projectResult?.data || null;
-    
-    if (!project) {
-      return {
-        props: {
-          projectId,
-          uid,
-          isValid: false,
-          errorMessage: 'Project not found',
-          project: null,
-          surveyLink: null
-        }
-      };
-    }
-    
-    // Get survey link details
-    const linkResult = await amplifyDataService.surveyLinks.getByUid(uid);
-    const surveyLink = linkResult?.data || null;
-    
-    if (!surveyLink) {
-      return {
-        props: {
-          projectId,
-          uid,
-          isValid: false,
-          errorMessage: 'Survey link not found',
-          project: null,
-          surveyLink: null
-        }
-      };
-    }
-    
-    // Check if the link belongs to this project
-    if (surveyLink.projectId !== projectId) {
-      return {
-        props: {
-          projectId,
-          uid,
-          isValid: false,
-          errorMessage: 'Invalid project link combination',
-          project: null,
-          surveyLink: null
-        }
-      };
-    }
-    
-    // Check if link is already marked as completed
-    if (surveyLink.status === 'COMPLETED') {
-      return {
-        props: {
-          projectId,
-          uid,
-          isValid: true,
-          project: {
-            name: project.name,
-            surveyUrl: project.surveyUrl
-          },
-          surveyLink: {
-            status: surveyLink.status,
-            vendorId: surveyLink.vendorId || null
-          }
-        }
-      };
-    }
-    
-    // All checks passed
-    return {
-      props: {
-        projectId,
-        uid,
-        isValid: true,
-        project: {
-          name: project.name,
-          surveyUrl: project.surveyUrl
-        },
-        surveyLink: {
-          status: surveyLink.status || 'UNUSED',
-          vendorId: surveyLink.vendorId || null
-        }
-      }
-    };
-    
-  } catch (error) {
-    console.error('Error fetching survey details:', error);
-    
-    return {
-      props: {
-        projectId,
-        uid,
-        isValid: false,
-        errorMessage: 'An error occurred while loading the survey',
-        project: null,
-        surveyLink: null
-      }
-    };
-  }
+export const getServerSideProps: GetServerSideProps = async () => {
+  // All data fetching is now client-side. Do not use amplifyDataService here.
+  return { props: {} };
 };

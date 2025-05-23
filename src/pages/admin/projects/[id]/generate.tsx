@@ -3,7 +3,6 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import axios from 'axios';
 import { useForm } from 'react-hook-form';
-import { amplifyDataService } from '@/lib/amplify-data-service';
 import CSVUploader from '@/components/CSVUploader';
 import ProtectedRoute from '@/lib/protected-route';
 
@@ -800,31 +799,7 @@ export default function GeneratePage({ project }: GeneratePageProps) {
   );
 }
 
-export async function getServerSideProps(context: any) {
-  const { id } = context.params;
-  
-  try {
-    const projectResult = await amplifyDataService.projects.get(id);
-    const project = projectResult.data;
-    
-    if (!project) {
-      return {
-        notFound: true
-      };
-    }
-    
-    return {
-      props: {
-        project: {
-          id: project.id,
-          name: project.name
-        }
-      }
-    };
-  } catch (error) {
-    console.error("Error fetching project:", error);
-    return {
-      notFound: true
-    };
-  }
+export async function getServerSideProps() {
+  // All data fetching is now client-side. Do not use amplifyDataService here.
+  return { props: {} };
 }

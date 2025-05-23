@@ -1,10 +1,17 @@
 import { signIn, signUp, signOut, confirmSignUp, resetPassword, confirmResetPassword, 
   getCurrentUser, fetchUserAttributes, updateUserAttributes, fetchAuthSession,
   resendSignUpCode, confirmSignIn } from 'aws-amplify/auth';
-import { configureAmplify } from './amplify-config';
+import { getAmplifyConfig } from './amplify-config';
+import { Amplify } from 'aws-amplify';
 
-// Make sure Amplify is configured
-configureAmplify();
+// Initialize Amplify with config (client-side only, and with required fields)
+if (typeof window !== 'undefined' && Amplify && typeof Amplify.configure === 'function') {
+  const amplifyConfig = getAmplifyConfig();
+  if (amplifyConfig.API && amplifyConfig.API.GraphQL) {
+    (amplifyConfig.API.GraphQL as any).defaultAuthMode = (amplifyConfig.API.GraphQL as any).defaultAuthMode || 'userPool';
+  }
+  Amplify.configure(amplifyConfig as any);
+}
 
 type SignUpParams = {
   username: string;

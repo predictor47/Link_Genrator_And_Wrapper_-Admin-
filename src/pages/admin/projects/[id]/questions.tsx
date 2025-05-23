@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import axios from 'axios';
-import { amplifyDataService } from '@/lib/amplify-data-service';
 import ProtectedRoute from '@/lib/protected-route';
 
 // Types for our component
@@ -229,47 +228,7 @@ export default function QuestionsPage({ project, initialQuestions }: QuestionsPa
   );
 }
 
-export async function getServerSideProps(context: any) {
-  const { id } = context.params;
-  
-  try {
-    const projectResult = await amplifyDataService.projects.get(id);
-    const project = projectResult.data;
-    
-    if (!project) {
-      return {
-        notFound: true
-      };
-    }
-    
-    // Fetch questions using Amplify Data Service
-    const questionsResult = await amplifyDataService.questions.list({
-      filter: { projectId: { eq: id } },
-      sort: { field: 'createdAt', direction: 'DESC' }
-    });
-    
-    const questions = questionsResult.data || [];
-    
-    // Parse options from JSON string to array if needed
-    const parsedQuestions = questions.map(q => ({
-      id: q.id,
-      text: q.text,
-      options: typeof q.options === 'string' ? JSON.parse(q.options || '[]') : q.options
-    }));
-    
-    return {
-      props: {
-        project: {
-          id: project.id,
-          name: project.name
-        },
-        initialQuestions: JSON.parse(JSON.stringify(parsedQuestions))
-      }
-    };
-  } catch (error) {
-    console.error("Error fetching project data:", error);
-    return {
-      notFound: true
-    };
-  }
+export async function getServerSideProps() {
+  // All data fetching is now client-side. Do not use amplifyDataService here.
+  return { props: {} };
 }

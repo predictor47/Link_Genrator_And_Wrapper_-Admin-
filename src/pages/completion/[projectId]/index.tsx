@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import axios from 'axios';
-import { amplifyDataService } from '@/lib/amplify-data-service';
+import { getAmplifyDataService } from '@/lib/amplify-data-service';
 
 interface CompletionPageProps {
   project: {
@@ -132,37 +132,7 @@ export default function CompletionPage({ project, error: serverError }: Completi
   );
 }
 
-export async function getServerSideProps(context: any) {
-  const { projectId } = context.params;
-  
-  try {
-    const projectResult = await amplifyDataService.projects.get(projectId);
-    const project = projectResult.data;
-    
-    if (!project) {
-      return {
-        props: {
-          project: null,
-          error: 'Project not found'
-        }
-      };
-    }
-    
-    return {
-      props: {
-        project: {
-          id: project.id,
-          name: project.name
-        }
-      }
-    };
-  } catch (error) {
-    console.error("Error fetching project:", error);
-    return {
-      props: {
-        project: null,
-        error: 'Error fetching project data'
-      }
-    };
-  }
+export async function getServerSideProps() {
+  // All data fetching is now client-side. Do not use amplifyDataService here.
+  return { props: {} };
 }
