@@ -5,6 +5,7 @@ import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import CSVUploader from '@/components/CSVUploader';
 import ProtectedRoute from '@/lib/protected-route';
+import { getAmplifyDataService } from '@/lib/amplify-data-service';
 
 // Type for vendor
 interface Vendor {
@@ -33,16 +34,21 @@ interface CSVLinkData {
   geoRestriction?: string;
 }
 
-// Component props
-interface GeneratePageProps {
-  project: {
-    id: string;
-    name: string;
-  };
+// Type for project
+interface Project {
+  id: string;
+  name: string;
+  description?: string;
 }
 
-export default function GeneratePage({ project }: GeneratePageProps) {
+export default function GeneratePage() {
   const router = useRouter();
+  const { id } = router.query;
+  
+  // Project state
+  const [project, setProject] = useState<Project | null>(null);
+  const [isLoadingProject, setIsLoadingProject] = useState(true);
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -53,6 +59,7 @@ export default function GeneratePage({ project }: GeneratePageProps) {
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [csvData, setCsvData] = useState<CSVLinkData[]>([]);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   
   const { register, handleSubmit, watch, formState: { errors }, setValue } = useForm();
   
@@ -70,25 +77,323 @@ export default function GeneratePage({ project }: GeneratePageProps) {
     }
   }, [testCount, liveCount, splitLinkTypes, setValue]);
   
-  // List of common country codes for the dropdown
+  // Comprehensive list of countries for geography restrictions
   const countryCodes = [
-    { code: 'US', name: 'United States' },
-    { code: 'CA', name: 'Canada' },
-    { code: 'GB', name: 'United Kingdom' },
+    { code: 'AD', name: 'Andorra' },
+    { code: 'AE', name: 'United Arab Emirates' },
+    { code: 'AF', name: 'Afghanistan' },
+    { code: 'AG', name: 'Antigua and Barbuda' },
+    { code: 'AI', name: 'Anguilla' },
+    { code: 'AL', name: 'Albania' },
+    { code: 'AM', name: 'Armenia' },
+    { code: 'AO', name: 'Angola' },
+    { code: 'AQ', name: 'Antarctica' },
+    { code: 'AR', name: 'Argentina' },
+    { code: 'AS', name: 'American Samoa' },
+    { code: 'AT', name: 'Austria' },
     { code: 'AU', name: 'Australia' },
-    { code: 'DE', name: 'Germany' },
-    { code: 'FR', name: 'France' },
-    { code: 'JP', name: 'Japan' },
-    { code: 'IN', name: 'India' },
+    { code: 'AW', name: 'Aruba' },
+    { code: 'AX', name: 'Åland Islands' },
+    { code: 'AZ', name: 'Azerbaijan' },
+    { code: 'BA', name: 'Bosnia and Herzegovina' },
+    { code: 'BB', name: 'Barbados' },
+    { code: 'BD', name: 'Bangladesh' },
+    { code: 'BE', name: 'Belgium' },
+    { code: 'BF', name: 'Burkina Faso' },
+    { code: 'BG', name: 'Bulgaria' },
+    { code: 'BH', name: 'Bahrain' },
+    { code: 'BI', name: 'Burundi' },
+    { code: 'BJ', name: 'Benin' },
+    { code: 'BL', name: 'Saint Barthélemy' },
+    { code: 'BM', name: 'Bermuda' },
+    { code: 'BN', name: 'Brunei' },
+    { code: 'BO', name: 'Bolivia' },
+    { code: 'BQ', name: 'Caribbean Netherlands' },
     { code: 'BR', name: 'Brazil' },
-    { code: 'ZA', name: 'South Africa' }
+    { code: 'BS', name: 'Bahamas' },
+    { code: 'BT', name: 'Bhutan' },
+    { code: 'BV', name: 'Bouvet Island' },
+    { code: 'BW', name: 'Botswana' },
+    { code: 'BY', name: 'Belarus' },
+    { code: 'BZ', name: 'Belize' },
+    { code: 'CA', name: 'Canada' },
+    { code: 'CC', name: 'Cocos Islands' },
+    { code: 'CD', name: 'Democratic Republic of the Congo' },
+    { code: 'CF', name: 'Central African Republic' },
+    { code: 'CG', name: 'Republic of the Congo' },
+    { code: 'CH', name: 'Switzerland' },
+    { code: 'CI', name: 'Côte d\'Ivoire' },
+    { code: 'CK', name: 'Cook Islands' },
+    { code: 'CL', name: 'Chile' },
+    { code: 'CM', name: 'Cameroon' },
+    { code: 'CN', name: 'China' },
+    { code: 'CO', name: 'Colombia' },
+    { code: 'CR', name: 'Costa Rica' },
+    { code: 'CU', name: 'Cuba' },
+    { code: 'CV', name: 'Cape Verde' },
+    { code: 'CW', name: 'Curaçao' },
+    { code: 'CX', name: 'Christmas Island' },
+    { code: 'CY', name: 'Cyprus' },
+    { code: 'CZ', name: 'Czech Republic' },
+    { code: 'DE', name: 'Germany' },
+    { code: 'DJ', name: 'Djibouti' },
+    { code: 'DK', name: 'Denmark' },
+    { code: 'DM', name: 'Dominica' },
+    { code: 'DO', name: 'Dominican Republic' },
+    { code: 'DZ', name: 'Algeria' },
+    { code: 'EC', name: 'Ecuador' },
+    { code: 'EE', name: 'Estonia' },
+    { code: 'EG', name: 'Egypt' },
+    { code: 'EH', name: 'Western Sahara' },
+    { code: 'ER', name: 'Eritrea' },
+    { code: 'ES', name: 'Spain' },
+    { code: 'ET', name: 'Ethiopia' },
+    { code: 'FI', name: 'Finland' },
+    { code: 'FJ', name: 'Fiji' },
+    { code: 'FK', name: 'Falkland Islands' },
+    { code: 'FM', name: 'Micronesia' },
+    { code: 'FO', name: 'Faroe Islands' },
+    { code: 'FR', name: 'France' },
+    { code: 'GA', name: 'Gabon' },
+    { code: 'GB', name: 'United Kingdom' },
+    { code: 'GD', name: 'Grenada' },
+    { code: 'GE', name: 'Georgia' },
+    { code: 'GF', name: 'French Guiana' },
+    { code: 'GG', name: 'Guernsey' },
+    { code: 'GH', name: 'Ghana' },
+    { code: 'GI', name: 'Gibraltar' },
+    { code: 'GL', name: 'Greenland' },
+    { code: 'GM', name: 'Gambia' },
+    { code: 'GN', name: 'Guinea' },
+    { code: 'GP', name: 'Guadeloupe' },
+    { code: 'GQ', name: 'Equatorial Guinea' },
+    { code: 'GR', name: 'Greece' },
+    { code: 'GS', name: 'South Georgia and the South Sandwich Islands' },
+    { code: 'GT', name: 'Guatemala' },
+    { code: 'GU', name: 'Guam' },
+    { code: 'GW', name: 'Guinea-Bissau' },
+    { code: 'GY', name: 'Guyana' },
+    { code: 'HK', name: 'Hong Kong' },
+    { code: 'HM', name: 'Heard Island and McDonald Islands' },
+    { code: 'HN', name: 'Honduras' },
+    { code: 'HR', name: 'Croatia' },
+    { code: 'HT', name: 'Haiti' },
+    { code: 'HU', name: 'Hungary' },
+    { code: 'ID', name: 'Indonesia' },
+    { code: 'IE', name: 'Ireland' },
+    { code: 'IL', name: 'Israel' },
+    { code: 'IM', name: 'Isle of Man' },
+    { code: 'IN', name: 'India' },
+    { code: 'IO', name: 'British Indian Ocean Territory' },
+    { code: 'IQ', name: 'Iraq' },
+    { code: 'IR', name: 'Iran' },
+    { code: 'IS', name: 'Iceland' },
+    { code: 'IT', name: 'Italy' },
+    { code: 'JE', name: 'Jersey' },
+    { code: 'JM', name: 'Jamaica' },
+    { code: 'JO', name: 'Jordan' },
+    { code: 'JP', name: 'Japan' },
+    { code: 'KE', name: 'Kenya' },
+    { code: 'KG', name: 'Kyrgyzstan' },
+    { code: 'KH', name: 'Cambodia' },
+    { code: 'KI', name: 'Kiribati' },
+    { code: 'KM', name: 'Comoros' },
+    { code: 'KN', name: 'Saint Kitts and Nevis' },
+    { code: 'KP', name: 'North Korea' },
+    { code: 'KR', name: 'South Korea' },
+    { code: 'KW', name: 'Kuwait' },
+    { code: 'KY', name: 'Cayman Islands' },
+    { code: 'KZ', name: 'Kazakhstan' },
+    { code: 'LA', name: 'Laos' },
+    { code: 'LB', name: 'Lebanon' },
+    { code: 'LC', name: 'Saint Lucia' },
+    { code: 'LI', name: 'Liechtenstein' },
+    { code: 'LK', name: 'Sri Lanka' },
+    { code: 'LR', name: 'Liberia' },
+    { code: 'LS', name: 'Lesotho' },
+    { code: 'LT', name: 'Lithuania' },
+    { code: 'LU', name: 'Luxembourg' },
+    { code: 'LV', name: 'Latvia' },
+    { code: 'LY', name: 'Libya' },
+    { code: 'MA', name: 'Morocco' },
+    { code: 'MC', name: 'Monaco' },
+    { code: 'MD', name: 'Moldova' },
+    { code: 'ME', name: 'Montenegro' },
+    { code: 'MF', name: 'Saint Martin' },
+    { code: 'MG', name: 'Madagascar' },
+    { code: 'MH', name: 'Marshall Islands' },
+    { code: 'MK', name: 'North Macedonia' },
+    { code: 'ML', name: 'Mali' },
+    { code: 'MM', name: 'Myanmar' },
+    { code: 'MN', name: 'Mongolia' },
+    { code: 'MO', name: 'Macao' },
+    { code: 'MP', name: 'Northern Mariana Islands' },
+    { code: 'MQ', name: 'Martinique' },
+    { code: 'MR', name: 'Mauritania' },
+    { code: 'MS', name: 'Montserrat' },
+    { code: 'MT', name: 'Malta' },
+    { code: 'MU', name: 'Mauritius' },
+    { code: 'MV', name: 'Maldives' },
+    { code: 'MW', name: 'Malawi' },
+    { code: 'MX', name: 'Mexico' },
+    { code: 'MY', name: 'Malaysia' },
+    { code: 'MZ', name: 'Mozambique' },
+    { code: 'NA', name: 'Namibia' },
+    { code: 'NC', name: 'New Caledonia' },
+    { code: 'NE', name: 'Niger' },
+    { code: 'NF', name: 'Norfolk Island' },
+    { code: 'NG', name: 'Nigeria' },
+    { code: 'NI', name: 'Nicaragua' },
+    { code: 'NL', name: 'Netherlands' },
+    { code: 'NO', name: 'Norway' },
+    { code: 'NP', name: 'Nepal' },
+    { code: 'NR', name: 'Nauru' },
+    { code: 'NU', name: 'Niue' },
+    { code: 'NZ', name: 'New Zealand' },
+    { code: 'OM', name: 'Oman' },
+    { code: 'PA', name: 'Panama' },
+    { code: 'PE', name: 'Peru' },
+    { code: 'PF', name: 'French Polynesia' },
+    { code: 'PG', name: 'Papua New Guinea' },
+    { code: 'PH', name: 'Philippines' },
+    { code: 'PK', name: 'Pakistan' },
+    { code: 'PL', name: 'Poland' },
+    { code: 'PM', name: 'Saint Pierre and Miquelon' },
+    { code: 'PN', name: 'Pitcairn' },
+    { code: 'PR', name: 'Puerto Rico' },
+    { code: 'PS', name: 'Palestine' },
+    { code: 'PT', name: 'Portugal' },
+    { code: 'PW', name: 'Palau' },
+    { code: 'PY', name: 'Paraguay' },
+    { code: 'QA', name: 'Qatar' },
+    { code: 'RE', name: 'Réunion' },
+    { code: 'RO', name: 'Romania' },
+    { code: 'RS', name: 'Serbia' },
+    { code: 'RU', name: 'Russia' },
+    { code: 'RW', name: 'Rwanda' },
+    { code: 'SA', name: 'Saudi Arabia' },
+    { code: 'SB', name: 'Solomon Islands' },
+    { code: 'SC', name: 'Seychelles' },
+    { code: 'SD', name: 'Sudan' },
+    { code: 'SE', name: 'Sweden' },
+    { code: 'SG', name: 'Singapore' },
+    { code: 'SH', name: 'Saint Helena' },
+    { code: 'SI', name: 'Slovenia' },
+    { code: 'SJ', name: 'Svalbard and Jan Mayen' },
+    { code: 'SK', name: 'Slovakia' },
+    { code: 'SL', name: 'Sierra Leone' },
+    { code: 'SM', name: 'San Marino' },
+    { code: 'SN', name: 'Senegal' },
+    { code: 'SO', name: 'Somalia' },
+    { code: 'SR', name: 'Suriname' },
+    { code: 'SS', name: 'South Sudan' },
+    { code: 'ST', name: 'São Tomé and Príncipe' },
+    { code: 'SV', name: 'El Salvador' },
+    { code: 'SX', name: 'Sint Maarten' },
+    { code: 'SY', name: 'Syria' },
+    { code: 'SZ', name: 'Eswatini' },
+    { code: 'TC', name: 'Turks and Caicos Islands' },
+    { code: 'TD', name: 'Chad' },
+    { code: 'TF', name: 'French Southern Territories' },
+    { code: 'TG', name: 'Togo' },
+    { code: 'TH', name: 'Thailand' },
+    { code: 'TJ', name: 'Tajikistan' },
+    { code: 'TK', name: 'Tokelau' },
+    { code: 'TL', name: 'Timor-Leste' },
+    { code: 'TM', name: 'Turkmenistan' },
+    { code: 'TN', name: 'Tunisia' },
+    { code: 'TO', name: 'Tonga' },
+    { code: 'TR', name: 'Turkey' },
+    { code: 'TT', name: 'Trinidad and Tobago' },
+    { code: 'TV', name: 'Tuvalu' },
+    { code: 'TW', name: 'Taiwan' },
+    { code: 'TZ', name: 'Tanzania' },
+    { code: 'UA', name: 'Ukraine' },
+    { code: 'UG', name: 'Uganda' },
+    { code: 'UM', name: 'United States Minor Outlying Islands' },
+    { code: 'US', name: 'United States' },
+    { code: 'UY', name: 'Uruguay' },
+    { code: 'UZ', name: 'Uzbekistan' },
+    { code: 'VA', name: 'Vatican City' },
+    { code: 'VC', name: 'Saint Vincent and the Grenadines' },
+    { code: 'VE', name: 'Venezuela' },
+    { code: 'VG', name: 'British Virgin Islands' },
+    { code: 'VI', name: 'U.S. Virgin Islands' },
+    { code: 'VN', name: 'Vietnam' },
+    { code: 'VU', name: 'Vanuatu' },
+    { code: 'WF', name: 'Wallis and Futuna' },
+    { code: 'WS', name: 'Samoa' },
+    { code: 'YE', name: 'Yemen' },
+    { code: 'YT', name: 'Mayotte' },
+    { code: 'ZA', name: 'South Africa' },
+    { code: 'ZM', name: 'Zambia' },
+    { code: 'ZW', name: 'Zimbabwe' }
   ];
+  
+  // Helper functions for country selection
+  const handleCountryToggle = (countryCode: string) => {
+    setSelectedCountries(prev => {
+      if (prev.includes(countryCode)) {
+        return prev.filter(code => code !== countryCode);
+      } else {
+        return [...prev, countryCode];
+      }
+    });
+  };
+
+  const handleSelectAllCountries = () => {
+    setSelectedCountries(countryCodes.map(country => country.code));
+  };
+
+  const handleClearAllCountries = () => {
+    setSelectedCountries([]);
+  };
+
+  const getSelectedCountryNames = () => {
+    return selectedCountries.map(code => {
+      const country = countryCodes.find(c => c.code === code);
+      return country ? country.name : code;
+    }).join(', ');
+  };
+  
+  // Fetch project data on mount
+  useEffect(() => {
+    if (!id || typeof id !== 'string') return;
+    
+    const fetchProject = async () => {
+      try {
+        setIsLoadingProject(true);
+        const amplifyDataService = await getAmplifyDataService();
+        const projectResult = await amplifyDataService.projects.get(id);
+        const projectData = projectResult.data;
+        
+        if (projectData) {
+          setProject({
+            id: projectData.id,
+            name: projectData.name,
+            description: projectData.description || undefined
+          });
+        } else {
+          setError('Project not found');
+        }
+      } catch (error) {
+        console.error('Failed to fetch project:', error);
+        setError('Failed to load project');
+      } finally {
+        setIsLoadingProject(false);
+      }
+    };
+    
+    fetchProject();
+  }, [id]);
   
   // Fetch vendors for this project on mount
   useEffect(() => {
+    if (!project?.id) return; // Add guard clause to prevent execution when project is undefined
+    
     const fetchVendors = async () => {
       try {
-        const response = await axios.get(`/api/vendors/list?projectId=${project.id}`);
+        const response = await axios.get(`/api/vendors/list?projectId=${project?.id}`);
         if (response.data.success) {
           setVendors(response.data.vendors);
         }
@@ -98,7 +403,7 @@ export default function GeneratePage({ project }: GeneratePageProps) {
     };
     
     fetchVendors();
-  }, [project.id]);
+  }, [project?.id]); // Use optional chaining to prevent undefined access
   
   const handleCSVProcessed = (data: CSVLinkData[]) => {
     setCsvData(data);
@@ -149,7 +454,7 @@ export default function GeneratePage({ project }: GeneratePageProps) {
         }
         
         const payload: any = {
-          projectId: project.id,
+          projectId: project?.id,
           originalUrl: row.originalUrl,
           vendorId: vendorId,
           geoRestriction
@@ -196,14 +501,12 @@ export default function GeneratePage({ project }: GeneratePageProps) {
     try {
       // Prepare geo-restriction data if enabled
       let geoRestriction = null;
-      if (data.restrictGeo && data.countries?.length) {
-        geoRestriction = Array.isArray(data.countries) 
-          ? data.countries 
-          : [data.countries];
+      if (data.restrictGeo && selectedCountries.length > 0) {
+        geoRestriction = selectedCountries;
       }
 
       const payload: any = {
-        projectId: project.id,
+        projectId: project?.id,
         originalUrl: data.originalUrl,
         vendorId: data.vendorId || null,
         geoRestriction
@@ -247,7 +550,7 @@ export default function GeneratePage({ project }: GeneratePageProps) {
     
     try {
       const response = await axios.post('/api/vendors/create', {
-        projectId: project.id,
+        projectId: project?.id,
         name: vendorName,
         code: vendorCode
       });
@@ -299,7 +602,7 @@ export default function GeneratePage({ project }: GeneratePageProps) {
     const url = URL.createObjectURL(blob);
     
     link.setAttribute('href', url);
-    link.setAttribute('download', `${project.name.replace(/\s+/g, '_')}_links_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute('download', `${project?.name?.replace(/\s+/g, '_') || 'project'}_links_${new Date().toISOString().slice(0,10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -307,15 +610,39 @@ export default function GeneratePage({ project }: GeneratePageProps) {
   
   return (
     <ProtectedRoute>
-      <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <Link 
-          href={`/admin/projects/${project.id}`}
+      {/* Loading state */}
+      {isLoadingProject ? (
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading project...</p>
+          </div>
+        </div>
+      ) : !project ? (
+        /* Error state */
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
+            <p className="text-gray-700 mb-6">{error || 'Project not found'}</p>
+            <Link 
+              href="/admin" 
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            >
+              Return to Dashboard
+            </Link>
+          </div>
+        </div>
+      ) : (
+        /* Main content */
+        <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <Link 
+          href={`/admin/projects/${project?.id}`}
           className="text-blue-600 hover:text-blue-800"
         >
           &larr; Back to project
         </Link>
-        <h1 className="text-3xl font-bold mt-2">{project.name}</h1>
+        <h1 className="text-3xl font-bold mt-2">{project?.name}</h1>
         <h2 className="text-xl font-semibold text-gray-700">Generate Survey Links</h2>
       </div>
       
@@ -660,36 +987,78 @@ export default function GeneratePage({ project }: GeneratePageProps) {
                     type="checkbox"
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     {...register("restrictGeo")}
-                    onChange={(e) => setShowCountrySelect(e.target.checked)}
+                    onChange={(e) => {
+                      setShowCountrySelect(e.target.checked);
+                      // If unchecking, clear selected countries
+                      if (!e.target.checked) {
+                        setSelectedCountries([]);
+                      }
+                    }}
                   />
                   <label htmlFor="restrictGeo" className="ml-2 block text-sm text-gray-700">
                     Restrict by Geography
                   </label>
                 </div>
                 
-                {restrictGeo && showCountrySelect && (
-                  <div className="mt-3">
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="countries">
-                      Allowed Countries
-                    </label>
-                    <select
-                      id="countries"
-                      multiple
-                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      {...register("countries", { required: restrictGeo })}
-                      size={5}
-                    >
-                      {countryCodes.map(country => (
-                        <option key={country.code} value={country.code}>
-                          {country.name} ({country.code})
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-gray-500 text-xs mt-1">
-                      Hold Ctrl/Cmd to select multiple countries
+                {restrictGeo && (
+                  <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                    <div className="flex justify-between items-center mb-3">
+                      <label className="block text-gray-700 text-sm font-bold">
+                        Allowed Countries ({selectedCountries.length} selected)
+                      </label>
+                      <div className="space-x-2">
+                        <button
+                          type="button"
+                          onClick={handleSelectAllCountries}
+                          className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded"
+                        >
+                          Select All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleClearAllCountries}
+                          className="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded"
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {selectedCountries.length > 0 && (
+                      <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                        <strong>Selected:</strong> {getSelectedCountryNames()}
+                      </div>
+                    )}
+                    
+                    <div className="max-h-64 overflow-y-auto border border-gray-300 rounded bg-white">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1 p-2">
+                        {countryCodes.map(country => (
+                          <label 
+                            key={country.code} 
+                            className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-100 ${
+                              selectedCountries.includes(country.code) ? 'bg-blue-100 text-blue-800' : ''
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedCountries.includes(country.code)}
+                              onChange={() => handleCountryToggle(country.code)}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <span className="text-sm">
+                              {country.name} ({country.code})
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <p className="text-gray-500 text-xs mt-2">
+                      Survey links will only work in the selected countries. Users from other countries will see a "not available in your region" message.
                     </p>
-                    {errors.countries && (
-                      <p className="text-red-500 text-xs italic">Please select at least one country</p>
+                    
+                    {restrictGeo && selectedCountries.length === 0 && (
+                      <p className="text-red-500 text-xs mt-2">Please select at least one country when geography restriction is enabled</p>
                     )}
                   </div>
                 )}
@@ -701,10 +1070,17 @@ export default function GeneratePage({ project }: GeneratePageProps) {
             <button
               type="submit"
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
-              disabled={isSubmitting || (splitLinkTypes && (Number(testCount || 0) + Number(liveCount || 0)) === 0)}
+              disabled={
+                isSubmitting || 
+                (splitLinkTypes && (Number(testCount || 0) + Number(liveCount || 0)) === 0) ||
+                (restrictGeo && selectedCountries.length === 0)
+              }
             >
               {isSubmitting ? 'Generating...' : isBatchMode ? 'Generate Batch Links' : 'Generate Links'}
             </button>
+            {restrictGeo && selectedCountries.length === 0 && (
+              <p className="text-red-500 text-sm">Select countries to enable generation</p>
+            )}
           </div>
         </form>
       </div>
@@ -795,11 +1171,7 @@ export default function GeneratePage({ project }: GeneratePageProps) {
         </div>
       )}
     </div>
+      )}
     </ProtectedRoute>
   );
-}
-
-export async function getServerSideProps() {
-  // All data fetching is now client-side. Do not use amplifyDataService here.
-  return { props: {} };
 }

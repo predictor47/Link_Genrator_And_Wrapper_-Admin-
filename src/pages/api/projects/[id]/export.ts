@@ -1,5 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { amplifyDataService } from '@/lib/amplify-data-service';
+import { getAmplifyServerService } from '@/lib/amplify-server-service';
+import type { Schema } from '../../../../../amplify/data/resource';
+
+type SurveyLink = Schema['SurveyLink']['type'];
+type Vendor = Schema['Vendor']['type'];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -17,16 +21,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    const amplifyServerService = getAmplifyServerService();
     // Verify project exists using Amplify
-    const projectResult = await amplifyDataService.projects.get(id);
-    if (!projectResult || !projectResult.data) {
+    const projectResult = await amplifyServerService.getProject(id);
+    const project = projectResult.data;
+    if (!project) {
       return res.status(404).json({ 
         success: false, 
         message: 'Project not found' 
       });
     }
-    
-    const project = projectResult.data;
 
     // Build the filters for survey links based on date range and vendor
     let filter: any = {
@@ -79,11 +83,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Fetch survey links with Amplify using filters
-    const surveyLinksResult = await amplifyDataService.surveyLinks.list({ filter });
-    const surveyLinks = surveyLinksResult.data || [];
+    const surveyLinksResult = await amplifyServerService.listSurveyLinksByProject(id);
+    const surveyLinks = surveyLinksResult.data;
+    
+    // Apply vendor filter if specified
+    let filteredLinks = surveyLinks;
+    if (vendorId && typeof vendorId === 'string') {
+      filteredLinks = surveyLinks.filter(link => link.vendorId === vendorId);
+    }
+    
+    // Apply date range filter
+    if (dateRange) {
+      const now = new Date();
+      let startDate: Date | null = null;
+      let endDate: Date | null = null;
+      
+      switch (dateRange) {
+        case 'today':
+          startDate = new Date(now.setHours(0, 0, 0, 0));
+          break;
+        case 'yesterday':
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 1);
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date(now);
+          endDate.setDate(endDate.getDate() - 1);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case 'week':
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 7);
+          break;
+        case 'month':
+          startDate = new Date(now);
+          startDate.setDate(startDate.getDate() - 30);
+          break;
+      }
+      
+      if (startDate) {
+        filteredLinks = filteredLinks.filter(link => {
+          const createdAt = new Date(link.createdAt);
+          if (endDate) {
+            return createdAt >= startDate && createdAt <= endDate;
+          }
+          return createdAt >= startDate;
+        });
+      }
+    }
     
     // If no links found, return early
-    if (surveyLinks.length === 0) {
+    if (filteredLinks.length === 0) {
       const emptyData = format === 'json' ? 
         { success: true, project: { id: project.id, name: project.name }, data: [] } :
         '';
@@ -98,32 +147,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Collect all link IDs
-    const linkIds = surveyLinks.map(link => link.id).filter(id => id !== null && id !== undefined);
+    const linkIds = filteredLinks.map((link: SurveyLink) => link.id).filter((id: string | null | undefined) => id !== null && id !== undefined);
     
     // Fetch vendor data for all links
-    const vendorIds = surveyLinks
-      .filter(link => link.vendorId)
-      .map(link => link.vendorId as string)
-      .filter(id => id !== null && id !== undefined);
+    const vendorIds = filteredLinks
+      .filter((link: SurveyLink) => link.vendorId)
+      .map((link: SurveyLink) => link.vendorId as string)
+      .filter((id: string | null | undefined) => id !== null && id !== undefined);
 
-    const vendorsResult = vendorIds.length > 0 ? 
-      await amplifyDataService.vendors.list({ filter: { id: { in: vendorIds } } }) : 
-      { data: [] };
+    const vendors = await Promise.all(
+      Array.from(new Set(vendorIds)).map(vendorId => amplifyServerService.getVendor(vendorId as string))
+    );
     
-    const vendors = vendorsResult.data || [];
-    const vendorMap: Record<string, any> = {};
-    vendors.forEach(vendor => {
-      if (!vendor.id) {
-        throw new Error('Vendor ID is null or undefined');
+    const vendorMap: Record<string, Vendor> = {};
+    vendors.forEach((vendorResult) => {
+      const vendor = vendorResult.data;
+      if (vendor && vendor.id) {
+        vendorMap[vendor.id] = vendor;
       }
-      vendorMap[vendor.id] = vendor;
     });
       // Extract responses and flags from the link metadata instead of using separate services
     const responseMap: Record<string, any[]> = {};
     const flagMap: Record<string, any[]> = {};
     
     // Process each link's metadata to extract responses and flags
-    surveyLinks.forEach(link => {
+    filteredLinks.forEach((link: SurveyLink) => {
       if (link.id && link.metadata) {
         try {
           const metadata = JSON.parse(link.metadata as string);
@@ -148,7 +196,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // Transform data for export
-    const exportData = surveyLinks.map((link) => {
+    const exportData = filteredLinks.map((link: SurveyLink) => {
       if (!link.id) return null;
       
       // Parse metadata from the most recent response, if any
@@ -234,7 +282,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } else {
       // CSV format (default)
       const header = 'ID,UID,Original URL,Status,Link Type,Vendor Name,Vendor Code,Country,Device,Browser,Flags,Created At,Updated At';
-      const csvRows = exportData.map(row => {
+      const csvRows = exportData.map((row: any) => {
         // This should never happen due to filter(Boolean) above, but TypeScript needs reassurance
         if (!row) return '';
         

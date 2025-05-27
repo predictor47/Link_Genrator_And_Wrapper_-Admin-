@@ -1,1 +1,6 @@
-{}
+{
+  "pages/admin/index.tsx -> @/lib/auth-service": {
+    "id": "pages/admin/index.tsx -> @/lib/auth-service",
+    "files": []
+  }
+}

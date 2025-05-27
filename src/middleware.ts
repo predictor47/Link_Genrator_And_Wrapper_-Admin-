@@ -34,6 +34,7 @@ const PUBLIC_PATHS = [
   '/sorry-disqualified',
   '/thank-you-completed',
   '/diagnostics',
+  '/auth-debug',  // Debug page for testing auth
   '/amplify_outputs.json' // Allow access to amplify outputs for configuration
 ];
 
@@ -167,7 +168,7 @@ function isPublicPath(pathname: string): boolean {
 
 // Update the isAdminRoute function to properly handle login paths
 function isAdminRoute(pathname: string): boolean {
-  // Admin routes start with /admin, but exclude login-related routes to prevent loops
+  // Admin routes start with /admin, but exclude login-related routes and debug pages
   return pathname.startsWith('/admin') && 
     !pathname.includes('/admin/login') && 
     !pathname.includes('/admin/signup') &&
@@ -230,71 +231,12 @@ export async function middleware(request: NextRequest) {
     return applySecurityHeaders(response, false);
   }
   
-  // If this is an admin route, we need to check authentication (works on any domain)
+  // For admin routes, apply security headers but let client-side handle auth
   if (isAdminRoute(pathname)) {
-    console.log('Protected admin route - checking auth');
+    console.log('Protected admin route - applying security headers only');
     
-    // Check for authentication token in cookies
-    const authCookie = request.cookies.get('idToken')?.value;
-    const accessToken = request.cookies.get('accessToken')?.value;
-    
-    // If no token found, redirect to login
-    if (!authCookie && !accessToken) {
-      console.log('No auth token found - redirecting to login');
-      
-      // Create a login URL with proper redirect parameter
-      const url = new URL('/admin/login', request.url);
-      
-      // Only add redirect if it's not already the login page to avoid loops
-      if (pathname !== '/admin/login') {
-        url.searchParams.set('redirect', pathname);
-      }
-      
-      const redirectResponse = NextResponse.redirect(url);
-      
-      // Update redirect count
-      redirectResponse.cookies.set('redirect_count', count.toString(), {
-        maxAge: 60 * 60 * 24, // 24 hours
-        path: '/',
-      });
-      
-      return applySecurityHeaders(redirectResponse, true);
-    }
-
-    // Use the first available token
-    const token = authCookie || accessToken || '';
-    
-    // If token is invalid or empty, redirect to login
-    if (!token || !validateToken(token)) {
-      console.log('Invalid token - redirecting to login');
-      
-      // Redirect to login page with return URL
-      const url = new URL('/admin/login', request.url);
-      url.searchParams.set('redirect', pathname);
-      url.searchParams.set('fixed', 'true'); // Add fixed param to avoid loops
-      
-      const redirectResponse = NextResponse.redirect(url);
-      
-      // Clear invalid tokens
-      const cookiesToClear = [
-        'idToken',
-        'accessToken',
-        'refreshToken',
-        'amplify-signin-with-hostedUI',
-        'amplify-redirected-from-hosted-ui',
-        'amplify.auth.tokens',
-        'Authorization'
-      ];
-      
-      cookiesToClear.forEach(cookie => {
-        redirectResponse.cookies.delete(cookie);
-      });
-      
-      return applySecurityHeaders(redirectResponse, true);
-    }
-    
-    // Token is valid, allow access to admin routes
-    console.log('Valid token found - allowing admin access');
+    // Let client-side authentication handle the auth state
+    // This prevents middleware from interfering with Amplify Gen 2 auth
     return applySecurityHeaders(response, true);
   }
   

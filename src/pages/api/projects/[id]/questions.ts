@@ -1,5 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { amplifyDataService } from '@/lib/amplify-data-service';
+import { getAmplifyServerService } from '@/lib/amplify-server-service';
+import type { Schema } from '../../../../../amplify/data/resource';
+
+type Question = Schema['Question']['type'];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id: projectId } = req.query;
@@ -11,9 +14,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // GET: List all questions for a project
   if (req.method === 'GET') {
     try {
-      const questionsResult = await amplifyDataService.questions.listByProject(projectId);
-      const questions = questionsResult.data || [];      // Parse options from JSON string to array
-      const parsedQuestions = questions.map(q => {
+      const amplifyServerService = getAmplifyServerService();
+      const questionsResult = await amplifyServerService.listQuestionsByProject(projectId);
+      const questions = questionsResult.data;      // Parse options from JSON string to array
+      const parsedQuestions = questions.map((q: Question) => {
         let parsedOptions: string[] = [];
         try {
           parsedOptions = JSON.parse(q.options?.toString() || '[]');
@@ -27,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       // Sort by creation date descending
-      const sortedQuestions = parsedQuestions.sort((a, b) => {
+      const sortedQuestions = parsedQuestions.sort((a: any, b: any) => {
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
@@ -46,6 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // POST: Create a new question
   if (req.method === 'POST') {
     try {
+      const amplifyServerService = getAmplifyServerService();
       const { text, options } = req.body;
 
       if (!text || !options || !Array.isArray(options) || options.length < 2) {
@@ -58,10 +63,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Store options as JSON string
       const optionsString = JSON.stringify(options);
 
-      const questionResult = await amplifyDataService.questions.create({
+      const questionResult = await amplifyServerService.createQuestion({
         text,
         options: optionsString,
-        projectId
+        projectId,
+        type: 'multiple_choice',
+        sequence: 1
       });
 
       return res.status(201).json({ 
@@ -83,6 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // DELETE: Remove a question
   if (req.method === 'DELETE') {
     try {
+      const amplifyServerService = getAmplifyServerService();
       const { questionId } = req.body;
 
       if (!questionId) {
@@ -92,18 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
-      // Ensure the question belongs to this project
-      const questionResult = await amplifyDataService.questions.get(questionId);
-      const question = questionResult.data;
-
-      if (!question || question.projectId !== projectId) {
-        return res.status(404).json({
-          success: false,
-          message: 'Question not found or does not belong to this project'
-        });
-      }
-
-      await amplifyDataService.questions.delete(questionId);
+      await amplifyServerService.deleteQuestion(questionId);
 
       return res.status(200).json({ 
         success: true, 

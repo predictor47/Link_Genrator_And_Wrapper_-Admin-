@@ -80,9 +80,17 @@ export default function NewProject() {
         return;
       }
       // Create project directly on client
+      const now = new Date().toISOString();
       const projectResult = await amplifyDataService.projects.create({
         name,
-        description,
+        description: description || '',
+        surveyUrl: `${window.location.origin}/survey`, // Auto-generate survey URL
+        status: 'ACTIVE',
+        targetCompletions: 100,
+        currentCompletions: 0,
+        createdAt: now,
+        updatedAt: now,
+        settings: null
       });
       if (!projectResult || !projectResult.data) {
         setError('Failed to create project. Project creation returned null.');
@@ -92,11 +100,16 @@ export default function NewProject() {
       // Add questions if provided
       if (questions && Array.isArray(questions) && questions.length > 0) {
         const projectId = projectResult.data.id;
-        const questionPromises = questions.map((q: { text: string, options: string[] }) => 
+        const questionPromises = questions.map((q: { text: string, options: string[] }, index: number) => 
           amplifyDataService.questions.create({
             projectId,
             text: q.text,
-            options: JSON.stringify(q.options || [])
+            type: 'MULTIPLE_CHOICE',
+            options: JSON.stringify(q.options || []),
+            sequence: index + 1,
+            isRequired: true,
+            createdAt: now,
+            updatedAt: now
           })
         );
         await Promise.all(questionPromises);

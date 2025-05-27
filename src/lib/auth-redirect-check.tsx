@@ -1,7 +1,6 @@
 import { useEffect, ReactNode, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from './auth';
-import { logAuthDiagnostics } from './auth-debug';
 
 interface AuthRedirectCheckProps {
   children: ReactNode;
@@ -18,8 +17,7 @@ export default function AuthRedirectCheck({
 }: AuthRedirectCheckProps) {
   const { isAuthenticated, isLoading, refreshAuthState } = useAuth();
   const router = useRouter();
-  const { redirect, fixed } = router.query;
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [hasAttemptedRedirect, setHasAttemptedRedirect] = useState(false);
 
   useEffect(() => {
     // Force a refresh of auth state on component mount
@@ -28,24 +26,30 @@ export default function AuthRedirectCheck({
   }, [refreshAuthState]);
 
   useEffect(() => {
-    // Only redirect if authenticated, not loading, and not already redirecting
-    if (isAuthenticated && !isLoading && !redirect && fixed !== 'true' && !isRedirecting) {
-      console.log('User already authenticated, redirecting to dashboard');
-      setIsRedirecting(true);
+    // Debug logging
+    console.log('AuthRedirectCheck effect triggered:', { 
+      isAuthenticated, 
+      isLoading, 
+      hasAttemptedRedirect,
+      redirectTo,
+      currentPath: typeof window !== 'undefined' ? window.location.pathname : 'unknown'
+    });
+    
+    // Only attempt redirect once when user is authenticated and not loading
+    if (isAuthenticated && !isLoading && !hasAttemptedRedirect) {
+      console.log('User is authenticated, attempting redirect to:', redirectTo);
+      setHasAttemptedRedirect(true);
       
-      // Log diagnostics before redirecting
-      logAuthDiagnostics().then(() => {
-        // Add a short delay to ensure state has time to be fully established
-        setTimeout(() => {
-          // Use hard navigation instead of router.replace for more reliable redirect
-          window.location.href = redirectTo;
-        }, 1000);
-      });
+      // Use immediate window location change for most reliable redirect
+      setTimeout(() => {
+        console.log('Executing redirect to:', redirectTo);
+        window.location.replace(redirectTo);
+      }, 100);
     }
-  }, [isAuthenticated, isLoading, redirect, fixed, redirectTo, router, isRedirecting]);
+  }, [isAuthenticated, isLoading, redirectTo, hasAttemptedRedirect]);
 
-  // If redirecting, show a simple loading message
-  if (isRedirecting) {
+  // Show loading state while redirecting
+  if (isAuthenticated && !isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">

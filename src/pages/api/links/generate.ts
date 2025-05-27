@@ -1,7 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { nanoid } from 'nanoid';
-import { amplifyDataService } from '@/lib/amplify-data-service';
+import { getAmplifyServerService } from '@/lib/amplify-server-service';
 import { securityService } from '@/lib/security-service';
+import type { Schema } from '../../../../amplify/data/resource';
+
+type SurveyLink = Schema['SurveyLink']['type'];
+type Vendor = Schema['Vendor']['type'];
 
 type GenerateLinksRequest = {
   projectId: string;
@@ -27,6 +31,8 @@ export default async function handler(
   }
 
   try {
+    const amplifyServerService = getAmplifyServerService();
+    
     const { 
       projectId, 
       originalUrl, 
@@ -72,28 +78,28 @@ export default async function handler(
     }
 
     // Validate project exists
-    const projectResult = await amplifyDataService.projects.get(projectId);
+    const projectResult = await amplifyServerService.getProject(projectId);
     
-    // Fix: Extract project correctly without accessing .data
-    const project = projectResult;
+    // Fix: Extract project correctly by accessing .data property
+    const project = projectResult.data;
 
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }    // Validate vendor if provided
     if (vendorId) {
-      const vendorResult = await amplifyDataService.vendors.get(vendorId);
+      const vendorResult = await amplifyServerService.getVendor(vendorId);
       const vendor = vendorResult?.data;
 
       if (!vendor) {
         return res.status(404).json({ success: false, message: 'Vendor not found' });
-      }      // Check if vendor belongs to this project by checking the ProjectVendor relationship
-      const projectVendorResult = await amplifyDataService.client.models.ProjectVendor.list({
-        filter: {
-          and: [
-            { projectId: { eq: projectId } },
-            { vendorId: { eq: vendorId } }
-          ]
-        }
+      }
+
+      // Check if vendor belongs to this project by checking the ProjectVendor relationship
+      const projectVendorResult = await amplifyServerService.listProjectVendors({
+        and: [
+          { projectId: { eq: projectId } },
+          { vendorId: { eq: vendorId } }
+        ]
       });
 
       if (!projectVendorResult.data || projectVendorResult.data.length === 0) {
@@ -121,7 +127,7 @@ export default async function handler(
           })
         };
         
-        creationPromises.push(amplifyDataService.surveyLinks.create(linkData));
+        creationPromises.push(amplifyServerService.createSurveyLink(linkData));
       }
         // Generate LIVE links
       for (let i = 0; i < liveCount; i++) {
@@ -138,7 +144,7 @@ export default async function handler(
           })
         };
         
-        creationPromises.push(amplifyDataService.surveyLinks.create(linkData));
+        creationPromises.push(amplifyServerService.createSurveyLink(linkData));
       }    } else {
       // Original behavior - generate all links of the same type
       for (let i = 0; i < count; i++) {
@@ -155,7 +161,7 @@ export default async function handler(
           })
         };
         
-        creationPromises.push(amplifyDataService.surveyLinks.create(linkData));
+        creationPromises.push(amplifyServerService.createSurveyLink(linkData));
       }
     }
 
@@ -163,10 +169,10 @@ export default async function handler(
     const createdLinksResults = await Promise.all(creationPromises);
     
     // Get the created links with vendor information
-    const createdLinksResponse = await amplifyDataService.surveyLinks.listByProject(projectId);
+    const createdLinksResponse = await amplifyServerService.listSurveyLinksByProject(projectId);
       // Sort by creation date with null safety
     const sortedLinks = createdLinksResponse.data
-      .filter(link => {
+      .filter((link: SurveyLink) => {
         // Check if metadata contains originalUrl
         try {
           const metadata = link.metadata ? JSON.parse(link.metadata as string) : {};
@@ -175,7 +181,7 @@ export default async function handler(
           return false;
         }
       })
-      .sort((a, b) => {
+      .sort((a: SurveyLink, b: SurveyLink) => {
         // Fix: Add null safety for date comparison
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -185,13 +191,13 @@ export default async function handler(
     
     // Get vendor information for links that have vendors
     const vendorIds = sortedLinks
-      .filter(link => link.vendorId)
-      .map(link => link.vendorId as string);  // Add type assertion to ensure string type
+      .filter((link: SurveyLink) => link.vendorId)
+      .map((link: SurveyLink) => link.vendorId as string);  // Add type assertion to ensure string type
     
     const vendorResults = vendorIds.length > 0 ? 
-      await amplifyDataService.vendors.list({ filter: { id: { in: vendorIds } } }) : 
+      await amplifyServerService.listVendors({ id: { in: vendorIds } }) : 
       { data: [] };
-      const vendors = vendorResults.data.reduce((acc, vendor) => {
+      const vendors = vendorResults.data.reduce((acc: Record<string, { name: string; code: string }>, vendor: Vendor) => {
       // Fix: Add null safety for vendor id index access
       if (vendor && vendor.id) {
         // Extract vendor code from settings if it exists
@@ -214,7 +220,7 @@ export default async function handler(
 
     // Use the custom domain for link generation
     const baseUrl = `https://${DOMAIN}`;    // Format the response with complete URLs
-    const formattedLinks = sortedLinks.map(link => {
+    const formattedLinks = sortedLinks.map((link: SurveyLink) => {
       const fullUrl = `${baseUrl}/s/${projectId}/${link.uid}`;
       
       // Extract data from metadata JSON

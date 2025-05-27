@@ -7,10 +7,7 @@ import { Amplify } from 'aws-amplify';
 // Initialize Amplify with config (client-side only, and with required fields)
 if (typeof window !== 'undefined' && Amplify && typeof Amplify.configure === 'function') {
   const amplifyConfig = getAmplifyConfig();
-  if (amplifyConfig.API && amplifyConfig.API.GraphQL) {
-    (amplifyConfig.API.GraphQL as any).defaultAuthMode = (amplifyConfig.API.GraphQL as any).defaultAuthMode || 'userPool';
-  }
-  Amplify.configure(amplifyConfig as any);
+  Amplify.configure(amplifyConfig);
 }
 
 type SignUpParams = {

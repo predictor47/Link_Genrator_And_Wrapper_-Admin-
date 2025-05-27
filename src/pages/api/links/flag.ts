@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { amplifyDataService } from '@/lib/amplify-data-service';
+import { getAmplifyServerService } from '@/lib/amplify-server-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -19,8 +19,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Verify token (in a real app, we'd validate the session token)
     
     // Get the survey link using Amplify
-    const surveyLinkResult = await amplifyDataService.surveyLinks.getByUid(uid);
-    const surveyLink = surveyLinkResult?.data;
+    const amplifyServerService = getAmplifyServerService();
+    const surveyLinkResult = await amplifyServerService.getSurveyLinkByUid(uid);
+    const surveyLink = surveyLinkResult.data;
 
     if (!surveyLink) {
       return res.status(404).json({ 
@@ -47,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     // Update the survey link status and store flag info in metadata
-    await amplifyDataService.surveyLinks.update(surveyLink.id, { 
+    await amplifyServerService.updateSurveyLink(surveyLink.id, { 
       status: 'FLAGGED',
       metadata: JSON.stringify(flagMetadata)
     });

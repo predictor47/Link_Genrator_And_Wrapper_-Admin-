@@ -1,5 +1,5 @@
 import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
-import { amplifyDataService } from './amplify-data-service';
+import { getAmplifyDataService } from './amplify-data-service';
 
 // Domain configuration
 const MAIN_DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
@@ -116,6 +116,7 @@ export const securityService = {
         };
       }
       
+      const amplifyDataService = await getAmplifyDataService();
       const surveyLink = await amplifyDataService.surveyLinks.getByUid(surveyLinkUid);
       
       if (!surveyLink) {

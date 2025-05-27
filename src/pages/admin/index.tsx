@@ -1,25 +1,24 @@
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import Link from 'next/link';
 import ProtectedRoute from '@/lib/protected-route';
-import { logAuthDiagnostics, attemptAuthFix } from '@/lib/auth-debug';
 import { getAmplifyDataService } from '@/lib/amplify-data-service';
 
 interface Project {
   id: string;
   name: string;
-  description: string | null;
-  createdAt: string | Date; // Allow both string and Date to handle both API responses and frontend requirements
-  _count: {
-    surveyLinks: number;
-    flags: number;
-  };
-  stats?: {
-    pending: number;
-    started: number;
-    inProgress: number;
-    completed: number;
-    flagged: number;
-  };
+  description?: string;
+  status: string;
+  targetCompletions: number;
+  currentCompletions: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SurveyLink {
+  id: string;
+  projectId: string;
+  status: string;
 }
 
 interface Stats {
@@ -32,16 +31,15 @@ interface Stats {
   flaggedLinks: number;
 }
 
-interface AdminDashboardProps {
-  projects: Project[];
-  stats: Stats;
-  projectStats: Record<string, { 
-    pending: number, 
-    started: number,
-    inProgress: number,
-    completed: number,
-    flagged: number
-  }>;
+interface ProjectStats {
+  [projectId: string]: {
+    pending: number;
+    started: number;
+    inProgress: number;
+    completed: number;
+    flagged: number;
+    total: number;
+  };
 }
 
 // CircleProgress component for better UI visualization
@@ -85,391 +83,421 @@ const CircleProgress = ({ value, max, color, size = 60, strokeWidth = 6 }: {
       </span>
     </div>
   );
-}
+};
 
-export default function AdminDashboard({ projects: initialProjects, stats: initialStats, projectStats }: AdminDashboardProps) {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [stats, setStats] = useState<Stats>(initialStats);
+export default function AdminDashboard() {
+  const router = useRouter();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [projectStats, setProjectStats] = useState<ProjectStats>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
-  
-  // Handle project deletion
-  const handleDelete = async (projectId: string) => {
-    setIsDeleting(projectId);
-    setDeleteError(null);
+
+  // Fetch all data on component mount
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
     try {
+      setIsLoading(true);
+      setError('');
+      
       const amplifyDataService = await getAmplifyDataService();
-      await amplifyDataService.projects.delete(projectId);
-      // Remove the project from the list
-      const updatedProjects = projects.filter(project => project.id !== projectId);
-      setProjects(updatedProjects);
-      // Update stats
-      const projectToRemove = projects.find(project => project.id === projectId);
-      if (projectToRemove) {
-        setStats(prev => ({
-          ...prev,
-          totalProjects: prev.totalProjects - 1,
-        }));
-      }
+      
+      // Fetch projects
+      const projectsResult = await amplifyDataService.projects.list();
+      const projectsData = projectsResult.data || [];
+      
+      // Transform projects to match our interface
+      const transformedProjects = projectsData.map((project: any) => ({
+        id: project.id,
+        name: project.name,
+        description: project.description || '',
+        status: project.status || 'ACTIVE',
+        targetCompletions: project.targetCompletions || 0,
+        currentCompletions: project.currentCompletions || 0,
+        createdAt: project.createdAt,
+        updatedAt: project.updatedAt,
+      }));
+      
+      setProjects(transformedProjects);
+
+      // Fetch survey links to calculate stats
+      const linksResult = await amplifyDataService.surveyLinks.list();
+      const linksData = linksResult.data || [];
+
+      // Calculate overall stats
+      const totalProjects = transformedProjects.length;
+      const totalLinks = linksData.length;
+      const pendingLinks = linksData.filter((link: any) => link.status === 'UNUSED').length;
+      const startedLinks = linksData.filter((link: any) => link.status === 'CLICKED').length;
+      const inProgressLinks = linksData.filter((link: any) => link.status === 'IN_PROGRESS').length;
+      const completedLinks = linksData.filter((link: any) => link.status === 'COMPLETED').length;
+      const flaggedLinks = linksData.filter((link: any) => link.status === 'DISQUALIFIED').length;
+
+      setStats({
+        totalProjects,
+        totalLinks,
+        pendingLinks,
+        startedLinks,
+        inProgressLinks,
+        completedLinks,
+        flaggedLinks
+      });
+
+      // Calculate per-project stats
+      const projectStatsMap: ProjectStats = {};
+      transformedProjects.forEach((project: Project) => {
+        const projectLinks = linksData.filter((link: any) => link.projectId === project.id);
+        projectStatsMap[project.id] = {
+          pending: projectLinks.filter((link: any) => link.status === 'UNUSED').length,
+          started: projectLinks.filter((link: any) => link.status === 'CLICKED').length,
+          inProgress: projectLinks.filter((link: any) => link.status === 'IN_PROGRESS').length,
+          completed: projectLinks.filter((link: any) => link.status === 'COMPLETED').length,
+          flagged: projectLinks.filter((link: any) => link.status === 'DISQUALIFIED').length,
+          total: projectLinks.length
+        };
+      });
+      setProjectStats(projectStatsMap);
+
+    } catch (error: any) {
+      console.error('Error fetching dashboard data:', error);
+      setError('Failed to load dashboard data. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const confirmDeleteProject = (project: Project) => {
+    setProjectToDelete(project);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+
+    try {
+      setIsDeleting(projectToDelete.id);
+      const amplifyDataService = await getAmplifyDataService();
+      await amplifyDataService.projects.delete(projectToDelete.id);
+      
+      // Refresh the dashboard data
+      await fetchDashboardData();
       setShowDeleteModal(false);
+      setProjectToDelete(null);
     } catch (error: any) {
       console.error('Error deleting project:', error);
-      setDeleteError('An error occurred while deleting the project. Please try again.');
+      setError('Failed to delete project. Please try again.');
     } finally {
       setIsDeleting(null);
     }
   };
-  
-  // Confirm deletion modal
-  const confirmDelete = (project: Project) => {
-    setProjectToDelete(project);
-    setShowDeleteModal(true);
+
+  const handleLogout = async () => {
+    try {
+      // Import auth service dynamically to avoid SSR issues
+      const { AuthService } = await import('@/lib/auth-service');
+      await AuthService.signOut();
+      router.push('/admin/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
-  
-  // Cancel deletion
-  const cancelDelete = () => {
-    setProjectToDelete(null);
-    setShowDeleteModal(false);
-    setDeleteError(null);
-  };
+
+  if (isLoading) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
 
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-100">
-        <div className="bg-white shadow">
-          <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <h1 className="text-3xl font-bold text-gray-900">Survey Link Wrapper Admin</h1>
-            {/* Debug button */}
-            <button
-              onClick={() => {
-                logAuthDiagnostics();
-                alert('Auth diagnostics logged to console. Check browser dev tools.');
-              }}
-              className="text-xs text-gray-500 hover:text-indigo-600 mt-2"
-            >
-              Debug Auth
-            </button>
-          </div>
-        </div>
-
-      <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Overall Stats Cards with Circular Progress */}
-        <div className="bg-white shadow rounded-lg mb-8 p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Overall Statistics</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
-            <div className="flex flex-col items-center justify-center">
-              <div className="relative mb-2">
-                <svg className="w-24 h-24">
-                  <circle cx="48" cy="48" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8"/>
-                  <circle 
-                    cx="48" 
-                    cy="48" 
-                    r="40" 
-                    fill="none" 
-                    stroke="#6366F1" 
-                    strokeWidth="8" 
-                    strokeDasharray={2 * Math.PI * 40} 
-                    strokeDashoffset="0"
-                    transform="rotate(-90 48 48)"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-3xl font-bold text-gray-900">{stats?.totalProjects ?? 0}</div>
-                </div>
+        {/* Navigation */}
+        <nav className="bg-white shadow-lg">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="flex justify-between h-16">
+              <div className="flex items-center">
+                <h1 className="text-xl font-semibold text-gray-800">Admin Dashboard</h1>
               </div>
-              <div className="text-sm font-medium text-gray-500">Total Projects</div>
-            </div>
-            
-            <div className="flex flex-col items-center justify-center">
-              <div className="relative mb-2">
-                <svg className="w-24 h-24">
-                  <circle cx="48" cy="48" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8"/>
-                  <circle 
-                    cx="48" 
-                    cy="48" 
-                    r="40" 
-                    fill="none" 
-                    stroke="#6366F1" 
-                    strokeWidth="8" 
-                    strokeDasharray={2 * Math.PI * 40} 
-                    strokeDashoffset="0"
-                    transform="rotate(-90 48 48)"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-3xl font-bold text-gray-900">{stats?.totalLinks ?? 0}</div>
-                </div>
+              <div className="flex items-center space-x-4">
+                <Link 
+                  href="/admin/projects/new" 
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                >
+                  Create Project
+                </Link>
+                <button 
+                  onClick={handleLogout} 
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  Logout
+                </button>
               </div>
-              <div className="text-sm font-medium text-gray-500">Total Links</div>
-            </div>
-            
-            <div className="flex flex-col items-center justify-center">
-              <div className="relative mb-2">
-                <svg className="w-24 h-24">
-                  <circle cx="48" cy="48" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8"/>
-                  <circle 
-                    cx="48" 
-                    cy="48" 
-                    r="40" 
-                    fill="none" 
-                    stroke="#3B82F6" 
-                    strokeWidth="8" 
-                    strokeDasharray={2 * Math.PI * 40} 
-                    strokeDashoffset={2 * Math.PI * 40 * (1 - (stats?.pendingLinks ?? 0) / ((stats?.totalLinks ?? 1) || 1))}
-                    transform="rotate(-90 48 48)"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-3xl font-bold text-blue-600">{stats?.pendingLinks ?? 0}</div>
-                </div>
-              </div>
-              <div className="text-sm font-medium text-gray-500">Pending Links</div>
-            </div>
-            
-            <div className="flex flex-col items-center justify-center">
-              <div className="relative mb-2">
-                <svg className="w-24 h-24">
-                  <circle cx="48" cy="48" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8"/>
-                  <circle 
-                    cx="48" 
-                    cy="48" 
-                    r="40" 
-                    fill="none" 
-                    stroke="#10B981" 
-                    strokeWidth="8" 
-                    strokeDasharray={2 * Math.PI * 40} 
-                    strokeDashoffset={2 * Math.PI * 40 * (1 - (stats?.startedLinks ?? 0) / ((stats?.totalLinks ?? 1) || 1))}
-                    transform="rotate(-90 48 48)"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-3xl font-bold text-green-600">{stats?.startedLinks ?? 0}</div>
-                </div>
-              </div>
-              <div className="text-sm font-medium text-gray-500">Started Links</div>
-            </div>
-            
-            <div className="flex flex-col items-center justify-center">
-              <div className="relative mb-2">
-                <svg className="w-24 h-24">
-                  <circle cx="48" cy="48" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8"/>
-                  <circle 
-                    cx="48" 
-                    cy="48" 
-                    r="40" 
-                    fill="none" 
-                    stroke="#059669" 
-                    strokeWidth="8" 
-                    strokeDasharray={2 * Math.PI * 40} 
-                    strokeDashoffset={2 * Math.PI * 40 * (1 - (stats?.completedLinks ?? 0) / ((stats?.totalLinks ?? 1) || 1))}
-                    transform="rotate(-90 48 48)"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-3xl font-bold text-green-800">{stats?.completedLinks ?? 0}</div>
-                </div>
-              </div>
-              <div className="text-sm font-medium text-gray-500">Completed Links</div>
-            </div>
-            
-            <div className="flex flex-col items-center justify-center">
-              <div className="relative mb-2">
-                <svg className="w-24 h-24">
-                  <circle cx="48" cy="48" r="40" fill="none" stroke="#e5e7eb" strokeWidth="8"/>
-                  <circle 
-                    cx="48" 
-                    cy="48" 
-                    r="40" 
-                    fill="none" 
-                    stroke="#EF4444" 
-                    strokeWidth="8" 
-                    strokeDasharray={2 * Math.PI * 40} 
-                    strokeDashoffset={2 * Math.PI * 40 * (1 - (stats?.flaggedLinks ?? 0) / ((stats?.totalLinks ?? 1) || 1))}
-                    transform="rotate(-90 48 48)"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-3xl font-bold text-red-600">{stats?.flaggedLinks ?? 0}</div>
-                </div>
-              </div>
-              <div className="text-sm font-medium text-gray-500">Flagged Links</div>
             </div>
           </div>
-        </div>
+        </nav>
 
-        {/* Projects Section with Project-Level Stats */}
-        <div className="bg-white shadow rounded-lg mb-8">
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-800">Your Projects</h2>
-            <Link 
-              href="/admin/projects/new" 
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-            >
-              Create New Project
-            </Link>
-          </div>
+        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+          {error && (
+            <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+              {error}
+              <button 
+                onClick={() => setError('')}
+                className="ml-4 text-red-700 hover:text-red-900"
+              >
+                ×
+              </button>
+            </div>
+          )}
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Links</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status Distribution</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {(projects ?? []).map((project) => {
-                  // Get project stats
-                  const projectStat = projectStats[project.id] || {
-                    pending: 0,
-                    started: 0,
-                    inProgress: 0,
-                    completed: 0,
-                    flagged: 0
-                  };
-                  
-                  const totalLinks = project._count.surveyLinks;
-                  
-                  return (
-                    <tr key={project.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {project.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {project.description || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(project.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {project._count.surveyLinks}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex justify-center space-x-1">
-                          {totalLinks > 0 ? (
-                            <>
-                              <CircleProgress 
-                                value={projectStat.pending} 
-                                max={totalLinks} 
-                                color="#3B82F6" 
-                              />
-                              <CircleProgress 
-                                value={projectStat.started} 
-                                max={totalLinks} 
-                                color="#10B981" 
-                              />
-                              <CircleProgress 
-                                value={projectStat.inProgress} 
-                                max={totalLinks} 
-                                color="#F59E0B" 
-                              />
-                              <CircleProgress 
-                                value={projectStat.completed} 
-                                max={totalLinks} 
-                                color="#059669" 
-                              />
-                              <CircleProgress 
-                                value={projectStat.flagged} 
-                                max={totalLinks} 
-                                color="#EF4444" 
-                              />
-                            </>
-                          ) : (
-                            <span className="text-xs text-gray-400">No links generated</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <Link 
-                          href={`/admin/projects/${project.id}`}
+          {/* Stats Cards */}
+          {stats && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+                        <span className="text-white font-bold">P</span>
+                      </div>
+                    </div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">Total Projects</dt>
+                        <dd className="text-lg font-medium text-gray-900">{stats.totalProjects}</dd>
+                      </dl>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-                          className="text-blue-600 hover:text-blue-900 mr-4"
-                        >
-                          View
-                        </Link>
-                        <Link 
-                          href={`/admin/projects/${project.id}/generate`}
-                          className="text-green-600 hover:text-green-900 mr-4"
-                        >
-                          Generate Links
-                        </Link>
-                        <button
-                          onClick={() => confirmDelete(project)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
-                        </button>
-                      </td>
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
+                        <span className="text-white font-bold">L</span>
+                      </div>
+                    </div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">Total Links</dt>
+                        <dd className="text-lg font-medium text-gray-900">{stats.totalLinks}</dd>
+                      </dl>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
+                        <span className="text-white font-bold">C</span>
+                      </div>
+                    </div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">Completed</dt>
+                        <dd className="text-lg font-medium text-gray-900">{stats.completedLinks}</dd>
+                      </dl>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white overflow-hidden shadow rounded-lg">
+                <div className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-orange-500 rounded-md flex items-center justify-center">
+                        <span className="text-white font-bold">A</span>
+                      </div>
+                    </div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">Active Links</dt>
+                        <dd className="text-lg font-medium text-gray-900">{stats.inProgressLinks}</dd>
+                      </dl>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Projects Table */}
+          <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg leading-6 font-medium text-gray-900">Projects</h3>
+                <p className="mt-1 max-w-2xl text-sm text-gray-500">Manage your research projects and survey campaigns.</p>
+              </div>
+              <button
+                onClick={fetchDashboardData}
+                disabled={isLoading}
+                className="bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
+              >
+                {isLoading ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
+            
+            {projects.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 text-lg mb-4">No projects found</p>
+                <Link
+                  href="/admin/projects/new"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                >
+                  Create Your First Project
+                </Link>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Links</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
-                  );
-                })}
-                
-                {(projects ?? []).length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
-                      No projects found. Create your first project to get started.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-      
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && projectToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Delete Project</h3>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete <span className="font-semibold">{projectToDelete.name}</span>? This will permanently delete the project and all associated data, including:
-            </p>
-            <ul className="list-disc list-inside text-gray-600 mb-6">
-              <li>{projectToDelete._count.surveyLinks} survey links</li>
-              <li>All survey responses</li>
-              <li>All pre-survey questions</li>
-              <li>{projectToDelete._count.flags} flags</li>
-            </ul>
-            <p className="text-gray-600 mb-6">This action cannot be undone.</p>
-            
-            {deleteError && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                {deleteError}
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {projects.map((project) => {
+                      // Get project stats
+                      const projectStat = projectStats[project.id] || {
+                        pending: 0,
+                        started: 0,
+                        inProgress: 0,
+                        completed: 0,
+                        flagged: 0,
+                        total: 0
+                      };
+                      
+                      return (
+                        <tr key={project.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{project.name}</div>
+                              {project.description && (
+                                <div className="text-sm text-gray-500">{project.description}</div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              project.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                              project.status === 'PAUSED' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {project.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <CircleProgress
+                                value={project.currentCompletions}
+                                max={project.targetCompletions}
+                                color="#10B981"
+                                size={40}
+                                strokeWidth={4}
+                              />
+                              <span className="ml-2 text-sm text-gray-600">
+                                {Math.round((project.currentCompletions / (project.targetCompletions || 1)) * 100)}%
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <div className="flex flex-col">
+                              <span className="font-medium">{projectStat.total}</span>
+                              <span className="text-xs text-gray-500">
+                                {projectStat.completed} completed
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(project.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <Link
+                              href={`/admin/projects/${project.id}`}
+                              className="text-blue-600 hover:text-blue-900 mr-4"
+                            >
+                              View
+                            </Link>
+                            <button
+                              onClick={() => confirmDeleteProject(project)}
+                              disabled={isDeleting === project.id}
+                              className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                            >
+                              {isDeleting === project.id ? 'Deleting...' : 'Delete'}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
-            
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={cancelDelete}
-                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
-                disabled={isDeleting === projectToDelete.id}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDelete(projectToDelete.id)}
-                className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
-                disabled={isDeleting === projectToDelete.id}
-              >
-                {isDeleting === projectToDelete.id ? 'Deleting...' : 'Yes, Delete Project'}
-              </button>
-            </div>
           </div>
         </div>
-      )}
-    </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && projectToDelete && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3 text-center">
+                <h3 className="text-lg font-medium text-gray-900">Confirm Delete</h3>
+                <div className="mt-2 px-7 py-3">
+                  <p className="text-sm text-gray-500">
+                    Are you sure you want to delete project "{projectToDelete.name}"? This action cannot be undone.
+                  </p>
+                </div>
+                <div className="flex justify-center space-x-4 mt-4">
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setProjectToDelete(null);
+                    }}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteProject}
+                    disabled={isDeleting !== null}
+                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </ProtectedRoute>
   );
 }
 
 export async function getServerSideProps() {
-  // All data fetching is now client-side. Do not use amplifyDataService here.
+  // All data fetching is now client-side
   return { props: {} };
 }

@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { amplifyDataService } from '@/lib/amplify-data-service';
+import { getAmplifyServerService } from '@/lib/amplify-server-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -7,6 +7,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    const amplifyServerService = getAmplifyServerService();
     const { projectId, uid, token, vendorId, metadata } = req.body;
 
     if (!projectId || !uid) {
@@ -17,8 +18,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Get the survey link
-    const surveyLinkResult = await amplifyDataService.surveyLinks.getByUid(uid);
-    const surveyLink = surveyLinkResult?.data;    if (!surveyLink) {
+    const surveyLinkResult = await amplifyServerService.getSurveyLinkByUid(uid);
+    const surveyLink = surveyLinkResult.data;
+    
+    if (!surveyLink) {
       return res.status(404).json({ 
         success: false, 
         message: 'Survey link not found' 
@@ -76,17 +79,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     // Update vendor information if provided and different from current
     if (vendorId && vendorId !== surveyLink.vendorId) {
-      // Verify vendor belongs to this project
-      const vendorResults = await amplifyDataService.vendors.list({
-        filter: {
-          and: [
-            { id: { eq: vendorId } },
-            { projectId: { eq: projectId } }
-          ]
-        }
+      // Verify vendor belongs to this project by checking ProjectVendor relationship
+      const projectVendors = await amplifyServerService.listProjectVendors({
+        and: [
+          { projectId: { eq: projectId } },
+          { vendorId: { eq: vendorId } }
+        ]
       });
+      const validVendor = projectVendors.data.find((pv: any) => pv.vendorId === vendorId);
       
-      if (vendorResults.data && vendorResults.data.length > 0) {
+      if (validVendor) {
         updateData.vendorId = vendorId;
       }
     }
@@ -95,7 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('Survey link ID is null or undefined');
     }
     
-    await amplifyDataService.surveyLinks.update(surveyLink.id, updateData);
+    await amplifyServerService.updateSurveyLink(surveyLink.id, updateData);
 
     return res.status(200).json({
       success: true,

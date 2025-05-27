@@ -12,30 +12,37 @@ export async function getAmplifyDataService() {
   if (amplifyDataService) return amplifyDataService;
 
   const amplifyConfig = getAmplifyConfig();
-  if (!amplifyConfig?.API?.GraphQL?.endpoint) {
+  if (!amplifyConfig?.data?.url) {
     throw new Error('Amplify config is missing GraphQL endpoint.');
   }
-  Amplify.configure(amplifyConfig as any);
+  Amplify.configure(amplifyConfig);
 
   const client = generateClient<Schema>({ authMode: 'userPool' });
+  
   // Debug logging
-console.log('Amplify Data client:', client);
-console.log('client.models:', client.models);
-if (!client.models) {
-  console.error('client.models is undefined!');
-} else if (!client.models.Project) {
-  console.error('Project model is missing from Amplify Data client!');
-} else {
-  console.log('Project model:', client.models.Project);
-  if (typeof client.models.Project.create !== 'function') {
-    console.error('Project model does not have a create method!');
-  } else {
-    console.log('Project model create method is present.');
+  console.log('Amplify Data client:', client);
+  console.log('client.models:', client.models);
+  
+  // Check if models are available
+  if (!client.models || Object.keys(client.models).length === 0) {
+    console.error('client.models is empty! This usually means the Amplify backend is not properly connected.');
+    throw new Error('Amplify Data models are not available. Please check your backend connection.');
   }
-}
+  
+  // Verify required models exist
+  const requiredModels = ['Project', 'Vendor', 'Question', 'SurveyLink', 'ProjectVendor'] as const;
+  for (const modelName of requiredModels) {
+    if (!client.models[modelName]) {
+      console.error(`${modelName} model is missing from Amplify Data client!`);
+      throw new Error(`Required model ${modelName} is not available in the Amplify Data client.`);
+    }
+  }
+  
+  console.log('All required models are available:', requiredModels);
 
   // Helper to safely unwrap data from Amplify responses
   const unwrapData = <T>(result: { data: T | null }): T | null => result.data;
+  
   // Helper to handle Amplify errors in a consistent way
   const handleAmplifyError = (error: any, operation: string) => {
     const errorMessage = error.message || 'Unknown error';
@@ -53,6 +60,7 @@ if (!client.models) {
           return { data: unwrapData(result) };
         } catch (error) {
           handleAmplifyError(error, 'projects.create');
+          return { data: null };
         }
       },
       get: async (id: string) => {
@@ -72,33 +80,36 @@ if (!client.models) {
         return { data: unwrapData(result) };
       },
       getWithRelations: async (id: string) => {
-        // Fix: Remove problematic selection set and handle relationships separately
+        // Fetch project and related data separately
         const project = await client.models.Project.get({ id });
         
         if (project.data) {
-          // Fetch related data separately to avoid deep type instantiation
+          // Fetch related data separately
           const surveyLinks = await client.models.SurveyLink.list({
             filter: { projectId: { eq: id } }
-          });        // First get ProjectVendor relationships for this project
+          });
+          
+          // First get ProjectVendor relationships for this project
           const projectVendors = await client.models.ProjectVendor.list({
             filter: { projectId: { eq: id } }
-          });        // Then get the actual vendors if there are project-vendor relationships
-          const vendorIds = projectVendors.data
-            .map(pv => pv.vendorId)
-            .filter((id): id is string => id !== null && id !== undefined);
+          });
           
-          // Use explicit type for vendorData
+          // Then get the actual vendors if there are project-vendor relationships
+          const vendorIds = projectVendors.data
+            .map((pv: any) => pv.vendorId)
+            .filter((id: any): id is string => id !== null && id !== undefined);
+          
           let vendorData: any[] = [];
           
           // Fetch vendors if there are any relationships
           if (vendorIds.length > 0) {
             const vendorResults = await Promise.all(
-              vendorIds.map(vid => client.models.Vendor.get({ id: vid }))
+              vendorIds.map((vid: string) => client.models.Vendor.get({ id: vid }))
             );
             // Extract data from each result
             vendorData = vendorResults
-              .filter(result => result.data !== null)
-              .map(result => result.data);
+              .filter((result: any) => result.data !== null)
+              .map((result: any) => result.data);
           }
           
           const questions = await client.models.Question.list({
@@ -161,24 +172,25 @@ if (!client.models) {
       list: async (filter?: any) => {
         const result = await client.models.Vendor.list(filter);
         return { data: result.data || [] };
-      },    listByProject: async (projectId: string) => {
+      },
+      listByProject: async (projectId: string) => {
         // Get project-vendor relationships first
         const projectVendors = await client.models.ProjectVendor.list({
           filter: { projectId: { eq: projectId } }
         });
         // Get vendor IDs from relationships
         const vendorIds = projectVendors.data
-          .map(pv => pv.vendorId)
-          .filter((id): id is string => id !== null && id !== undefined);
+          .map((pv: any) => pv.vendorId)
+          .filter((id: any): id is string => id !== null && id !== undefined);
         // Fetch each vendor individually if there are any relationships
         if (vendorIds.length > 0) {
           const vendorResults = await Promise.all(
-            vendorIds.map(vid => client.models.Vendor.get({ id: vid }))
+            vendorIds.map((vid: string) => client.models.Vendor.get({ id: vid }))
           );
           // Extract data from each result and filter out nulls
           const vendorData = vendorResults
-            .map(result => result.data)
-            .filter((v): v is NonNullable<typeof v> => v !== null);
+            .map((result: any) => result.data)
+            .filter((v: any): v is NonNullable<typeof v> => v !== null);
           return { data: vendorData };
         }
         return { data: [] };
@@ -218,61 +230,6 @@ if (!client.models) {
         return { data: unwrapData(result) };
       }
     },
-    /* Response operations - removed because Response model doesn't exist in schema
-    responses: {
-      create: async (data: any) => {
-        // const result = await client.models.Response.create(data);
-        return { data: null };
-      },
-      get: async (id: string) => {
-        // const result = await client.models.Response.get({ id });
-        return { data: null };
-      },
-      list: async (filter?: any) => {
-        // const result = await client.models.Response.list(filter);
-        return { data: [] };
-      },
-      listByProject: async (projectId: string) => {
-        // const result = await client.models.Response.list({ filter: { projectId: { eq: projectId } } });
-        return { data: [] };
-      },
-      listBySurveyLink: async (surveyLinkId: string) => {
-        // const result = await client.models.Response.list({ filter: { surveyLinkId: { eq: surveyLinkId } } });
-        return { data: [] };
-      },
-      delete: async (id: string) => {
-        // const result = await client.models.Response.delete({ id });
-        return { data: null };
-      }
-    },
-    */
-    /* Flag operations - removed because Flag model doesn't exist in schema
-    flags: {
-      create: async (data: any) => {
-        // const result = await client.models.Flag.create(data);
-        return { data: null };
-      },
-      get: async (id: string) => {
-        // const result = await client.models.Flag.get({ id });
-        return { data: null };
-      },    list: async (filter?: any) => {
-        // const result = await client.models.Flag.list(filter);
-        return { data: [] };
-      },
-      listByProject: async (projectId: string) => {
-        // const result = await client.models.Flag.list({ filter: { projectId: { eq: projectId } } });
-        return { data: [] };
-      },
-      listBySurveyLink: async (surveyLinkId: string) => {
-        // const result = await client.models.Flag.list({ filter: { surveyLinkId: { eq: surveyLinkId } } });
-        return { data: [] };
-      },
-      delete: async (id: string) => {
-        // const result = await client.models.Flag.delete({ id });
-        return { data: null };
-      }
-    },
-    */
 
     // Helper for transactions (not directly supported in Amplify Data, using batch operations)
     transaction: {
@@ -287,5 +244,6 @@ if (!client.models) {
       }
     }
   };
+  
   return amplifyDataService;
 }

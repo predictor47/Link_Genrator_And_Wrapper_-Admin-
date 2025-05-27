@@ -1,0 +1,350 @@
+import { Amplify } from 'aws-amplify';
+import outputs from '../../amplify_outputs.json';
+
+// Initialize Amplify
+Amplify.configure(outputs);
+
+// Type definitions
+interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Vendor {
+  id: string;
+  name: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SurveyLink {
+  id: string;
+  projectId: string;
+  uid: string;
+  vendorId: string;
+  status: string;
+  metadata?: string;
+  createdAt: string;
+  updatedAt: string;
+  clickedAt?: string;
+  completedAt?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  geoData?: any;
+}
+
+interface GraphQLResponse<T> {
+  data?: T;
+  errors?: Array<{ message: string }>;
+}
+
+class AmplifyServerService {
+  private apiEndpoint: string;
+  private apiKey: string;
+
+  constructor() {
+    this.apiEndpoint = outputs.data.url;
+    this.apiKey = outputs.data.api_key;
+  }
+
+  private async makeGraphQLRequest<T>(query: string, variables: any = {}): Promise<GraphQLResponse<T>> {
+    try {
+      const response = await fetch(this.apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': this.apiKey,
+        },
+        body: JSON.stringify({
+          query,
+          variables,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('GraphQL request failed:', error);
+      throw error;
+    }
+  }
+
+  // Project operations
+  async getProject(id: string): Promise<{ data: Project | null }> {
+    const query = `
+      query GetProject($id: ID!) {
+        getProject(id: $id) {
+          id
+          name
+          description
+          status
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ getProject: Project }>(query, { id });
+    return { data: result.data?.getProject || null };
+  }
+
+  // Vendor operations
+  async getVendor(id: string): Promise<{ data: Vendor | null }> {
+    const query = `
+      query GetVendor($id: ID!) {
+        getVendor(id: $id) {
+          id
+          name
+          status
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ getVendor: Vendor }>(query, { id });
+    return { data: result.data?.getVendor || null };
+  }
+
+  async listVendors(filter?: any): Promise<{ data: Vendor[] }> {
+    const query = `
+      query ListVendors($filter: ModelVendorFilterInput) {
+        listVendors(filter: $filter) {
+          items {
+            id
+            name
+            status
+            createdAt
+            updatedAt
+          }
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ listVendors: { items: Vendor[] } }>(query, { filter });
+    return { data: result.data?.listVendors?.items || [] };
+  }
+
+  // SurveyLink operations
+  async createSurveyLink(input: {
+    projectId: string;
+    uid: string;
+    vendorId: string;
+    status: string;
+    metadata?: string;
+    geoData?: any;
+  }): Promise<{ data: SurveyLink | null }> {
+    const query = `
+      mutation CreateSurveyLink($input: CreateSurveyLinkInput!) {
+        createSurveyLink(input: $input) {
+          id
+          projectId
+          uid
+          vendorId
+          status
+          metadata
+          createdAt
+          updatedAt
+          clickedAt
+          completedAt
+          ipAddress
+          userAgent
+          geoData
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ createSurveyLink: SurveyLink }>(query, { input });
+    return { data: result.data?.createSurveyLink || null };
+  }
+
+  async listSurveyLinksByProject(projectId: string): Promise<{ data: SurveyLink[] }> {
+    const query = `
+      query ListSurveyLinks($filter: ModelSurveyLinkFilterInput) {
+        listSurveyLinks(filter: $filter) {
+          items {
+            id
+            projectId
+            uid
+            vendorId
+            status
+            metadata
+            createdAt
+            updatedAt
+            clickedAt
+            completedAt
+            ipAddress
+            userAgent
+            geoData
+          }
+        }
+      }
+    `;
+
+    const filter = {
+      projectId: { eq: projectId }
+    };
+
+    const result = await this.makeGraphQLRequest<{ listSurveyLinks: { items: SurveyLink[] } }>(query, { filter });
+    return { data: result.data?.listSurveyLinks?.items || [] };
+  }
+
+  async getSurveyLinkByUid(uid: string): Promise<{ data: SurveyLink | null }> {
+    const query = `
+      query ListSurveyLinks($filter: ModelSurveyLinkFilterInput) {
+        listSurveyLinks(filter: $filter) {
+          items {
+            id
+            projectId
+            uid
+            vendorId
+            status
+            metadata
+            createdAt
+            updatedAt
+            clickedAt
+            completedAt
+            ipAddress
+            userAgent
+            geoData
+          }
+        }
+      }
+    `;
+
+    const filter = {
+      uid: { eq: uid }
+    };
+
+    const result = await this.makeGraphQLRequest<{ listSurveyLinks: { items: SurveyLink[] } }>(query, { filter });
+    const items = result.data?.listSurveyLinks?.items || [];
+    return { data: items.length > 0 ? items[0] : null };
+  }
+
+  async updateSurveyLink(id: string, input: {
+    status?: string;
+    clickedAt?: string;
+    completedAt?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    geoData?: any;
+    metadata?: string;
+  }): Promise<{ data: SurveyLink | null }> {
+    const query = `
+      mutation UpdateSurveyLink($input: UpdateSurveyLinkInput!) {
+        updateSurveyLink(input: $input) {
+          id
+          projectId
+          uid
+          vendorId
+          status
+          metadata
+          createdAt
+          updatedAt
+          clickedAt
+          completedAt
+          ipAddress
+          userAgent
+          geoData
+        }
+      }
+    `;
+
+    const updateInput = { id, ...input };
+    const result = await this.makeGraphQLRequest<{ updateSurveyLink: SurveyLink }>(query, { input: updateInput });
+    return { data: result.data?.updateSurveyLink || null };
+  }
+
+  // Question operations
+  async createQuestion(input: {
+    projectId: string;
+    text: string;
+    type: string;
+    options?: any;
+    sequence: number;
+    isRequired?: boolean;
+    isTrap?: boolean;
+    settings?: any;
+  }): Promise<{ data: any | null }> {
+    const query = `
+      mutation CreateQuestion($input: CreateQuestionInput!) {
+        createQuestion(input: $input) {
+          id
+          projectId
+          text
+          type
+          options
+          sequence
+          isRequired
+          isTrap
+          settings
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ createQuestion: any }>(query, { input });
+    return { data: result.data?.createQuestion || null };
+  }
+
+  async listQuestionsByProject(projectId: string): Promise<{ data: any[] }> {
+    const query = `
+      query ListQuestions($filter: ModelQuestionFilterInput) {
+        listQuestions(filter: $filter) {
+          items {
+            id
+            projectId
+            text
+            type
+            options
+            sequence
+            isRequired
+            isTrap
+            settings
+            createdAt
+            updatedAt
+          }
+        }
+      }
+    `;
+
+    const filter = {
+      projectId: { eq: projectId }
+    };
+
+    const result = await this.makeGraphQLRequest<{ listQuestions: { items: any[] } }>(query, { filter });
+    return { data: result.data?.listQuestions?.items || [] };
+  }
+
+  async deleteQuestion(id: string): Promise<{ data: any | null }> {
+    const query = `
+      mutation DeleteQuestion($input: DeleteQuestionInput!) {
+        deleteQuestion(input: $input) {
+          id
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ deleteQuestion: any }>(query, { input: { id } });
+    return { data: result.data?.deleteQuestion || null };
+  }
+}
+
+// Create a singleton instance
+let serverService: AmplifyServerService | null = null;
+
+export function getAmplifyServerService(): AmplifyServerService {
+  if (!serverService) {
+    serverService = new AmplifyServerService();
+  }
+  return serverService;
+}

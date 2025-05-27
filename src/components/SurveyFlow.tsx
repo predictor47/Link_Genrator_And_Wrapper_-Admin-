@@ -50,6 +50,40 @@ const SurveyFlow: React.FC<SurveyFlowProps> = ({
     flags: [] as string[]
   });
 
+  // Validate survey link and check geography restrictions on component mount
+  useEffect(() => {
+    const validateSurveyAccess = async () => {
+      try {
+        const response = await axios.post('/api/links/validate', {
+          projectId,
+          uid
+        });
+
+        if (!response.data.success) {
+          // Handle different types of restrictions/errors
+          if (response.data.redirect) {
+            router.push(response.data.redirect);
+            return;
+          }
+          
+          setError(response.data.error || 'Survey access denied');
+          setCurrentStep('error');
+          return;
+        }
+
+        // If validation successful, continue with normal flow
+        console.log('Survey validation successful:', response.data);
+        
+      } catch (error: any) {
+        console.error('Survey validation failed:', error);
+        setError('Failed to validate survey access');
+        setCurrentStep('error');
+      }
+    };
+
+    validateSurveyAccess();
+  }, [projectId, uid, router]);
+
   // Save session data to browser storage
   useEffect(() => {
     if (sessionData) {

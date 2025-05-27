@@ -3,9 +3,13 @@ import Head from 'next/head';
 import '../styles/globals.css';
 import { AuthProvider } from '@/lib/auth-provider';
 import { getAmplifyConfig } from '@/lib/amplify-config';
+import { Amplify } from 'aws-amplify';
 
-// If you need config, use:
-const amplifyConfig = getAmplifyConfig();
+// Configure Amplify as early as possible
+if (typeof window !== 'undefined') {
+  const amplifyConfig = getAmplifyConfig();
+  Amplify.configure(amplifyConfig);
+}
 
 export default function MyApp({ Component, pageProps }: AppProps) {
   return (

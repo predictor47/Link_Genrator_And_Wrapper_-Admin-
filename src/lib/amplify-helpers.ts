@@ -1,4 +1,4 @@
-import { amplifyDataService } from './amplify-data-service';
+import { getAmplifyDataService } from './amplify-data-service';
 import { securityService } from './security-service';
 
 /**
@@ -194,6 +194,6 @@ export default {
   codeQuality,
   mcpIntegration,
   // Export the actual services for direct access
-  dataService: amplifyDataService,
+  dataService: getAmplifyDataService,
   securityService
 };

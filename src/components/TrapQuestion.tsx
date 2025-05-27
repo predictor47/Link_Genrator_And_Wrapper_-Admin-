@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { amplifyDataService } from '@/lib/amplify-data-service';
+import { getAmplifyDataService } from '@/lib/amplify-data-service';
 
 interface TrapQuestionProps {
   projectId: string;
@@ -32,6 +32,7 @@ const TrapQuestion: React.FC<TrapQuestionProps> = ({ projectId, onAnswer }) => {
         setLoading(true);
         setError(null);
         
+        const amplifyDataService = await getAmplifyDataService();
         // Fetch questions for this project
         const questionsResult = await amplifyDataService.questions.listByProject(projectId);
         const questions = questionsResult.data || [];
