@@ -1,6 +1,20 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getAmplifyServerService } from '@/lib/amplify-server-service';
 
+// Define proper types that match our server service
+interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  status: 'ACTIVE' | 'PAUSED' | 'COMPLETED';
+  targetCompletions: number;
+  currentCompletions: number;
+  surveyUrl: string;
+  settings?: any;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Helper function to get user's country from IP
 async function getUserCountryFromIP(req: NextApiRequest): Promise<string | null> {
   try {

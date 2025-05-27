@@ -1,9 +1,34 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getAmplifyServerService } from '@/lib/amplify-server-service';
-import type { Schema } from '../../../../../amplify/data/resource';
 
-type SurveyLink = Schema['SurveyLink']['type'];
-type Vendor = Schema['Vendor']['type'];
+// Define proper types that match our server service
+type SurveyLinkStatus = 'UNUSED' | 'CLICKED' | 'COMPLETED' | 'DISQUALIFIED' | 'QUOTA_FULL';
+
+interface SurveyLink {
+  id: string;
+  projectId: string;
+  uid: string;
+  vendorId?: string;
+  status: SurveyLinkStatus;
+  clickedAt?: string;
+  completedAt?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  geoData?: any;
+  metadata?: any;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Vendor {
+  id: string;
+  name: string;
+  contactName?: string;
+  contactEmail?: string;
+  settings?: any;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {

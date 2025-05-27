@@ -10,15 +10,18 @@
       "page": "/",
       "matchers": [
         {
-          "regexp": "^/.*$",
-          "originalSource": "/:path*"
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?(?:\\/(.*))(.json)?[\\/#\\?]?$",
+          "originalSource": "/(.*)"
         }
       ],
       "wasm": [],
       "assets": [],
       "env": {
-        "__NEXT_BUILD_ID": "development",
-        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "ZvKfYQTFEd0SsNNwcKtdCPuQwF5R1UQkUDr/BXJPEvw="
+        "__NEXT_BUILD_ID": "MqrY6agetGAEGI4QEA52O",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "yG05aT9oLRcrHUgD7vrOE2wwRniWCES5CPT6dMohjnw=",
+        "__NEXT_PREVIEW_MODE_ID": "90322122a200248065f091e14c2573cc",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "b8c8f60b513b22b9a4edbdba9be7ead72f067971809beb2e6241994dba1bda11",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "85937e6661de5d79c3640a76eb2f3ff0a5bc709e5a2d03fefad808e1a4d83641"
       }
     }
   },

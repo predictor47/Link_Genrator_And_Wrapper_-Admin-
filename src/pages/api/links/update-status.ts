@@ -1,6 +1,17 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getAmplifyServerService } from '@/lib/amplify-server-service';
 
+// Define proper types that match our server service
+interface Vendor {
+  id: string;
+  name: string;
+  contactName?: string;
+  contactEmail?: string;
+  settings?: any;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface UpdateStatusRequest {
   projectId: string;
   uid: string;

@@ -2,10 +2,35 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { nanoid } from 'nanoid';
 import { getAmplifyServerService } from '@/lib/amplify-server-service';
 import { securityService } from '@/lib/security-service';
-import type { Schema } from '../../../../amplify/data/resource';
 
-type SurveyLink = Schema['SurveyLink']['type'];
-type Vendor = Schema['Vendor']['type'];
+// Use types that match our server service
+type SurveyLinkStatus = 'UNUSED' | 'CLICKED' | 'COMPLETED' | 'DISQUALIFIED' | 'QUOTA_FULL';
+
+interface SurveyLink {
+  id: string;
+  projectId: string;
+  uid: string;
+  vendorId?: string;
+  status: SurveyLinkStatus;
+  clickedAt?: string;
+  completedAt?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  geoData?: any;
+  metadata?: any;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Vendor {
+  id: string;
+  name: string;
+  contactName?: string;
+  contactEmail?: string;
+  settings?: any;
+  createdAt: string;
+  updatedAt: string;
+}
 
 type GenerateLinksRequest = {
   projectId: string;
