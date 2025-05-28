@@ -143,7 +143,9 @@ class AmplifyServerService {
         getVendor(id: $id) {
           id
           name
-          status
+          contactName
+          contactEmail
+          settings
           createdAt
           updatedAt
         }
@@ -161,7 +163,9 @@ class AmplifyServerService {
           items {
             id
             name
-            status
+            contactName
+            contactEmail
+            settings
             createdAt
             updatedAt
           }
@@ -171,6 +175,59 @@ class AmplifyServerService {
 
     const result = await this.makeGraphQLRequest<{ listVendors: { items: Vendor[] } }>(query, { filter });
     return { data: result.data?.listVendors?.items || [] };
+  }
+
+  async createVendor(input: {
+    name: string;
+    contactName?: string;
+    contactEmail?: string;
+    settings?: string;
+  }): Promise<{ data: Vendor | null }> {
+    const query = `
+      mutation CreateVendor($input: CreateVendorInput!) {
+        createVendor(input: $input) {
+          id
+          name
+          contactName
+          contactEmail
+          settings
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    console.log('CreateVendor GraphQL query:', query);
+    console.log('CreateVendor input:', input);
+    
+    const result = await this.makeGraphQLRequest<{ createVendor: Vendor }>(query, { input });
+    
+    console.log('CreateVendor complete result:', JSON.stringify(result, null, 2));
+    
+    if (result.errors) {
+      console.error('GraphQL errors in createVendor:', result.errors);
+    }
+    
+    return { data: result.data?.createVendor || null };
+  }
+
+  async deleteVendor(input: { id: string }): Promise<{ data: Vendor | null }> {
+    const query = `
+      mutation DeleteVendor($input: DeleteVendorInput!) {
+        deleteVendor(input: $input) {
+          id
+          name
+          contactName
+          contactEmail
+          settings
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ deleteVendor: Vendor }>(query, { input });
+    return { data: result.data?.deleteVendor || null };
   }
 
   // SurveyLink operations
@@ -448,6 +505,37 @@ class AmplifyServerService {
 
     const result = await this.makeGraphQLRequest<{ listProjectVendors: { items: any[] } }>(query, { filter });
     return { data: result.data?.listProjectVendors?.items || [] };
+  }
+
+  async createProjectVendor(input: {
+    projectId: string;
+    vendorId: string;
+    quota?: number;
+    currentCount?: number;
+  }): Promise<{ data: any | null }> {
+    const query = `
+      mutation CreateProjectVendor($input: CreateProjectVendorInput!) {
+        createProjectVendor(input: $input) {
+          id
+          projectId
+          vendorId
+          quota
+          currentCount
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    const createInput = {
+      projectId: input.projectId,
+      vendorId: input.vendorId,
+      quota: input.quota || 0,
+      currentCount: input.currentCount || 0
+    };
+
+    const result = await this.makeGraphQLRequest<{ createProjectVendor: any }>(query, { input: createInput });
+    return { data: result.data?.createProjectVendor || null };
   }
 
   async updateProjectVendor(projectId: string, vendorId: string, updates: {

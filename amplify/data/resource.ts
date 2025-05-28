@@ -64,6 +64,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.authenticated().to(['create', 'read', 'update', 'delete']),
+      allow.publicApiKey().to(['create', 'read', 'update', 'delete']),
     ]),
 
   ProjectVendor: a
@@ -77,6 +78,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.authenticated().to(['create', 'read', 'update', 'delete']),
+      allow.publicApiKey().to(['create', 'read', 'update', 'delete']),
     ])
 });
 

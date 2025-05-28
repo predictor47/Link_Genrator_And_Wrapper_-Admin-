@@ -2,7 +2,8 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/api/links/generate": "pages/api/links/generate.js",
-  "/admin": "pages/admin.js",
-  "/admin/projects/[id]/generate": "pages/admin/projects/[id]/generate.js"
+  "/admin/projects/[id]/generate": "pages/admin/projects/[id]/generate.js",
+  "/api/vendors/create": "pages/api/vendors/create.js",
+  "/admin/projects/[id]": "pages/admin/projects/[id].js",
+  "/api/vendors/list": "pages/api/vendors/list.js"
 }
