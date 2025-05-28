@@ -16,6 +16,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.authenticated().to(['create', 'read', 'update', 'delete']),
+      allow.publicApiKey().to(['create', 'read', 'update', 'delete'])
     ]),
 
   Question: a
@@ -31,6 +32,7 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.authenticated().to(['create', 'read', 'update', 'delete']),
+      allow.publicApiKey().to(['create', 'read', 'update', 'delete'])
     ]),
 
   SurveyLink: a
@@ -50,7 +52,8 @@ const schema = a.schema({
     })
     .authorization((allow) => [
       allow.authenticated().to(['create', 'read', 'update', 'delete']),
-      allow.guest().to(['read', 'update'])
+      allow.guest().to(['read', 'update']),
+      allow.publicApiKey().to(['create', 'read', 'update', 'delete'])
     ]),
 
   Vendor: a
