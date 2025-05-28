@@ -996,15 +996,18 @@ export default function GeneratePage() {
                     }}
                   />
                   <label htmlFor="restrictGeo" className="ml-2 block text-sm text-gray-700">
-                    Restrict by Geography
+                    Restrict Survey Access by Country
                   </label>
                 </div>
+                <p className="text-gray-500 text-xs mt-1">
+                  When enabled, survey links will only work in selected countries. Users from other regions will see a "not available in your region" message.
+                </p>
                 
                 {restrictGeo && (
                   <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
                     <div className="flex justify-between items-center mb-3">
                       <label className="block text-gray-700 text-sm font-bold">
-                        Allowed Countries ({selectedCountries.length} selected)
+                        Select Allowed Countries ({selectedCountries.length} selected)
                       </label>
                       <div className="space-x-2">
                         <button
@@ -1026,7 +1029,7 @@ export default function GeneratePage() {
                     
                     {selectedCountries.length > 0 && (
                       <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
-                        <strong>Selected:</strong> {getSelectedCountryNames()}
+                        <strong>Selected Countries:</strong> {getSelectedCountryNames()}
                       </div>
                     )}
                     
@@ -1054,11 +1057,11 @@ export default function GeneratePage() {
                     </div>
                     
                     <p className="text-gray-500 text-xs mt-2">
-                      Survey links will only work in the selected countries. Users from other countries will see a "not available in your region" message.
+                      Survey access will be restricted to the selected countries only. Participants from other locations will see a region restriction message.
                     </p>
                     
                     {restrictGeo && selectedCountries.length === 0 && (
-                      <p className="text-red-500 text-xs mt-2">Please select at least one country when geography restriction is enabled</p>
+                      <p className="text-red-500 text-xs mt-2">⚠️ Please select at least one country when geography restriction is enabled</p>
                     )}
                   </div>
                 )}

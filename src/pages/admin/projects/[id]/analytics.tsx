@@ -72,7 +72,115 @@ interface ProjectAnalyticsProps {
   };
 }
 
-export default function ProjectAnalytics({ 
+// Function to extract geographic data from survey links metadata
+function extractGeographicData(links: any[]): GeoData[] {
+  const countryStats: { [key: string]: { count: number; completedCount: number; flaggedCount: number; disqualifiedCount: number } } = {};
+
+  links.forEach(link => {
+    // Only process links that have been clicked or have geographic data
+    // Skip unused links that don't have any activity
+    if (link.status === 'UNUSED') {
+      return;
+    }
+
+    let country = null;
+    
+    // Try to extract country from metadata
+    if (link.metadata) {
+      try {
+        const metadata = JSON.parse(link.metadata);
+        
+        // Check multiple possible locations for country data
+        country = metadata?.geoLocation?.country || 
+                 metadata?.ip_location?.country || 
+                 metadata?.country || 
+                 metadata?.ipinfo?.country || null;
+        
+        // Clean up country name - remove country codes and normalize
+        if (country) {
+          // If it's a country code like "US", expand it
+          const countryCodeMap: { [key: string]: string } = {
+            'US': 'United States',
+            'CA': 'Canada', 
+            'GB': 'United Kingdom',
+            'UK': 'United Kingdom',
+            'AU': 'Australia',
+            'DE': 'Germany',
+            'FR': 'France',
+            'IT': 'Italy',
+            'ES': 'Spain',
+            'NL': 'Netherlands',
+            'SE': 'Sweden',
+            'NO': 'Norway',
+            'DK': 'Denmark',
+            'FI': 'Finland',
+            'IN': 'India',
+            'CN': 'China',
+            'JP': 'Japan',
+            'KR': 'South Korea',
+            'BR': 'Brazil',
+            'MX': 'Mexico',
+            'AR': 'Argentina'
+          };
+          
+          country = countryCodeMap[country.toUpperCase()] || country;
+        }
+      } catch (e) {
+        console.error('Error parsing metadata for geographic data:', e);
+      }
+    }
+
+    // Only count if we have actual geographic data or the link has been used
+    // For links without geographic data but that have been clicked, use 'Unknown'
+    if (!country && ['CLICKED', 'COMPLETED', 'DISQUALIFIED', 'QUOTA_FULL'].includes(link.status)) {
+      country = 'Unknown';
+    }
+
+    // Skip this link if we still don't have a country (unused links)
+    if (!country) {
+      return;
+    }
+
+    // Initialize country stats if not exists
+    if (!countryStats[country]) {
+      countryStats[country] = {
+        count: 0,
+        completedCount: 0,
+        flaggedCount: 0,
+        disqualifiedCount: 0
+      };
+    }
+
+    // Increment total count
+    countryStats[country].count++;
+
+    // Count completed responses
+    if (link.status === 'COMPLETED') {
+      countryStats[country].completedCount++;
+    }
+
+    // Count flagged responses (includes both disqualified and quota full)
+    if (['DISQUALIFIED', 'QUOTA_FULL'].includes(link.status)) {
+      countryStats[country].flaggedCount++;
+      
+      // Separate disqualified count
+      if (link.status === 'DISQUALIFIED') {
+        countryStats[country].disqualifiedCount++;
+      }
+    }
+  });
+
+  // Convert to array and sort by count (descending)
+  return Object.entries(countryStats)
+    .map(([country, stats]) => ({
+      country,
+      ...stats
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 20); // Limit to top 20 countries for performance
+}
+
+function ProjectAnalyticsComponent({ 
   projectId,
   projectName,
   vendors,
@@ -899,6 +1007,226 @@ export default function ProjectAnalytics({
       </div>
       </div>
     </ProtectedRoute>
+  );
+}
+
+// Main page component that fetches data and passes to ProjectAnalyticsComponent
+export default function ProjectAnalyticsPage() {
+  const router = useRouter();
+  const { id } = router.query;
+  
+  const [projectData, setProjectData] = useState<{
+    projectId: string;
+    projectName: string;
+    vendors: Vendor[];
+    flags: Flag[];
+    geoData: GeoData[];
+    linkTypeData: {
+      test: number;
+      live: number;
+      testCompleted: number;
+      liveCompleted: number;
+      testDisqualified: number;
+      liveDisqualified: number;
+      testFlagged: number;
+      liveFlagged: number;
+    };
+  } | null>(null);
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchAnalyticsData = async () => {
+      try {
+        setIsLoading(true);
+        const amplifyDataService = await getAmplifyDataService();
+        
+        // Fetch project using the correct API method
+        const projectResult = await amplifyDataService.projects.get(id as string);
+        if (!projectResult.data) {
+          throw new Error('Project not found');
+        }
+        const project = projectResult.data;
+
+        // Fetch project vendors using the correct API method
+        const vendorsResult = await amplifyDataService.vendors.listByProject(id as string);
+        const vendors: Vendor[] = vendorsResult.data?.map((vendor: any) => {
+          // Get vendor code from settings
+          let code = '';
+          try {
+            const settings = vendor.settings ? JSON.parse(vendor.settings) : {};
+            code = settings.code || '';
+          } catch (e) {
+            code = '';
+          }
+          return {
+            id: vendor.id,
+            name: vendor.name,
+            code
+          };
+        }) || [];
+
+        // Fetch survey links for this project using the correct API method
+        const linksResult = await amplifyDataService.surveyLinks.listByProject(id as string);
+        const links: any[] = linksResult.data || [];
+
+        // Calculate vendor statistics
+        const vendorsWithStats = vendors.map(vendor => {
+          const vendorLinks = links.filter((link: any) => link.vendorId === vendor.id);
+          const stats = {
+            total: vendorLinks.length,
+            pending: vendorLinks.filter((link: any) => link.status === 'UNUSED').length,
+            started: vendorLinks.filter((link: any) => link.status === 'CLICKED').length,
+            inProgress: vendorLinks.filter((link: any) => link.status === 'CLICKED').length,
+            completed: vendorLinks.filter((link: any) => link.status === 'COMPLETED').length,
+            flagged: vendorLinks.filter((link: any) => ['DISQUALIFIED', 'QUOTA_FULL'].includes(link.status)).length
+          };
+          return { ...vendor, stats };
+        });
+
+        // Generate mock flags data (in a real app, this would come from a flags table)
+        const flags: Flag[] = links
+          .filter((link: any) => ['DISQUALIFIED', 'QUOTA_FULL'].includes(link.status))
+          .slice(0, 100) // Limit to recent flags
+          .map((link: any) => {
+            const vendor = vendors.find(v => v.id === link.vendorId);
+            let linkType = 'LIVE';
+            try {
+              const metadata = link.metadata ? JSON.parse(link.metadata) : {};
+              linkType = metadata.linkType || 'LIVE';
+            } catch (e) {
+              linkType = 'LIVE';
+            }
+            
+            return {
+              id: link.id,
+              reason: link.status === 'DISQUALIFIED' ? 'Failed validation checks' : 'Quota reached',
+              createdAt: link.updatedAt || link.createdAt,
+              vendorName: vendor?.name,
+              linkType
+            };
+          });
+
+        // Extract real geographical data from survey link metadata
+        const geoData: GeoData[] = extractGeographicData(links);
+
+        // Calculate link type data
+        const testLinks = links.filter((link: any) => {
+          try {
+            const metadata = link.metadata ? JSON.parse(link.metadata) : {};
+            return metadata.linkType === 'TEST';
+          } catch (e) {
+            return false;
+          }
+        });
+        
+        const liveLinks = links.filter((link: any) => {
+          try {
+            const metadata = link.metadata ? JSON.parse(link.metadata) : {};
+            return metadata.linkType !== 'TEST'; // Default to LIVE
+          } catch (e) {
+            return true; // Default to LIVE
+          }
+        });
+
+        const linkTypeData = {
+          test: testLinks.length,
+          live: liveLinks.length,
+          testCompleted: testLinks.filter((link: any) => link.status === 'COMPLETED').length,
+          liveCompleted: liveLinks.filter((link: any) => link.status === 'COMPLETED').length,
+          testDisqualified: testLinks.filter((link: any) => ['DISQUALIFIED', 'QUOTA_FULL'].includes(link.status)).length,
+          liveDisqualified: liveLinks.filter((link: any) => ['DISQUALIFIED', 'QUOTA_FULL'].includes(link.status)).length,
+          testFlagged: testLinks.filter((link: any) => ['DISQUALIFIED', 'QUOTA_FULL'].includes(link.status)).length,
+          liveFlagged: liveLinks.filter(link => ['DISQUALIFIED', 'QUOTA_FULL'].includes(link.status)).length
+        };
+
+        setProjectData({
+          projectId: project.id,
+          projectName: project.name,
+          vendors: vendorsWithStats,
+          flags,
+          geoData,
+          linkTypeData
+        });
+
+      } catch (err: any) {
+        console.error('Error loading analytics data:', err);
+        setError(err.message || 'Failed to load analytics data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAnalyticsData();
+  }, [id]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading analytics...</p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
+            <p className="text-gray-700 mb-6">{error}</p>
+            <button 
+              onClick={() => router.back()}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            >
+              Go Back
+            </button>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  // Project data not found
+  if (!projectData) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Project Not Found</h1>
+            <p className="text-gray-700 mb-6">The project analytics data could not be loaded.</p>
+            <button 
+              onClick={() => router.back()}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            >
+              Go Back
+            </button>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  // Render the analytics component with data
+  return (
+    <ProjectAnalyticsComponent
+      projectId={projectData.projectId}
+      projectName={projectData.projectName}
+      vendors={projectData.vendors}
+      flags={projectData.flags}
+      geoData={projectData.geoData}
+      linkTypeData={projectData.linkTypeData}
+    />
   );
 }
 

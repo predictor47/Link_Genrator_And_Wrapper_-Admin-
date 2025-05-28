@@ -103,26 +103,14 @@ export default async function handler(
     }
 
     // Validate project exists
-    console.log(`[DEBUG] Attempting to fetch project with ID: ${projectId}`);
     const projectResult = await amplifyServerService.getProject(projectId);
-    console.log(`[DEBUG] Project result:`, JSON.stringify(projectResult, null, 2));
     
     // Fix: Extract project correctly by accessing .data property
     const project = projectResult.data;
-    console.log(`[DEBUG] Extracted project:`, JSON.stringify(project, null, 2));
 
     if (!project) {
-      console.log(`[DEBUG] Project not found for ID: ${projectId}`);
-      
-      // List all projects to see what's available
-      console.log(`[DEBUG] Listing all projects to debug...`);
-      const allProjectsResult = await amplifyServerService.listProjects();
-      console.log(`[DEBUG] All projects:`, JSON.stringify(allProjectsResult, null, 2));
-      
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
-
-    console.log(`[DEBUG] Project found successfully: ${project.name} (ID: ${project.id})`);
     // Validate vendor if provided
     if (vendorId) {
       const vendorResult = await amplifyServerService.getVendor(vendorId);

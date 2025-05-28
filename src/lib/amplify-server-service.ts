@@ -94,8 +94,6 @@ class AmplifyServerService {
 
   private async makeGraphQLRequest<T>(query: string, variables: any = {}): Promise<GraphQLResponse<T>> {
     try {
-      console.log(`[DEBUG] Making GraphQL request:`, { query: query.slice(0, 200) + '...', variables });
-      
       const response = await fetch(this.apiEndpoint, {
         method: 'POST',
         headers: {
@@ -109,15 +107,13 @@ class AmplifyServerService {
       });
 
       if (!response.ok) {
-        console.error(`[DEBUG] HTTP error! status: ${response.status}`);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
-      console.log(`[DEBUG] GraphQL response:`, JSON.stringify(result, null, 2));
       
       if (result.errors) {
-        console.error(`[DEBUG] GraphQL errors:`, result.errors);
+        console.error(`GraphQL errors:`, result.errors);
       }
       
       return result;
