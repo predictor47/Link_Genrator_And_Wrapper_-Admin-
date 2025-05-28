@@ -94,6 +94,8 @@ class AmplifyServerService {
 
   private async makeGraphQLRequest<T>(query: string, variables: any = {}): Promise<GraphQLResponse<T>> {
     try {
+      console.log(`[DEBUG] Making GraphQL request:`, { query: query.slice(0, 200) + '...', variables });
+      
       const response = await fetch(this.apiEndpoint, {
         method: 'POST',
         headers: {
@@ -107,10 +109,18 @@ class AmplifyServerService {
       });
 
       if (!response.ok) {
+        console.error(`[DEBUG] HTTP error! status: ${response.status}`);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log(`[DEBUG] GraphQL response:`, JSON.stringify(result, null, 2));
+      
+      if (result.errors) {
+        console.error(`[DEBUG] GraphQL errors:`, result.errors);
+      }
+      
+      return result;
     } catch (error) {
       console.error('GraphQL request failed:', error);
       throw error;
@@ -126,6 +136,10 @@ class AmplifyServerService {
           name
           description
           status
+          targetCompletions
+          currentCompletions
+          surveyUrl
+          settings
           createdAt
           updatedAt
         }
@@ -134,6 +148,30 @@ class AmplifyServerService {
 
     const result = await this.makeGraphQLRequest<{ getProject: Project }>(query, { id });
     return { data: result.data?.getProject || null };
+  }
+
+  async listProjects(): Promise<{ data: Project[] }> {
+    const query = `
+      query ListProjects {
+        listProjects {
+          items {
+            id
+            name
+            description
+            status
+            targetCompletions
+            currentCompletions
+            surveyUrl
+            settings
+            createdAt
+            updatedAt
+          }
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ listProjects: { items: Project[] } }>(query);
+    return { data: result.data?.listProjects?.items || [] };
   }
 
   // Vendor operations
