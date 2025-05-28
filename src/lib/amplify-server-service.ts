@@ -197,17 +197,7 @@ class AmplifyServerService {
       }
     `;
 
-    console.log('CreateVendor GraphQL query:', query);
-    console.log('CreateVendor input:', input);
-    
     const result = await this.makeGraphQLRequest<{ createVendor: Vendor }>(query, { input });
-    
-    console.log('CreateVendor complete result:', JSON.stringify(result, null, 2));
-    
-    if (result.errors) {
-      console.error('GraphQL errors in createVendor:', result.errors);
-    }
-    
     return { data: result.data?.createVendor || null };
   }
 
