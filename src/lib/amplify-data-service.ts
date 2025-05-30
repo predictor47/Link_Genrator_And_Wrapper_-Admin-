@@ -79,6 +79,53 @@ export async function getAmplifyDataService() {
         const result = await client.models.Project.delete({ id });
         return { data: unwrapData(result) };
       },
+      deleteWithCascade: async (id: string) => {
+        try {
+          // First, fetch all related data
+          const [surveyLinksResult, questionsResult, projectVendorsResult] = await Promise.all([
+            client.models.SurveyLink.list({ filter: { projectId: { eq: id } } }),
+            client.models.Question.list({ filter: { projectId: { eq: id } } }),
+            client.models.ProjectVendor.list({ filter: { projectId: { eq: id } } })
+          ]);
+
+          // Delete all related survey links
+          const surveyLinkDeletions = (surveyLinksResult.data || []).map((link: any) =>
+            client.models.SurveyLink.delete({ id: link.id })
+          );
+
+          // Delete all related questions
+          const questionDeletions = (questionsResult.data || []).map((question: any) =>
+            client.models.Question.delete({ id: question.id })
+          );
+
+          // Delete all project-vendor relationships
+          const projectVendorDeletions = (projectVendorsResult.data || []).map((pv: any) =>
+            client.models.ProjectVendor.delete({ id: pv.id })
+          );
+
+          // Execute all deletions in parallel
+          await Promise.all([
+            ...surveyLinkDeletions,
+            ...questionDeletions,
+            ...projectVendorDeletions
+          ]);
+
+          // Finally, delete the project itself
+          const result = await client.models.Project.delete({ id });
+          
+          return { 
+            data: unwrapData(result),
+            deletedRelatedData: {
+              surveyLinks: surveyLinksResult.data?.length || 0,
+              questions: questionsResult.data?.length || 0,
+              projectVendors: projectVendorsResult.data?.length || 0
+            }
+          };
+        } catch (error) {
+          handleAmplifyError(error, 'projects.deleteWithCascade');
+          return { data: null };
+        }
+      },
       getWithRelations: async (id: string) => {
         // Fetch project and related data separately
         const project = await client.models.Project.get({ id });
@@ -227,6 +274,33 @@ export async function getAmplifyDataService() {
       },
       delete: async (id: string) => {
         const result = await client.models.Question.delete({ id });
+        return { data: unwrapData(result) };
+      }
+    },
+
+    projectVendors: {
+      create: async (data: any) => {
+        const result = await client.models.ProjectVendor.create(data);
+        return { data: unwrapData(result) };
+      },
+      get: async (id: string) => {
+        const result = await client.models.ProjectVendor.get({ id });
+        return { data: unwrapData(result) };
+      },
+      list: async (filter?: any) => {
+        const result = await client.models.ProjectVendor.list(filter);
+        return { data: result.data || [] };
+      },
+      listByProject: async (projectId: string) => {
+        const result = await client.models.ProjectVendor.list({ filter: { projectId: { eq: projectId } } });
+        return { data: result.data || [] };
+      },
+      update: async (id: string, data: any) => {
+        const result = await client.models.ProjectVendor.update({ id, ...data });
+        return { data: unwrapData(result) };
+      },
+      delete: async (id: string) => {
+        const result = await client.models.ProjectVendor.delete({ id });
         return { data: unwrapData(result) };
       }
     },

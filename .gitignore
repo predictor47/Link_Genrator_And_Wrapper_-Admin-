@@ -4,3 +4,6 @@ node_modules
 .amplify
 amplify_outputs*
 amplifyconfiguration*
+# Build files
+.next/
+*.tsbuildinfo

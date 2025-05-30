@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import ProtectedRoute from '@/lib/protected-route';
 import { getAmplifyDataService } from '@/lib/amplify-data-service';
+import StatusAnalytics from '@/components/StatusAnalytics';
 
 interface Project {
   id: string;
@@ -23,6 +24,9 @@ interface SurveyLink {
 
 interface Stats {
   totalProjects: number;
+  draftProjects: number;
+  liveProjects: number;
+  completeProjects: number;
   totalLinks: number;
   pendingLinks: number;
   startedLinks: number;
@@ -88,6 +92,8 @@ const CircleProgress = ({ value, max, color, size = 60, strokeWidth = 6 }: {
 export default function AdminDashboard() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [stats, setStats] = useState<Stats | null>(null);
   const [projectStats, setProjectStats] = useState<ProjectStats>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -100,6 +106,15 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  // Filter projects when statusFilter changes
+  useEffect(() => {
+    if (statusFilter === 'ALL') {
+      setFilteredProjects(projects);
+    } else {
+      setFilteredProjects(projects.filter(project => project.status === statusFilter));
+    }
+  }, [projects, statusFilter]);
 
   const fetchDashboardData = async () => {
     try {
@@ -117,7 +132,7 @@ export default function AdminDashboard() {
         id: project.id,
         name: project.name,
         description: project.description || '',
-        status: project.status || 'ACTIVE',
+        status: project.status || 'DRAFT',
         targetCompletions: project.targetCompletions || 0,
         currentCompletions: project.currentCompletions || 0,
         createdAt: project.createdAt,
@@ -132,6 +147,10 @@ export default function AdminDashboard() {
 
       // Calculate overall stats
       const totalProjects = transformedProjects.length;
+      const draftProjects = transformedProjects.filter((p: any) => p.status === 'DRAFT').length;
+      const liveProjects = transformedProjects.filter((p: any) => p.status === 'LIVE').length;
+      const completeProjects = transformedProjects.filter((p: any) => p.status === 'COMPLETE').length;
+      
       const totalLinks = linksData.length;
       const pendingLinks = linksData.filter((link: any) => link.status === 'UNUSED').length;
       const startedLinks = linksData.filter((link: any) => link.status === 'CLICKED').length;
@@ -141,6 +160,9 @@ export default function AdminDashboard() {
 
       setStats({
         totalProjects,
+        draftProjects,
+        liveProjects,
+        completeProjects,
         totalLinks,
         pendingLinks,
         startedLinks,
@@ -183,7 +205,13 @@ export default function AdminDashboard() {
     try {
       setIsDeleting(projectToDelete.id);
       const amplifyDataService = await getAmplifyDataService();
-      await amplifyDataService.projects.delete(projectToDelete.id);
+      
+      // Use cascading delete to remove all related data
+      const deleteResult = await amplifyDataService.projects.deleteWithCascade(projectToDelete.id);
+      
+      if (deleteResult.data) {
+        console.log('Project deleted successfully with cascading deletion:', deleteResult.deletedRelatedData);
+      }
       
       // Refresh the dashboard data
       await fetchDashboardData();
@@ -194,6 +222,28 @@ export default function AdminDashboard() {
       setError('Failed to delete project. Please try again.');
     } finally {
       setIsDeleting(null);
+    }
+  };
+
+  const handleUpdateProjectStatus = async (projectId: string, newStatus: string) => {
+    try {
+      const amplifyDataService = await getAmplifyDataService();
+      await amplifyDataService.projects.update(projectId, { status: newStatus });
+      
+      // Update local state
+      setProjects(prevProjects => 
+        prevProjects.map(project => 
+          project.id === projectId 
+            ? { ...project, status: newStatus }
+            : project
+        )
+      );
+      
+      // Refresh stats
+      await fetchDashboardData();
+    } catch (error: any) {
+      console.error('Error updating project status:', error);
+      setError('Failed to update project status. Please try again.');
     }
   };
 
@@ -277,6 +327,9 @@ export default function AdminDashboard() {
                       <dl>
                         <dt className="text-sm font-medium text-gray-500 truncate">Total Projects</dt>
                         <dd className="text-lg font-medium text-gray-900">{stats.totalProjects}</dd>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Draft: {stats.draftProjects} | Live: {stats.liveProjects} | Complete: {stats.completeProjects}
+                        </div>
                       </dl>
                     </div>
                   </div>
@@ -339,6 +392,47 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {/* Enhanced Status Analytics */}
+          {stats && (
+            <StatusAnalytics 
+              stats={stats}
+              onStatusFilter={setStatusFilter}
+              currentFilter={statusFilter}
+            />
+          )}
+
+          {/* Status Filter Controls */}
+          <div className="bg-white shadow rounded-lg mb-6 p-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="text-sm font-medium text-gray-700">Filter by Status:</span>
+              <div className="flex gap-2">
+                {['ALL', 'DRAFT', 'LIVE', 'COMPLETE'].map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => setStatusFilter(status)}
+                    className={`px-3 py-1 text-sm rounded-full font-medium transition-colors ${
+                      statusFilter === status
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {status}
+                    {status !== 'ALL' && stats && (
+                      <span className="ml-1 text-xs">
+                        ({status === 'DRAFT' ? stats.draftProjects : 
+                          status === 'LIVE' ? stats.liveProjects : 
+                          stats.completeProjects})
+                      </span>
+                    )}
+                    {status === 'ALL' && stats && (
+                      <span className="ml-1 text-xs">({stats.totalProjects})</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {/* Projects Table */}
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
@@ -355,9 +449,11 @@ export default function AdminDashboard() {
               </button>
             </div>
             
-            {projects.length === 0 ? (
+            {filteredProjects.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-500 text-lg mb-4">No projects found</p>
+                <p className="text-gray-500 text-lg mb-4">
+                  {statusFilter === 'ALL' ? 'No projects found' : `No ${statusFilter.toLowerCase()} projects found`}
+                </p>
                 <Link
                   href="/admin/projects/new"
                   className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
@@ -379,7 +475,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {projects.map((project) => {
+                    {filteredProjects.map((project) => {
                       // Get project stats
                       const projectStat = projectStats[project.id] || {
                         pending: 0,
@@ -402,8 +498,9 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              project.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                              project.status === 'PAUSED' ? 'bg-yellow-100 text-yellow-800' :
+                              project.status === 'LIVE' ? 'bg-green-100 text-green-800' :
+                              project.status === 'DRAFT' ? 'bg-yellow-100 text-yellow-800' :
+                              project.status === 'COMPLETE' ? 'bg-blue-100 text-blue-800' :
                               'bg-gray-100 text-gray-800'
                             }`}>
                               {project.status}
@@ -435,19 +532,34 @@ export default function AdminDashboard() {
                             {new Date(project.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <Link
-                              href={`/admin/projects/${project.id}`}
-                              className="text-blue-600 hover:text-blue-900 mr-4"
-                            >
-                              View
-                            </Link>
-                            <button
-                              onClick={() => confirmDeleteProject(project)}
-                              disabled={isDeleting === project.id}
-                              className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                            >
-                              {isDeleting === project.id ? 'Deleting...' : 'Delete'}
-                            </button>
+                            <div className="flex items-center space-x-2">
+                              <Link
+                                href={`/admin/projects/${project.id}`}
+                                className="text-blue-600 hover:text-blue-900"
+                              >
+                                View
+                              </Link>
+                              
+                              {/* Status Update Dropdown */}
+                              <select
+                                value={project.status}
+                                onChange={(e) => handleUpdateProjectStatus(project.id, e.target.value)}
+                                className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <option value="DRAFT">Draft</option>
+                                <option value="LIVE">Live</option>
+                                <option value="COMPLETE">Complete</option>
+                              </select>
+                              
+                              <button
+                                onClick={() => confirmDeleteProject(project)}
+                                disabled={isDeleting === project.id}
+                                className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                              >
+                                {isDeleting === project.id ? 'Deleting...' : 'Delete'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -467,8 +579,15 @@ export default function AdminDashboard() {
                 <h3 className="text-lg font-medium text-gray-900">Confirm Delete</h3>
                 <div className="mt-2 px-7 py-3">
                   <p className="text-sm text-gray-500">
-                    Are you sure you want to delete project "{projectToDelete.name}"? This action cannot be undone.
+                    Are you sure you want to delete project "{projectToDelete.name}"? This action will permanently remove the project and all associated data including:
                   </p>
+                  <ul className="text-sm text-gray-500 mt-2 list-disc list-inside">
+                    <li>All survey links</li>
+                    <li>All questions</li>
+                    <li>All vendor relationships</li>
+                    <li>All associated statistics</li>
+                  </ul>
+                  <p className="text-sm text-red-600 mt-2 font-medium">This action cannot be undone.</p>
                 </div>
                 <div className="flex justify-center space-x-4 mt-4">
                   <button

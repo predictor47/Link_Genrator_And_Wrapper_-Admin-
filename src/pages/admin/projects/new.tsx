@@ -13,6 +13,7 @@ export default function NewProject() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [status, setStatus] = useState('DRAFT');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [currentOptions, setCurrentOptions] = useState('');
@@ -85,7 +86,7 @@ export default function NewProject() {
         name,
         description: description || '',
         surveyUrl: `${window.location.origin}/survey`, // Auto-generate survey URL
-        status: 'ACTIVE',
+        status: status,
         targetCompletions: 100,
         currentCompletions: 0,
         createdAt: now,
@@ -172,6 +173,26 @@ export default function NewProject() {
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
+            </div>
+
+            {/* Project Status */}
+            <div className="mb-6">
+              <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                Project Status
+              </label>
+              <select
+                id="status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="DRAFT">Draft - Project is being created/configured</option>
+                <option value="LIVE">Live - Project is active and collecting responses</option>
+                <option value="COMPLETE">Complete - Project has finished collecting responses</option>
+              </select>
+              <p className="text-sm text-gray-500 mt-1">
+                Choose the initial status for this project. You can change this later from the dashboard.
+              </p>
             </div>
 
             {/* Pre-survey Questions Section */}

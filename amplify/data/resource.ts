@@ -6,7 +6,7 @@ const schema = a.schema({
     .model({
       name: a.string().required(),
       description: a.string(),
-      status: a.enum(['ACTIVE', 'PAUSED', 'COMPLETED']),
+      status: a.enum(['DRAFT', 'LIVE', 'COMPLETE']),
       targetCompletions: a.integer().required().default(100),
       currentCompletions: a.integer().required().default(0),
       surveyUrl: a.string().required(),
