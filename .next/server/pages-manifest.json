@@ -2,10 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/admin/projects/[id]": "pages/admin/projects/[id].js",
-  "/s/[projectId]/[uid]": "pages/s/[projectId]/[uid].js",
-  "/admin/projects/[id]/generate": "pages/admin/projects/[id]/generate.js",
-  "/api/vendors/list": "pages/api/vendors/list.js",
-  "/api/vendors/create": "pages/api/vendors/create.js",
-  "/api/links/generate": "pages/api/links/generate.js"
+  "/admin": "pages/admin.js",
+  "/admin/projects/new": "pages/admin/projects/new.js",
+  "/": "pages/index.js"
 }
