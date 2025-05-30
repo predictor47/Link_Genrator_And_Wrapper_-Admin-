@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getAmplifyServerService } from '@/lib/amplify-server-service';
+import { extractMetadataForExport } from '@/lib/metadata';
 
 // Define proper types that match our server service
 type SurveyLinkStatus = 'UNUSED' | 'CLICKED' | 'COMPLETED' | 'DISQUALIFIED' | 'QUOTA_FULL';
@@ -167,7 +168,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } else {
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename=${project.name.replace(/\s+/g, '_')}_export_${new Date().toISOString().split('T')[0]}.csv`);
-        return res.status(200).send('ID,UID,Original URL,Status,Link Type,Vendor Name,Vendor Code,Country,Device,Browser,Flags,Created At,Updated At');
+        return res.status(200).send('ID,UID,Original URL,Status,Link Type,Vendor Name,Vendor Code,Country,Region,City,Device,Browser,OS,Screen Resolution,Hardware Cores,Connection Type,VPN,Proxy,Tor,Mouse Movements,Keyboard Events,Click Events,Scroll Events,Total Time,Idle Time,Bot Score,Bot Reasons,Flags,Created At,Updated At');
       }
     }
 
@@ -226,24 +227,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       // Parse metadata from the most recent response, if any
       let metadata: any = {};
+      let exportMetadata: any = {};
       const linkResponses = link.id ? (responseMap[link.id] || []) : [];
       
       if (linkResponses.length > 0 && linkResponses[0].metadata) {
         try {
           metadata = JSON.parse(linkResponses[0].metadata);
+          exportMetadata = extractMetadataForExport(metadata);
         } catch (e) {
           console.error('Error parsing metadata:', e);
         }
       }
 
       // Extract geo information if available
-      const country = metadata?.geoLocation?.country || 
+      const country = exportMetadata.country || 
+                     metadata?.geoLocation?.country || 
                      metadata?.ip_location?.country || 
                      metadata?.country || 'Unknown';
       
+      const region = exportMetadata.region || 
+                    metadata?.geoLocation?.region || 
+                    metadata?.region || 'Unknown';
+      
+      const city = exportMetadata.city || 
+                  metadata?.geoLocation?.city || 
+                  metadata?.city || 'Unknown';
+      
       // Extract device information
-      const device = metadata?.device || 'Unknown';
-      const browser = metadata?.browser || 'Unknown';
+      const device = exportMetadata.device || metadata?.device || 'Unknown';
+      const browser = exportMetadata.browser || metadata?.browser || 'Unknown';
+      const os = exportMetadata.os || metadata?.hardware?.platform || 'Unknown';
       
       // Extract flags
       const linkFlags = link.id ? (flagMap[link.id] || []) : [];
@@ -269,9 +282,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       if (link.metadata) {
         try {
-          const metadata = JSON.parse(link.metadata as string);
-          originalUrl = metadata.originalUrl || '';
-          linkType = metadata.linkType || 'LIVE';
+          const linkMetadata = JSON.parse(link.metadata as string);
+          originalUrl = linkMetadata.originalUrl || '';
+          linkType = linkMetadata.linkType || 'LIVE';
         } catch (e) {
           console.error('Error parsing link metadata:', e);
         }
@@ -286,8 +299,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         vendorName,
         vendorCode,
         country,
+        region,
+        city,
         device,
         browser,
+        os,
+        screenResolution: exportMetadata.screenResolution || 'Unknown',
+        hardwareCores: exportMetadata.hardwareCores || 'Unknown',
+        connectionType: exportMetadata.connectionType || 'Unknown',
+        isVPN: exportMetadata.isVPN || false,
+        isProxy: exportMetadata.isProxy || false,
+        isTor: exportMetadata.isTor || false,
+        mouseMovements: exportMetadata.mouseMovements || 0,
+        keyboardEvents: exportMetadata.keyboardEvents || 0,
+        clickEvents: exportMetadata.clickEvents || 0,
+        scrollEvents: exportMetadata.scrollEvents || 0,
+        totalTime: exportMetadata.totalTime || 0,
+        idleTime: exportMetadata.idleTime || 0,
+        botScore: exportMetadata.botScore || 0,
+        botReasons: exportMetadata.botReasons || 'None',
         flags: flagReasons,
         createdAt: link.createdAt || new Date().toISOString(),
         updatedAt: link.updatedAt || link.createdAt || new Date().toISOString(),
@@ -306,7 +336,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     } else {
       // CSV format (default)
-      const header = 'ID,UID,Original URL,Status,Link Type,Vendor Name,Vendor Code,Country,Device,Browser,Flags,Created At,Updated At';
+      const header = 'ID,UID,Original URL,Status,Link Type,Vendor Name,Vendor Code,Country,Region,City,Device,Browser,OS,Screen Resolution,Hardware Cores,Connection Type,VPN,Proxy,Tor,Mouse Movements,Keyboard Events,Click Events,Scroll Events,Total Time,Idle Time,Bot Score,Bot Reasons,Flags,Created At,Updated At';
       const csvRows = exportData.map((row: any) => {
         // This should never happen due to filter(Boolean) above, but TypeScript needs reassurance
         if (!row) return '';
@@ -320,8 +350,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           `"${row.vendorName}"`, // Quote to handle potential commas in names
           row.vendorCode,
           `"${row.country}"`,
+          `"${row.region}"`,
+          `"${row.city}"`,
           row.device,
           row.browser,
+          row.os,
+          row.screenResolution,
+          row.hardwareCores,
+          row.connectionType,
+          row.isVPN,
+          row.isProxy,
+          row.isTor,
+          row.mouseMovements,
+          row.keyboardEvents,
+          row.clickEvents,
+          row.scrollEvents,
+          row.totalTime,
+          row.idleTime,
+          row.botScore,
+          `"${row.botReasons}"`, // Quote to handle potential commas
           `"${row.flags}"`, // Quote to handle potential commas in flag reasons
           row.createdAt,
           row.updatedAt,

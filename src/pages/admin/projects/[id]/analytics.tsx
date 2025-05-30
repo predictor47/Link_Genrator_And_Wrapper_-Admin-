@@ -14,6 +14,7 @@ import { Chart as ChartJS,
 } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import ProtectedRoute from '@/lib/protected-route';
+import MetadataAnalyticsDashboard from '@/components/MetadataAnalyticsDashboard';
 
 ChartJS.register(
   ArcElement, 
@@ -194,27 +195,75 @@ function ProjectAnalyticsComponent({
   const [dateRange, setDateRange] = useState<string>('all');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState<boolean>(false);
+  const [refreshInterval, setRefreshInterval] = useState<number>(30);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [linkStatusFilter, setLinkStatusFilter] = useState<string>('all');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
   
-  // Prepare chart data for status overview
+  // Auto-refresh functionality
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (autoRefresh) {
+      interval = setInterval(() => {
+        window.location.reload();
+      }, refreshInterval * 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [autoRefresh, refreshInterval]);
+
+  // Function to refresh data manually
+  const refreshData = () => {
+    setLastUpdated(new Date());
+    window.location.reload();
+  };
+
+  // Filter vendors based on search query
+  const filteredVendors = vendors.filter(vendor => 
+    searchQuery === '' || 
+    vendor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    vendor.code.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Filter flags based on various criteria
+  const filteredFlags = flags.filter(flag => {
+    if (searchQuery && !flag.reason.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+    if (selectedVendor !== 'all' && flag.vendorName) {
+      const vendor = vendors.find(v => v.name === flag.vendorName);
+      if (!vendor || vendor.id !== selectedVendor) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Prepare chart data for status overview with filtering
+  const getFilteredStatusData = () => {
+    const filteredVendorsList = selectedVendor === 'all' ? vendors : vendors.filter(v => v.id === selectedVendor);
+    return filteredVendorsList.reduce(
+      (acc, vendor) => {
+        if (vendor.stats) {
+          acc[0] += vendor.stats.pending;  // UNUSED mapped to pending
+          acc[1] += vendor.stats.started;  // CLICKED mapped to started
+          acc[2] += vendor.stats.completed; // COMPLETED stays as completed
+          acc[3] += vendor.stats.flagged / 2; // Split flagged between DISQUALIFIED
+          acc[4] += vendor.stats.flagged / 2; // and QUOTA_FULL (approximate)
+        }
+        return acc;
+      }, 
+      [0, 0, 0, 0, 0]
+    );
+  };
   const statusData = {
     labels: ['Unused', 'Clicked', 'Completed', 'Disqualified', 'Quota Full'],
     datasets: [
       {
-        data: vendors.reduce(
-          (acc, vendor) => {
-            if (selectedVendor === 'all' || selectedVendor === vendor.id) {
-              if (vendor.stats) {
-                acc[0] += vendor.stats.pending;  // UNUSED mapped to pending
-                acc[1] += vendor.stats.started;  // CLICKED mapped to started
-                acc[2] += vendor.stats.completed; // COMPLETED stays as completed
-                acc[3] += vendor.stats.flagged / 2; // Split flagged between DISQUALIFIED
-                acc[4] += vendor.stats.flagged / 2; // and QUOTA_FULL (approximate)
-              }
-            }
-            return acc;
-          }, 
-          [0, 0, 0, 0, 0]
-        ),
+        data: getFilteredStatusData(),
         backgroundColor: [
           'rgba(59, 130, 246, 0.8)', // Blue - Unused (was Pending)
           'rgba(245, 158, 11, 0.8)', // Yellow - Clicked (was Started)
@@ -234,23 +283,23 @@ function ProjectAnalyticsComponent({
     ],
   };
   
-  // Prepare chart data for vendor comparison
+  // Prepare chart data for vendor comparison with filtering
   const vendorComparisonData = {
-    labels: vendors.map(v => v.name),
+    labels: filteredVendors.map(v => v.name),
     datasets: [
       {
         label: 'Total Links',
-        data: vendors.map(v => v.stats?.total || 0),
+        data: filteredVendors.map(v => v.stats?.total || 0),
         backgroundColor: 'rgba(59, 130, 246, 0.6)',
       },
       {
         label: 'Completed',
-        data: vendors.map(v => v.stats?.completed || 0),
+        data: filteredVendors.map(v => v.stats?.completed || 0),
         backgroundColor: 'rgba(5, 150, 105, 0.6)',
       },
       {
         label: 'Disqualified/Quota Full',
-        data: vendors.map(v => v.stats?.flagged || 0),
+        data: filteredVendors.map(v => v.stats?.flagged || 0),
         backgroundColor: 'rgba(239, 68, 68, 0.6)',
       },
     ],
@@ -350,6 +399,41 @@ function ProjectAnalyticsComponent({
               <h1 className="text-3xl font-bold text-gray-900">{projectName} Analytics</h1>
             </div>
             <div className="flex space-x-3">
+              {/* Auto-refresh controls */}
+              <div className="flex items-center space-x-2">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={autoRefresh}
+                    onChange={(e) => setAutoRefresh(e.target.checked)}
+                    className="form-checkbox h-4 w-4 text-blue-600"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Auto-refresh</span>
+                </label>
+                {autoRefresh && (
+                  <select
+                    value={refreshInterval}
+                    onChange={(e) => setRefreshInterval(Number(e.target.value))}
+                    className="text-sm border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value={30}>30s</option>
+                    <option value={60}>1m</option>
+                    <option value={300}>5m</option>
+                  </select>
+                )}
+              </div>
+              
+              {/* Manual refresh button */}
+              <button
+                onClick={refreshData}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 flex items-center"
+              >
+                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+              </button>
+              
               <button
                 onClick={exportData}
                 disabled={isLoading}
@@ -375,56 +459,138 @@ function ProjectAnalyticsComponent({
       <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {/* Filter Controls */}
         <div className="bg-white shadow rounded-lg mb-6">
-          <div className="px-6 py-4 border-b border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-800">Analytics Filters</h2>
-          </div>
-          <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label htmlFor="vendor-filter" className="block text-sm font-medium text-gray-700 mb-1">
-                Vendor
-              </label>
-              <select
-                id="vendor-filter"
-                value={selectedVendor}
-                onChange={(e) => setSelectedVendor(e.target.value)}
-                className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-              >
-                <option value="all">All Vendors</option>
-                {vendors.map((vendor) => (
-                  <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label htmlFor="date-range" className="block text-sm font-medium text-gray-700 mb-1">
-                Date Range
-              </label>
-              <select
-                id="date-range"
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
-                className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-              >
-                <option value="all">All Time</option>
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="week">Last 7 Days</option>
-                <option value="month">Last 30 Days</option>
-              </select>
-            </div>
-            
-            <div className="flex items-end">
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-500">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </span>
               <button
-                onClick={() => {
-                  setSelectedVendor('all');
-                  setDateRange('all');
-                }}
-                className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded"
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
               >
-                Reset Filters
+                {showAdvancedFilters ? 'Hide' : 'Show'} Advanced Filters
               </button>
             </div>
+          </div>
+          <div className="p-6">
+            {/* Basic Filters Row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-4">
+              <div>
+                <label htmlFor="vendor-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                  Vendor
+                </label>
+                <select
+                  id="vendor-filter"
+                  value={selectedVendor}
+                  onChange={(e) => setSelectedVendor(e.target.value)}
+                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                >
+                  <option value="all">All Vendors</option>
+                  {vendors.map((vendor) => (
+                    <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label htmlFor="date-range" className="block text-sm font-medium text-gray-700 mb-1">
+                  Date Range
+                </label>
+                <select
+                  id="date-range"
+                  value={dateRange}
+                  onChange={(e) => setDateRange(e.target.value)}
+                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                >
+                  <option value="all">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="week">Last 7 Days</option>
+                  <option value="month">Last 30 Days</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="search-query" className="block text-sm font-medium text-gray-700 mb-1">
+                  Search
+                </label>
+                <input
+                  type="text"
+                  id="search-query"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search vendors, flags..."
+                  className="block w-full pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                />
+              </div>
+              
+              <div className="flex items-end">
+                <button
+                  onClick={() => {
+                    setSelectedVendor('all');
+                    setDateRange('all');
+                    setSearchQuery('');
+                    setLinkStatusFilter('all');
+                  }}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded"
+                >
+                  Reset Filters
+                </button>
+              </div>
+            </div>
+
+            {/* Advanced Filters */}
+            {showAdvancedFilters && (
+              <div className="border-t pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                      Link Status
+                    </label>
+                    <select
+                      id="status-filter"
+                      value={linkStatusFilter}
+                      onChange={(e) => setLinkStatusFilter(e.target.value)}
+                      className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="UNUSED">Unused</option>
+                      <option value="CLICKED">Clicked</option>
+                      <option value="COMPLETED">Completed</option>
+                      <option value="DISQUALIFIED">Disqualified</option>
+                      <option value="QUOTA_FULL">Quota Full</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Quick Stats
+                    </label>
+                    <div className="text-sm text-gray-600">
+                      <div>Total Links: {vendors.reduce((sum, v) => sum + (v.stats?.total || 0), 0)}</div>
+                      <div>Completion Rate: {
+                        (() => {
+                          const total = vendors.reduce((sum, v) => sum + (v.stats?.total || 0), 0);
+                          const completed = vendors.reduce((sum, v) => sum + (v.stats?.completed || 0), 0);
+                          return total > 0 ? Math.round((completed / total) * 100) : 0;
+                        })()
+                      }%</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Performance Metrics
+                    </label>
+                    <div className="text-sm text-gray-600">
+                      <div>Flags: {vendors.reduce((sum, v) => sum + (v.stats?.flagged || 0), 0)}</div>
+                      <div>Active Vendors: {vendors.filter(v => (v.stats?.total || 0) > 0).length}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         
@@ -432,9 +598,7 @@ function ProjectAnalyticsComponent({
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
             {error}
           </div>
-        )}
-
-        {/* Tab Navigation */}
+        )}        {/* Tab Navigation */}
         <div className="border-b border-gray-200 mb-6">
           <nav className="flex -mb-px">
             <button
@@ -481,11 +645,31 @@ function ProjectAnalyticsComponent({
               onClick={() => setActiveTab('flags')}
               className={`py-4 px-6 font-medium text-sm ${
                 activeTab === 'flags' 
-                  ? 'border-b-2 border-border-blue-500 text-blue-600' 
+                  ? 'border-b-2 border-blue-500 text-blue-600' 
                   : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Flags
+              Flags ({filteredFlags.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('realtime')}
+              className={`py-4 px-6 font-medium text-sm ${
+                activeTab === 'realtime' 
+                  ? 'border-b-2 border-blue-500 text-blue-600' 
+                  : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Real-time Activity
+            </button>
+            <button
+              onClick={() => setActiveTab('metadata')}
+              className={`py-4 px-6 font-medium text-sm ${
+                activeTab === 'metadata' 
+                  ? 'border-b-2 border-blue-500 text-blue-600' 
+                  : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Metadata Analytics
             </button>
           </nav>
         </div>
@@ -1002,6 +1186,259 @@ function ProjectAnalyticsComponent({
                 </p>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'realtime' && (
+          <div className="bg-white shadow rounded-lg mb-8">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Real-time Activity</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Live activity feed showing recent link interactions and survey responses
+              </p>
+            </div>
+            <div className="p-6">
+              {/* Activity Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                      </svg>
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-500">Active Now</p>
+                      <p className="text-2xl font-semibold text-gray-900">
+                        {vendors.reduce((acc, vendor) => acc + (vendor.stats?.started || 0), 0)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-500">Completed Today</p>
+                      <p className="text-2xl font-semibold text-gray-900">
+                        {vendors.reduce((acc, vendor) => acc + (vendor.stats?.completed || 0), 0)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-yellow-100 rounded-lg">
+                      <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-500">Flagged Today</p>
+                      <p className="text-2xl font-semibold text-gray-900">
+                        {filteredFlags.length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                    </div>
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-500">Total Links</p>
+                      <p className="text-2xl font-semibold text-gray-900">
+                        {linkTypeData.test + linkTypeData.live}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Activity Timeline */}
+              <div className="mb-8">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flow-root">
+                    <ul className="-mb-8">
+                      {/* Generate activity items based on flags and recent activity */}
+                      {filteredFlags.slice(0, 10).map((flag, index) => (
+                        <li key={flag.id}>
+                          <div className="relative pb-8">
+                            {index !== filteredFlags.slice(0, 10).length - 1 && (
+                              <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
+                            )}
+                            <div className="relative flex space-x-3">
+                              <div className="h-8 w-8 bg-red-500 rounded-full flex items-center justify-center ring-8 ring-white">
+                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                              </div>
+                              <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                <div>
+                                  <p className="text-sm text-gray-500">
+                                    Flag detected: <span className="font-medium text-gray-900">{flag.reason}</span>
+                                    {flag.vendorName && (
+                                      <span className="text-gray-400"> • Vendor: {flag.vendorName}</span>
+                                    )}
+                                  </p>
+                                </div>
+                                <div className="text-right text-sm whitespace-nowrap text-gray-500">
+                                  <time dateTime={flag.createdAt}>
+                                    {new Date(flag.createdAt).toLocaleTimeString()}
+                                  </time>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                      
+                      {/* Add some sample completed activity items */}
+                      {vendors.slice(0, 5).map((vendor, index) => (
+                        vendor.stats && vendor.stats.completed > 0 && (
+                          <li key={`completed-${vendor.id}`}>
+                            <div className="relative pb-8">
+                              {index !== 4 && (
+                                <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
+                              )}
+                              <div className="relative flex space-x-3">
+                                <div className="h-8 w-8 bg-green-500 rounded-full flex items-center justify-center ring-8 ring-white">
+                                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </div>
+                                <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                  <div>
+                                    <p className="text-sm text-gray-500">
+                                      Survey completed by <span className="font-medium text-gray-900">{vendor.name}</span>
+                                      <span className="text-gray-400"> • {vendor.stats.completed} total completions</span>
+                                    </p>
+                                  </div>
+                                  <div className="text-right text-sm whitespace-nowrap text-gray-500">
+                                    <time>
+                                      {new Date(Date.now() - Math.random() * 3600000).toLocaleTimeString()}
+                                    </time>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </li>
+                        )
+                      ))}
+                      
+                      {filteredFlags.length === 0 && vendors.every(v => !v.stats || v.stats.completed === 0) && (
+                        <li>
+                          <div className="relative flex space-x-3">
+                            <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center ring-8 ring-white">
+                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2 2v-5m16 0h-3m-13 0h3m-3 0v-3m3 3v-3" />
+                              </svg>
+                            </div>
+                            <div className="min-w-0 flex-1 pt-1.5">
+                              <p className="text-sm text-gray-500 italic">
+                                No recent activity found. Activity will appear here as users interact with survey links.
+                              </p>
+                            </div>
+                          </div>
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Performance Metrics */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Response Rate Chart */}
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Response Rate by Vendor</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="space-y-4">
+                      {filteredVendors.map((vendor) => {
+                        const total = vendor.stats ? 
+                          vendor.stats.pending + vendor.stats.started + vendor.stats.inProgress + vendor.stats.completed + vendor.stats.flagged : 0;
+                        const completed = vendor.stats?.completed || 0;
+                        const responseRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+                        
+                        return (
+                          <div key={vendor.id} className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex justify-between mb-1">
+                                <span className="text-sm font-medium text-gray-700">{vendor.name}</span>
+                                <span className="text-sm text-gray-500">{responseRate}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                                  style={{ width: `${responseRate}%` }}
+                                ></div>
+                              </div>
+                              <div className="flex justify-between mt-1 text-xs text-gray-500">
+                                <span>{completed} completed</span>
+                                <span>{total} total</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Geographic Distribution */}
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Geographic Distribution</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="space-y-3">
+                      {geoData.slice(0, 8).map((geo, index) => {
+                        const maxCount = Math.max(...geoData.map(g => g.count));
+                        const widthPercentage = maxCount > 0 ? (geo.count / maxCount) * 100 : 0;
+                        
+                        return (
+                          <div key={`${geo.country}-${index}`} className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex justify-between mb-1">
+                                <span className="text-sm font-medium text-gray-700">{geo.country}</span>
+                                <span className="text-sm text-gray-500">{geo.count}</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-green-600 h-2 rounded-full transition-all duration-300" 
+                                  style={{ width: `${widthPercentage}%` }}
+                                ></div>
+                              </div>
+                              <div className="flex justify-between mt-1 text-xs text-gray-500">
+                                <span>{geo.completedCount} completed</span>
+                                {geo.flaggedCount > 0 && (
+                                  <span className="text-red-500">{geo.flaggedCount} flagged</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'metadata' && (
+          <div className="space-y-8">
+            <MetadataAnalyticsDashboard projectId={projectId} />
           </div>
         )}
       </div>

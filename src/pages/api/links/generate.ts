@@ -41,11 +41,22 @@ type GenerateLinksRequest = {
   geoRestriction?: string[];
   testCount?: number; // For split between test/live links
   liveCount?: number; // For split between test/live links
+  useDevelopmentDomain?: boolean; // For localhost development
 };
 
 // Domain configuration
-const DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
-const SHORT_URL = process.env.NEXT_PUBLIC_SURVEY_SHORT_URL || `https://${DOMAIN}/s`;
+const PRODUCTION_DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
+const DEVELOPMENT_DOMAIN = 'localhost:3000';
+
+const getDomain = (useDevelopment?: boolean) => {
+  return useDevelopment ? DEVELOPMENT_DOMAIN : PRODUCTION_DOMAIN;
+};
+
+const getShortUrl = (useDevelopment?: boolean) => {
+  const domain = getDomain(useDevelopment);
+  const protocol = useDevelopment ? 'http' : 'https';
+  return `${protocol}://${domain}/s`;
+};
 
 export default async function handler(
   req: NextApiRequest,
@@ -66,7 +77,8 @@ export default async function handler(
       linkType, 
       geoRestriction,
       testCount,
-      liveCount 
+      liveCount,
+      useDevelopmentDomain 
     } = req.body as GenerateLinksRequest;
 
     // Get client IP for security logging
@@ -136,11 +148,28 @@ export default async function handler(
     // Generate links
     const links = [];
     const creationPromises = [];
+    
+    // Get vendor code for UID generation if vendor is specified
+    let vendorCode = '';
+    if (vendorId) {
+      const vendorResult = await amplifyServerService.getVendor(vendorId);
+      const vendor = vendorResult?.data;
+      if (vendor && vendor.settings) {
+        try {
+          const settings = JSON.parse(vendor.settings as string);
+          vendorCode = settings.code || '';
+        } catch (e) {
+          console.error('Error parsing vendor settings:', e);
+        }
+      }
+    }
+    
       // Handle mixed TEST/LIVE links if counts are provided
     if (testCount !== undefined && liveCount !== undefined) {
       // Generate TEST links
       for (let i = 0; i < testCount; i++) {
-        const uid = nanoid(10); // Generate a short unique ID
+        const baseUid = nanoid(8); // Generate a shorter base ID
+        const uid = vendorCode ? `${vendorCode}_TEST_${baseUid}` : `TEST_${baseUid}`;
         const linkData = {
           projectId,
           uid,
@@ -157,7 +186,8 @@ export default async function handler(
       }
         // Generate LIVE links
       for (let i = 0; i < liveCount; i++) {
-        const uid = nanoid(10); // Generate a short unique ID
+        const baseUid = nanoid(8); // Generate a shorter base ID
+        const uid = vendorCode ? `${vendorCode}_LIVE_${baseUid}` : `LIVE_${baseUid}`;
         const linkData = {
           projectId,
           uid,
@@ -174,7 +204,9 @@ export default async function handler(
       }    } else {
       // Original behavior - generate all links of the same type
       for (let i = 0; i < count; i++) {
-        const uid = nanoid(10); // Generate a short unique ID
+        const baseUid = nanoid(8); // Generate a shorter base ID
+        const linkType_prefix = linkType || 'LIVE';
+        const uid = vendorCode ? `${vendorCode}_${linkType_prefix}_${baseUid}` : `${linkType_prefix}_${baseUid}`;
         const linkData = {
           projectId,
           uid,
@@ -208,7 +240,17 @@ export default async function handler(
         }
       })
       .sort((a: SurveyLink, b: SurveyLink) => {
-        // Fix: Add null safety for date comparison
+        // First sort by vendor (links without vendor come first)
+        const vendorA = a.vendorId || '';
+        const vendorB = b.vendorId || '';
+        
+        if (vendorA !== vendorB) {
+          if (!vendorA) return -1; // No vendor links first
+          if (!vendorB) return 1;
+          return vendorA.localeCompare(vendorB); // Then alphabetically by vendor ID
+        }
+        
+        // Within same vendor, sort by creation date (newest first)
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
@@ -244,8 +286,10 @@ export default async function handler(
       return acc;
     }, {} as Record<string, { name: string; code: string }>);
 
-    // Use the custom domain for link generation
-    const baseUrl = `https://${DOMAIN}`;    // Format the response with complete URLs
+    // Use the appropriate domain for link generation
+    const domain = getDomain(useDevelopmentDomain);
+    const protocol = useDevelopmentDomain ? 'http' : 'https';
+    const baseUrl = `${protocol}://${domain}`;    // Format the response with complete URLs
     const formattedLinks = sortedLinks.map((link: SurveyLink) => {
       const fullUrl = `${baseUrl}/s/${projectId}/${link.uid}`;
       

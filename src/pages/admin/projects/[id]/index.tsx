@@ -90,6 +90,469 @@ const CircleProgress = ({ value, max, color, label, percentage }: {
   );
 }
 
+// LinksTab component for comprehensive link management
+interface SurveyLink {
+  id: string;
+  uid: string;
+  status: string;
+  vendorId?: string;
+  metadata?: string;
+  createdAt: string;
+  updatedAt: string;
+  clickedAt?: string;
+  completedAt?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  geoData?: any;
+}
+
+interface LinksTabProps {
+  projectId: string;
+}
+
+const LinksTab = ({ projectId }: LinksTabProps) => {
+  const [links, setLinks] = useState<SurveyLink[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [vendorFilter, setVendorFilter] = useState('ALL');
+  const [linkTypeFilter, setLinkTypeFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [linksPerPage] = useState(50);
+
+  // Fetch links and vendors
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const amplifyDataService = await getAmplifyDataService();
+        
+        // Fetch all survey links for this project
+        const linksResult = await amplifyDataService.surveyLinks.listByProject(projectId);
+        const linksData = linksResult.data || [];
+        
+        // Fetch vendors for this project
+        const vendorsResult = await amplifyDataService.vendors.listByProject(projectId);
+        const vendorsData = vendorsResult.data || [];
+        
+        setLinks(linksData);
+        setVendors(vendorsData);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load links');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [projectId]);
+
+  // Helper function to get vendor name
+  const getVendorName = (vendorId?: string) => {
+    if (!vendorId) return 'No Vendor';
+    const vendor = vendors.find(v => v.id === vendorId);
+    return vendor?.name || 'Unknown Vendor';
+  };
+
+  // Helper function to parse metadata
+  const parseMetadata = (metadata?: string) => {
+    try {
+      return metadata ? JSON.parse(metadata) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  // Helper function to get link type from metadata
+  const getLinkType = (metadata?: string) => {
+    const parsed = parseMetadata(metadata);
+    return parsed.linkType || 'UNKNOWN';
+  };
+
+  // Helper function to get original URL from metadata
+  const getOriginalUrl = (metadata?: string) => {
+    const parsed = parseMetadata(metadata);
+    return parsed.originalUrl || '';
+  };
+
+  // Helper function to get geo restrictions
+  const getGeoRestrictions = (metadata?: string) => {
+    const parsed = parseMetadata(metadata);
+    return parsed.geoRestriction || [];
+  };
+
+  // Filter links based on search and filters
+  const filteredLinks = links.filter(link => {
+    const matchesSearch = searchTerm === '' || 
+      link.uid.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getOriginalUrl(link.metadata).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getVendorName(link.vendorId).toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus = statusFilter === 'ALL' || link.status === statusFilter;
+    const matchesVendor = vendorFilter === 'ALL' || link.vendorId === vendorFilter;
+    const matchesLinkType = linkTypeFilter === 'ALL' || getLinkType(link.metadata) === linkTypeFilter;
+
+    return matchesSearch && matchesStatus && matchesVendor && matchesLinkType;
+  });
+
+  // Pagination
+  const totalLinks = filteredLinks.length;
+  const totalPages = Math.ceil(totalLinks / linksPerPage);
+  const startIndex = (currentPage - 1) * linksPerPage;
+  const endIndex = startIndex + linksPerPage;
+  const currentLinks = filteredLinks.slice(startIndex, endIndex);
+
+  // Copy link to clipboard
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // Could add toast notification here
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
+  };
+
+  // Export links to CSV
+  const exportToCSV = () => {
+    const headers = [
+      'UID',
+      'Status',
+      'Link Type',
+      'Vendor',
+      'Original URL',
+      'Geo Restrictions',
+      'Created At',
+      'Clicked At',
+      'Completed At',
+      'IP Address',
+      'User Agent'
+    ];
+
+    const csvData = filteredLinks.map(link => [
+      link.uid,
+      link.status,
+      getLinkType(link.metadata),
+      getVendorName(link.vendorId),
+      getOriginalUrl(link.metadata),
+      getGeoRestrictions(link.metadata).join('; '),
+      new Date(link.createdAt).toLocaleString(),
+      link.clickedAt ? new Date(link.clickedAt).toLocaleString() : '',
+      link.completedAt ? new Date(link.completedAt).toLocaleString() : '',
+      link.ipAddress || '',
+      link.userAgent || ''
+    ]);
+
+    const csvContent = [headers, ...csvData]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `project_${projectId}_links_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Get status badge color
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'UNUSED': return 'bg-gray-100 text-gray-800';
+      case 'CLICKED': return 'bg-blue-100 text-blue-800';
+      case 'COMPLETED': return 'bg-green-100 text-green-800';
+      case 'DISQUALIFIED': return 'bg-red-100 text-red-800';
+      case 'QUOTA_FULL': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="ml-4 text-gray-600">Loading links...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white shadow rounded-lg">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">Generated Links</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {totalLinks} total links • {filteredLinks.filter(l => l.status === 'COMPLETED').length} completed
+            </p>
+          </div>
+          <div className="flex space-x-3">
+            <Link
+              href={`/admin/projects/${projectId}/generate`}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+            >
+              Generate More Links
+            </Link>
+            <button
+              onClick={exportToCSV}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+            >
+              Export CSV
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters and Search */}
+      <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Search */}
+          <div className="lg:col-span-2">
+            <input
+              type="text"
+              placeholder="Search by UID, URL, or vendor..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Status Filter */}
+          <div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="UNUSED">Unused</option>
+              <option value="CLICKED">Clicked</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="DISQUALIFIED">Disqualified</option>
+              <option value="QUOTA_FULL">Quota Full</option>
+            </select>
+          </div>
+
+          {/* Vendor Filter */}
+          <div>
+            <select
+              value={vendorFilter}
+              onChange={(e) => setVendorFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="ALL">All Vendors</option>
+              <option value="">No Vendor</option>
+              {vendors.map(vendor => (
+                <option key={vendor.id} value={vendor.id}>
+                  {vendor.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Link Type Filter */}
+          <div>
+            <select
+              value={linkTypeFilter}
+              onChange={(e) => setLinkTypeFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="ALL">All Types</option>
+              <option value="TEST">Test Links</option>
+              <option value="LIVE">Live Links</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Links Table */}
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Link
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Type
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Vendor
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Created
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Last Activity
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {currentLinks.map((link) => {
+              const linkType = getLinkType(link.metadata);
+              const originalUrl = getOriginalUrl(link.metadata);
+              const geoRestrictions = getGeoRestrictions(link.metadata);
+              const fullUrl = `${window.location.origin}/s/${projectId}/${link.uid}`;
+
+              return (
+                <tr key={link.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col">
+                      <div className="text-sm font-medium text-gray-900 font-mono">
+                        {link.uid}
+                      </div>
+                      <div className="text-sm text-gray-500 truncate max-w-xs" title={originalUrl}>
+                        {originalUrl}
+                      </div>
+                      {geoRestrictions.length > 0 && (
+                        <div className="text-xs text-blue-600">
+                          Geo: {geoRestrictions.join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(link.status)}`}>
+                      {link.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      linkType === 'TEST' ? 'bg-purple-100 text-purple-800' : 'bg-indigo-100 text-indigo-800'
+                    }`}>
+                      {linkType}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {getVendorName(link.vendorId)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(link.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {link.completedAt ? `Completed ${new Date(link.completedAt).toLocaleDateString()}` :
+                     link.clickedAt ? `Clicked ${new Date(link.clickedAt).toLocaleDateString()}` :
+                     'No activity'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end space-x-2">
+                      <button
+                        onClick={() => copyToClipboard(fullUrl)}
+                        className="text-blue-600 hover:text-blue-900"
+                        title="Copy link"
+                      >
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      </button>
+                      <a
+                        href={fullUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-green-600 hover:text-green-900"
+                        title="Open link"
+                      >
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+          <div className="text-sm text-gray-700">
+            Showing {startIndex + 1} to {Math.min(endIndex, totalLinks)} of {totalLinks} links
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="px-3 py-1 text-sm">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {filteredLinks.length === 0 && (
+        <div className="px-6 py-12 text-center">
+          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No links found</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {links.length === 0 
+              ? "No links have been generated for this project yet."
+              : "No links match your current filters."}
+          </p>
+          {links.length === 0 && (
+            <div className="mt-6">
+              <Link
+                href={`/admin/projects/${projectId}/generate`}
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              >
+                <svg className="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Generate Your First Links
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function ProjectView() {
   const router = useRouter();
   const { id } = router.query;
@@ -666,58 +1129,7 @@ export default function ProjectView() {
         )}
         
         {activeTab === 'links' && (
-          /* Link Management */
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800">Wrapper Link Generation</h2>
-              <p className="text-sm text-gray-600 mt-1">Create secure wrapper links with bot protection, geolocking, and completion tracking</p>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Link
-                  href={`/admin/projects/${project.id}/generate`}
-                  className="block p-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-200"
-                >
-                  <div className="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                    </svg>
-                    <div>
-                      <h3 className="text-lg font-semibold">Generate Wrapper Links</h3>
-                      <p className="text-blue-100 text-sm">Create live/test links with CSV upload</p>
-                    </div>
-                  </div>
-                </Link>
-
-                <Link
-                  href={`/admin/projects/${project.id}/analytics`}
-                  className="block p-6 bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow-lg text-white hover:from-green-600 hover:to-green-700 transition-all duration-200"
-                >
-                  <div className="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    <div>
-                      <h3 className="text-lg font-semibold">Analytics & Tracking</h3>
-                      <p className="text-green-100 text-sm">View completion rates and link performance</p>
-                    </div>
-                  </div>
-                </Link>
-              </div>
-
-              <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-900 mb-2">Wrapper Link Features:</h4>
-                <ul className="list-disc list-inside text-blue-800 text-sm space-y-1">
-                  <li>Bot protection and security verification</li>
-                  <li>Geolocking and country restrictions</li>
-                  <li>Real-time completion tracking via iframe monitoring</li>
-                  <li>CSV bulk upload for multiple URLs</li>
-                  <li>Vendor-specific link generation</li>
-                  <li>Live and test link variants</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+          <LinksTab projectId={project.id} />
         )}
       </div>
       </div>

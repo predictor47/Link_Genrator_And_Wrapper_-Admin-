@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { GetServerSideProps } from 'next';
 import SurveyFlow from '@/components/SurveyFlow';
+import { getAmplifyServerService } from '@/lib/amplify-server-service';
 
 // Types
 interface Question {
@@ -101,7 +102,87 @@ export default function SurveyLandingPage({
   );
 }
 
-export const getServerSideProps: GetServerSideProps = async () => {
-  // All data fetching is now client-side. Do not use amplifyDataService here.
-  return { props: {} };
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { projectId, uid } = context.params!;
+  
+  try {
+    const amplifyServerService = getAmplifyServerService();
+    
+    // Get the survey link
+    const surveyLinkResult = await amplifyServerService.getSurveyLinkByUid(uid as string);
+    const surveyLink = surveyLinkResult.data;
+    
+    if (!surveyLink) {
+      return {
+        props: {
+          projectId: projectId as string,
+          uid: uid as string,
+          project: null,
+          surveyLink: null,
+          isValid: false,
+          errorMessage: 'Survey link not found'
+        }
+      };
+    }
+    
+    // Check if link belongs to the project
+    if (surveyLink.projectId !== projectId) {
+      return {
+        props: {
+          projectId: projectId as string,
+          uid: uid as string,
+          project: null,
+          surveyLink: null,
+          isValid: false,
+          errorMessage: 'Invalid project/link combination'
+        }
+      };
+    }
+    
+    // Get the project
+    const projectResult = await amplifyServerService.getProject(surveyLink.projectId);
+    const project = projectResult.data;
+    
+    if (!project) {
+      return {
+        props: {
+          projectId: projectId as string,
+          uid: uid as string,
+          project: null,
+          surveyLink: null,
+          isValid: false,
+          errorMessage: 'Project not found'
+        }
+      };
+    }
+    
+    return {
+      props: {
+        projectId: projectId as string,
+        uid: uid as string,
+        project: {
+          name: project.name,
+          surveyUrl: project.surveyUrl
+        },
+        surveyLink: {
+          status: surveyLink.status,
+          vendorId: surveyLink.vendorId || null
+        },
+        isValid: true
+      }
+    };
+    
+  } catch (error) {
+    console.error('Error in getServerSideProps:', error);
+    return {
+      props: {
+        projectId: projectId as string,
+        uid: uid as string,
+        project: null,
+        surveyLink: null,
+        isValid: false,
+        errorMessage: 'Failed to load survey data'
+      }
+    };
+  }
 };

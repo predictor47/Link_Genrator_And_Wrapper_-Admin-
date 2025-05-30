@@ -60,6 +60,8 @@ export default function GeneratePage() {
   const [csvData, setCsvData] = useState<CSVLinkData[]>([]);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
+  const [countryModalOpen, setCountryModalOpen] = useState(false);
   
   const { register, handleSubmit, watch, formState: { errors }, setValue } = useForm();
   
@@ -355,6 +357,32 @@ export default function GeneratePage() {
       return country ? country.name : code;
     }).join(', ');
   };
+
+  // Helper functions for vendor selection
+  const handleVendorToggle = (vendorId: string) => {
+    setSelectedVendors(prev => {
+      if (prev.includes(vendorId)) {
+        return prev.filter(id => id !== vendorId);
+      } else {
+        return [...prev, vendorId];
+      }
+    });
+  };
+
+  const handleSelectAllVendors = () => {
+    setSelectedVendors(vendors.map(vendor => vendor.id));
+  };
+
+  const handleClearAllVendors = () => {
+    setSelectedVendors([]);
+  };
+
+  const getSelectedVendorNames = () => {
+    return selectedVendors.map(id => {
+      const vendor = vendors.find(v => v.id === id);
+      return vendor ? `${vendor.name} (${vendor.code})` : id;
+    }).join(', ');
+  };
   
   // Fetch project data on mount
   useEffect(() => {
@@ -457,7 +485,8 @@ export default function GeneratePage() {
           projectId: project?.id,
           originalUrl: row.originalUrl,
           vendorId: vendorId,
-          geoRestriction
+          geoRestriction,
+          useDevelopmentDomain: process.env.NODE_ENV === 'development'
         };
         
         // Handle test/live split
@@ -505,31 +534,43 @@ export default function GeneratePage() {
         geoRestriction = selectedCountries;
       }
 
-      const payload: any = {
-        projectId: project?.id,
-        originalUrl: data.originalUrl,
-        vendorId: data.vendorId || null,
-        geoRestriction
-      };
-      
-      // Handle split link types or single type
-      if (splitLinkTypes) {
-        payload.testCount = parseInt(data.testCount) || 0;
-        payload.liveCount = parseInt(data.liveCount) || 0;
-        payload.count = payload.testCount + payload.liveCount;
-      } else {
-        payload.count = parseInt(data.count) || 1;
-        payload.linkType = data.linkType || 'LIVE';
-      }
+      // Handle multiple vendors - if no vendors selected, generate without vendor
+      const vendorsToProcess = selectedVendors.length > 0 ? selectedVendors : [null];
+      const allGeneratedLinks: any[] = [];
+      let totalLinksGenerated = 0;
 
-      const response = await axios.post('/api/links/generate', payload);
-      
-      if (response.data.success) {
-        setSuccess(`Successfully generated ${response.data.count} links.`);
-        setGeneratedLinks(response.data.links);
-      } else {
-        setError(response.data.message || 'Failed to generate links');
+      for (const vendorId of vendorsToProcess) {
+        const payload: any = {
+          projectId: project?.id,
+          originalUrl: data.originalUrl,
+          vendorId: vendorId,
+          geoRestriction,
+          useDevelopmentDomain: process.env.NODE_ENV === 'development'
+        };
+        
+        // Handle split link types or single type
+        if (splitLinkTypes) {
+          payload.testCount = parseInt(data.testCount) || 0;
+          payload.liveCount = parseInt(data.liveCount) || 0;
+          payload.count = payload.testCount + payload.liveCount;
+        } else {
+          payload.count = parseInt(data.count) || 1;
+          payload.linkType = data.linkType || 'LIVE';
+        }
+
+        const response = await axios.post('/api/links/generate', payload);
+        
+        if (response.data.success) {
+          allGeneratedLinks.push(...response.data.links);
+          totalLinksGenerated += response.data.count;
+        } else {
+          setError(response.data.message || 'Failed to generate links');
+          return;
+        }
       }
+      
+      setSuccess(`Successfully generated ${totalLinksGenerated} links${selectedVendors.length > 1 ? ` across ${selectedVendors.length} vendors` : ''}.`);
+      setGeneratedLinks(allGeneratedLinks);
     } catch (error: any) {
       setError(error.response?.data?.message || 'Error generating links');
       console.error('Error:', error);
@@ -777,32 +818,73 @@ export default function GeneratePage() {
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="vendorId">
-                  Vendor
-                </label>
-                
-                <div className="flex items-start">
-                  <select
-                    id="vendorId"
-                    className="shadow appearance-none border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-full"
-                    {...register("vendorId")}
-                  >
-                    <option value="">-- No Vendor --</option>
-                    {vendors.map(vendor => (
-                      <option key={vendor.id} value={vendor.id}>
-                        {vendor.name} ({vendor.code})
-                      </option>
-                    ))}
-                  </select>
-                  
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-gray-700 text-sm font-bold">
+                    Vendors ({selectedVendors.length} selected)
+                  </label>
                   <button
                     type="button"
-                    className="ml-2 bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded"
+                    className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1 px-3 rounded text-sm"
                     onClick={() => setShowVendorForm(!showVendorForm)}
                   >
                     {showVendorForm ? 'Cancel' : 'Add Vendor'}
                   </button>
                 </div>
+                
+                {vendors.length > 0 ? (
+                  <div className="border border-gray-200 rounded-lg bg-gray-50 p-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-sm text-gray-600">Select vendors for link generation:</span>
+                      <div className="space-x-2">
+                        <button
+                          type="button"
+                          onClick={handleSelectAllVendors}
+                          className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded"
+                        >
+                          Select All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleClearAllVendors}
+                          className="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded"
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {selectedVendors.length > 0 && (
+                      <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                        <strong>Selected Vendors:</strong> {getSelectedVendorNames()}
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {vendors.map(vendor => (
+                        <label 
+                          key={vendor.id} 
+                          className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-100 ${
+                            selectedVendors.includes(vendor.id) ? 'bg-blue-100 text-blue-800' : ''
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedVendors.includes(vendor.id)}
+                            onChange={() => handleVendorToggle(vendor.id)}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <span className="text-sm">
+                            {vendor.name} ({vendor.code})
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border border-gray-200 rounded-lg bg-gray-50 p-4 text-center">
+                    <p className="text-gray-500 text-sm">No vendors available. Create a vendor to get started.</p>
+                  </div>
+                )}
                 
                 {showVendorForm && (
                   <div className="mt-4 p-4 bg-gray-50 rounded-md">
@@ -981,23 +1063,38 @@ export default function GeneratePage() {
               )}
               
               <div className="mb-4">
-                <div className="flex items-center">
-                  <input
-                    id="restrictGeo"
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    {...register("restrictGeo")}
-                    onChange={(e) => {
-                      setShowCountrySelect(e.target.checked);
-                      // If unchecking, clear selected countries
-                      if (!e.target.checked) {
-                        setSelectedCountries([]);
-                      }
-                    }}
-                  />
-                  <label htmlFor="restrictGeo" className="ml-2 block text-sm text-gray-700">
-                    Restrict Survey Access by Country
-                  </label>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <label htmlFor="restrictGeo" className="block text-sm font-medium text-gray-700">
+                      Restrict Survey Access by Country
+                    </label>
+                  </div>
+                  <div className="flex items-center">
+                    <button
+                      type="button"
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                        restrictGeo ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                      onClick={(e) => {
+                        const newValue = !restrictGeo;
+                        setValue('restrictGeo', newValue);
+                        setShowCountrySelect(newValue);
+                        if (!newValue) {
+                          setSelectedCountries([]);
+                        }
+                      }}
+                      role="switch"
+                      aria-checked={restrictGeo}
+                      aria-labelledby="restrictGeo-label"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          restrictGeo ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
                 <p className="text-gray-500 text-xs mt-1">
                   When enabled, survey links will only work in selected countries. Users from other regions will see a "not available in your region" message.
@@ -1009,60 +1106,108 @@ export default function GeneratePage() {
                       <label className="block text-gray-700 text-sm font-bold">
                         Select Allowed Countries ({selectedCountries.length} selected)
                       </label>
-                      <div className="space-x-2">
-                        <button
-                          type="button"
-                          onClick={handleSelectAllCountries}
-                          className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded"
-                        >
-                          Select All
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleClearAllCountries}
-                          className="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded"
-                        >
-                          Clear All
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCountryModalOpen(true)}
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
+                      >
+                        Select Countries
+                      </button>
                     </div>
                     
-                    {selectedCountries.length > 0 && (
-                      <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                    {selectedCountries.length > 0 ? (
+                      <div className="p-2 bg-blue-50 border border-blue-200 rounded text-sm">
                         <strong>Selected Countries:</strong> {getSelectedCountryNames()}
                       </div>
+                    ) : (
+                      <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                        ⚠️ No countries selected. Please select at least one country.
+                      </div>
                     )}
-                    
-                    <div className="max-h-64 overflow-y-auto border border-gray-300 rounded bg-white">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1 p-2">
-                        {countryCodes.map(country => (
-                          <label 
-                            key={country.code} 
-                            className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-100 ${
-                              selectedCountries.includes(country.code) ? 'bg-blue-100 text-blue-800' : ''
-                            }`}
+                  </div>
+                )}
+                
+                {/* Country Selection Modal */}
+                {countryModalOpen && (
+                  <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+                      <div className="mt-3">
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-lg font-medium text-gray-900">Select Countries</h3>
+                          <button
+                            type="button"
+                            onClick={() => setCountryModalOpen(false)}
+                            className="text-gray-400 hover:text-gray-600"
                           >
-                            <input
-                              type="checkbox"
-                              checked={selectedCountries.includes(country.code)}
-                              onChange={() => handleCountryToggle(country.code)}
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            />
-                            <span className="text-sm">
-                              {country.name} ({country.code})
-                            </span>
-                          </label>
-                        ))}
+                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                        
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-sm text-gray-600">
+                            {selectedCountries.length} of {countryCodes.length} countries selected
+                          </span>
+                          <div className="space-x-2">
+                            <button
+                              type="button"
+                              onClick={handleSelectAllCountries}
+                              className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded"
+                            >
+                              Select All
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleClearAllCountries}
+                              className="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded"
+                            >
+                              Clear All
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="max-h-96 overflow-y-auto border border-gray-300 rounded bg-white mb-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1 p-2">
+                            {countryCodes.map(country => (
+                              <label 
+                                key={country.code} 
+                                className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-100 ${
+                                  selectedCountries.includes(country.code) ? 'bg-blue-100 text-blue-800' : ''
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedCountries.includes(country.code)}
+                                  onChange={() => handleCountryToggle(country.code)}
+                                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <span className="text-sm">
+                                  {country.name} ({country.code})
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-end space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => setCountryModalOpen(false)}
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCountryModalOpen(false)}
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+                          >
+                            Done ({selectedCountries.length} selected)
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    
-                    <p className="text-gray-500 text-xs mt-2">
-                      Survey access will be restricted to the selected countries only. Participants from other locations will see a region restriction message.
-                    </p>
-                    
-                    {restrictGeo && selectedCountries.length === 0 && (
-                      <p className="text-red-500 text-xs mt-2">⚠️ Please select at least one country when geography restriction is enabled</p>
-                    )}
                   </div>
                 )}
               </div>
