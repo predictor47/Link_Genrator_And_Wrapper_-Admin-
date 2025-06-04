@@ -89,6 +89,71 @@ const CircleProgress = ({ value, max, color, size = 60, strokeWidth = 6 }: {
   );
 };
 
+// Loading Skeleton Components
+const SkeletonCard = () => (
+  <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg rounded-2xl border border-gray-200/50 p-6 animate-pulse">
+    <div className="flex items-center">
+      <div className="w-12 h-12 bg-gray-300 rounded-xl"></div>
+      <div className="ml-5 flex-1">
+        <div className="h-4 bg-gray-300 rounded w-24 mb-2"></div>
+        <div className="h-6 bg-gray-300 rounded w-16 mb-3"></div>
+        <div className="flex space-x-2">
+          <div className="h-5 bg-gray-300 rounded w-12"></div>
+          <div className="h-5 bg-gray-300 rounded w-12"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const SkeletonRow = () => (
+  <tr className="bg-white/50 backdrop-blur-sm animate-pulse">
+    <td className="px-6 py-4">
+      <div className="flex items-center">
+        <div className="w-10 h-10 bg-gray-300 rounded-lg"></div>
+        <div className="ml-4">
+          <div className="h-4 bg-gray-300 rounded w-32 mb-1"></div>
+          <div className="h-3 bg-gray-300 rounded w-24"></div>
+        </div>
+      </div>
+    </td>
+    <td className="px-6 py-4">
+      <div className="h-6 bg-gray-300 rounded-full w-16"></div>
+    </td>
+    <td className="px-6 py-4">
+      <div className="flex items-center space-x-3">
+        <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
+        <div>
+          <div className="h-3 bg-gray-300 rounded w-8 mb-1"></div>
+          <div className="h-3 bg-gray-300 rounded w-12"></div>
+        </div>
+      </div>
+    </td>
+    <td className="px-6 py-4">
+      <div className="space-y-1">
+        <div className="h-4 bg-gray-300 rounded w-16 mb-2"></div>
+        <div className="flex space-x-2">
+          <div className="h-4 bg-gray-300 rounded w-8"></div>
+          <div className="h-4 bg-gray-300 rounded w-8"></div>
+        </div>
+      </div>
+    </td>
+    <td className="px-6 py-4">
+      <div>
+        <div className="h-3 bg-gray-300 rounded w-20 mb-1"></div>
+        <div className="h-3 bg-gray-300 rounded w-16"></div>
+      </div>
+    </td>
+    <td className="px-6 py-4">
+      <div className="flex space-x-2">
+        <div className="h-8 bg-gray-300 rounded-lg w-16"></div>
+        <div className="h-8 bg-gray-300 rounded-lg w-20"></div>
+        <div className="h-8 bg-gray-300 rounded-lg w-16"></div>
+      </div>
+    </td>
+  </tr>
+);
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -101,6 +166,7 @@ export default function AdminDashboard() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Fetch all data on component mount
   useEffect(() => {
@@ -273,62 +339,165 @@ export default function AdminDashboard() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-100">
-        {/* Navigation */}
-        <nav className="bg-white shadow-lg">
-          <div className="max-w-7xl mx-auto px-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        {/* Modern Navigation */}
+        <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
-              <div className="flex items-center">
-                <h1 className="text-xl font-semibold text-gray-800">Admin Dashboard</h1>
-              </div>
               <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">SR</span>
+                  </div>
+                  <div className="hidden sm:block">
+                    <h1 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                      Survey Research
+                    </h1>
+                    <p className="text-xs text-gray-500 font-medium">Admin Dashboard</p>
+                  </div>
+                  <div className="sm:hidden">
+                    <h1 className="text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                      SR Admin
+                    </h1>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Desktop Navigation */}
+              <div className="hidden md:flex items-center space-x-3">
                 <Link 
                   href="/admin/projects/new" 
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium py-2.5 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                 >
-                  Create Project
+                  <span className="flex items-center space-x-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>New Project</span>
+                  </span>
                 </Link>
                 <button 
                   onClick={handleLogout} 
-                  className="text-gray-600 hover:text-gray-800"
+                  className="text-gray-600 hover:text-gray-800 font-medium py-2 px-4 rounded-lg hover:bg-gray-100 transition-colors duration-200"
                 >
-                  Logout
+                  <span className="flex items-center space-x-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span>Logout</span>
+                  </span>
+                </button>
+              </div>
+
+              {/* Mobile menu button */}
+              <div className="md:hidden flex items-center">
+                <button
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="text-gray-600 hover:text-gray-800 p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {isMobileMenuOpen ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    )}
+                  </svg>
                 </button>
               </div>
             </div>
+            
+            {/* Mobile Navigation Menu */}
+            {isMobileMenuOpen && (
+              <div className="md:hidden border-t border-gray-200/50 bg-white/95 backdrop-blur-md">
+                <div className="px-2 pt-2 pb-3 space-y-2">
+                  <Link 
+                    href="/admin/projects/new" 
+                    className="block bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 text-center"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <span className="flex items-center justify-center space-x-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>New Project</span>
+                    </span>
+                  </Link>
+                  <button 
+                    onClick={() => {
+                      handleLogout();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full text-left text-gray-600 hover:text-gray-800 font-medium py-3 px-4 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                  >
+                    <span className="flex items-center space-x-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      <span>Logout</span>
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </nav>
 
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           {error && (
-            <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-              <button 
-                onClick={() => setError('')}
-                className="ml-4 text-red-700 hover:text-red-900"
-              >
-                ×
-              </button>
+            <div className="mb-8 bg-red-50 border border-red-200 text-red-800 px-6 py-4 rounded-xl shadow-sm">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-red-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <span className="flex-1">{error}</span>
+                <button 
+                  onClick={() => setError('')}
+                  className="ml-4 text-red-600 hover:text-red-800 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
           )}
 
-          {/* Stats Cards */}
-          {stats && (
+          {/* Modern Stats Cards */}
+          {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
+          ) : stats && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {/* Total Projects Card */}
+              <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg rounded-2xl border border-gray-200/50 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="p-6">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
-                        <span className="text-white font-bold">P</span>
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
                       </div>
                     </div>
                     <div className="ml-5 w-0 flex-1">
                       <dl>
                         <dt className="text-sm font-medium text-gray-500 truncate">Total Projects</dt>
-                        <dd className="text-lg font-medium text-gray-900">{stats.totalProjects}</dd>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Draft: {stats.draftProjects} | Live: {stats.liveProjects} | Complete: {stats.completeProjects}
+                        <dd className="text-2xl font-bold text-gray-900">{stats.totalProjects}</dd>
+                        <div className="text-xs text-gray-500 mt-2 space-x-4">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                            Draft: {stats.draftProjects}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800">
+                            Live: {stats.liveProjects}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-800">
+                            Complete: {stats.completeProjects}
+                          </span>
                         </div>
                       </dl>
                     </div>
@@ -336,54 +505,89 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
+              {/* Total Links Card */}
+              <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg rounded-2xl border border-gray-200/50 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="p-6">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
-                        <span className="text-white font-bold">L</span>
+                      <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
                       </div>
                     </div>
                     <div className="ml-5 w-0 flex-1">
                       <dl>
                         <dt className="text-sm font-medium text-gray-500 truncate">Total Links</dt>
-                        <dd className="text-lg font-medium text-gray-900">{stats.totalLinks}</dd>
+                        <dd className="text-2xl font-bold text-gray-900">{stats.totalLinks.toLocaleString()}</dd>
+                        <div className="text-xs text-gray-500 mt-2">
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-gradient-to-r from-green-400 to-green-600 h-2 rounded-full transition-all duration-500" 
+                              style={{ width: `${stats.totalLinks > 0 ? (stats.completedLinks / stats.totalLinks) * 100 : 0}%` }}
+                            ></div>
+                          </div>
+                          <span className="mt-1 block">
+                            {stats.totalLinks > 0 ? Math.round((stats.completedLinks / stats.totalLinks) * 100) : 0}% completion rate
+                          </span>
+                        </div>
                       </dl>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
+              {/* Completed Links Card */}
+              <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg rounded-2xl border border-gray-200/50 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="p-6">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
-                        <span className="text-white font-bold">C</span>
+                      <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                       </div>
                     </div>
                     <div className="ml-5 w-0 flex-1">
                       <dl>
                         <dt className="text-sm font-medium text-gray-500 truncate">Completed</dt>
-                        <dd className="text-lg font-medium text-gray-900">{stats.completedLinks}</dd>
+                        <dd className="text-2xl font-bold text-gray-900">{stats.completedLinks.toLocaleString()}</dd>
+                        <div className="text-xs text-gray-500 mt-2">
+                          <CircleProgress 
+                            value={stats.completedLinks} 
+                            max={stats.totalLinks} 
+                            color="#eab308" 
+                            size={40}
+                            strokeWidth={4}
+                          />
+                        </div>
                       </dl>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="p-5">
+              {/* Active Links Card */}
+              <div className="bg-white/70 backdrop-blur-sm overflow-hidden shadow-lg rounded-2xl border border-gray-200/50 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="p-6">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-orange-500 rounded-md flex items-center justify-center">
-                        <span className="text-white font-bold">A</span>
+                      <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
                       </div>
                     </div>
                     <div className="ml-5 w-0 flex-1">
                       <dl>
                         <dt className="text-sm font-medium text-gray-500 truncate">Active Links</dt>
-                        <dd className="text-lg font-medium text-gray-900">{stats.inProgressLinks}</dd>
+                        <dd className="text-2xl font-bold text-gray-900">{stats.inProgressLinks.toLocaleString()}</dd>
+                        <div className="text-xs text-gray-500 mt-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                            <span>Currently in progress</span>
+                          </div>
+                        </div>
                       </dl>
                     </div>
                   </div>
@@ -402,80 +606,121 @@ export default function AdminDashboard() {
           )}
 
           {/* Status Filter Controls */}
-          <div className="bg-white shadow rounded-lg mb-6 p-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <span className="text-sm font-medium text-gray-700">Filter by Status:</span>
-              <div className="flex gap-2">
+          <div className="bg-white/70 backdrop-blur-sm shadow-lg rounded-2xl mb-8 p-4 sm:p-6 border border-gray-200/50">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-4 sm:gap-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.707A1 1 0 013 7V4z" />
+                  </svg>
+                </div>
+                <span className="text-sm font-semibold text-gray-700">Filter Projects:</span>
+              </div>
+              <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
                 {['ALL', 'DRAFT', 'LIVE', 'COMPLETE'].map((status) => (
                   <button
                     key={status}
                     onClick={() => setStatusFilter(status)}
-                    className={`px-3 py-1 text-sm rounded-full font-medium transition-colors ${
+                    className={`px-3 sm:px-4 py-2 text-sm rounded-xl font-medium transition-all duration-200 transform hover:scale-105 flex-shrink-0 ${
                       statusFilter === status
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md'
                     }`}
                   >
-                    {status}
-                    {status !== 'ALL' && stats && (
-                      <span className="ml-1 text-xs">
-                        ({status === 'DRAFT' ? stats.draftProjects : 
-                          status === 'LIVE' ? stats.liveProjects : 
-                          stats.completeProjects})
-                      </span>
-                    )}
-                    {status === 'ALL' && stats && (
-                      <span className="ml-1 text-xs">({stats.totalProjects})</span>
-                    )}
+                    <span className="flex items-center space-x-2">
+                      <span className="hidden sm:inline">{status}</span>
+                      <span className="sm:hidden">{status === 'ALL' ? 'ALL' : status.charAt(0)}</span>
+                      {status !== 'ALL' && stats && (
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          statusFilter === status ? 'bg-white/20' : 'bg-gray-200'
+                        }`}>
+                          {status === 'DRAFT' ? stats.draftProjects : 
+                           status === 'LIVE' ? stats.liveProjects : 
+                           stats.completeProjects}
+                        </span>
+                      )}
+                      {status === 'ALL' && stats && (
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          statusFilter === status ? 'bg-white/20' : 'bg-gray-200'
+                        }`}>
+                          {stats.totalProjects}
+                        </span>
+                      )}
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Projects Table */}
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-              <div>
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Projects</h3>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">Manage your research projects and survey campaigns.</p>
+          {/* Modern Projects Section */}
+          <div className="bg-white/70 backdrop-blur-sm shadow-xl overflow-hidden rounded-2xl border border-gray-200/50">
+            <div className="px-6 py-6 sm:px-8 border-b border-gray-200/50">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                    Projects Overview
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-600">Manage your research projects and survey campaigns with powerful analytics.</p>
+                </div>
+                <button
+                  onClick={fetchDashboardData}
+                  disabled={isLoading}
+                  className="bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 disabled:opacity-50 text-gray-700 font-medium py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
+                >
+                  <span className="flex items-center space-x-2">
+                    <svg className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>{isLoading ? 'Refreshing...' : 'Refresh'}</span>
+                  </span>
+                </button>
               </div>
-              <button
-                onClick={fetchDashboardData}
-                disabled={isLoading}
-                className="bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
-              >
-                {isLoading ? 'Refreshing...' : 'Refresh'}
-              </button>
             </div>
             
             {filteredProjects.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500 text-lg mb-4">
+              <div className="text-center py-16 px-6">
+                <div className="mx-auto w-24 h-24 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mb-6">
+                  <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   {statusFilter === 'ALL' ? 'No projects found' : `No ${statusFilter.toLowerCase()} projects found`}
-                </p>
+                </h3>
+                <p className="text-gray-500 mb-8">Get started by creating your first research project.</p>
                 <Link
                   href="/admin/projects/new"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium py-3 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 inline-flex items-center space-x-2"
                 >
-                  Create Your First Project
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Create Your First Project</span>
                 </Link>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <div className="inline-block min-w-full align-middle">
+                  <table className="min-w-full divide-y divide-gray-200/50">
+                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Links</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Project</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Progress</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Links</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Created</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredProjects.map((project) => {
+                  <tbody className="bg-white/50 divide-y divide-gray-200/50">
+                    {isLoading ? (
+                      // Show loading skeleton rows
+                      Array.from({ length: 5 }).map((_, index) => (
+                        <SkeletonRow key={index} />
+                      ))
+                    ) : (
+                      filteredProjects.map((project, index) => {
                       // Get project stats
                       const projectStat = projectStats[project.id] || {
                         pending: 0,
@@ -487,64 +732,124 @@ export default function AdminDashboard() {
                       };
                       
                       return (
-                        <tr key={project.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{project.name}</div>
-                              {project.description && (
-                                <div className="text-sm text-gray-500">{project.description}</div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              project.status === 'LIVE' ? 'bg-green-100 text-green-800' :
-                              project.status === 'DRAFT' ? 'bg-yellow-100 text-yellow-800' :
-                              project.status === 'COMPLETE' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {project.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                        <tr key={project.id} className={`hover:bg-white/80 transition-all duration-200 ${index % 2 === 0 ? 'bg-white/30' : 'bg-white/10'}`}>
+                          <td className="px-6 py-6">
                             <div className="flex items-center">
-                              <CircleProgress
-                                value={project.currentCompletions}
-                                max={project.targetCompletions}
-                                color="#10B981"
-                                size={40}
-                                strokeWidth={4}
-                              />
-                              <span className="ml-2 text-sm text-gray-600">
-                                {Math.round((project.currentCompletions / (project.targetCompletions || 1)) * 100)}%
+                              <div className="flex-shrink-0 w-10 h-10">
+                                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                                  <span className="text-white font-bold text-sm">
+                                    {project.name.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="ml-4">
+                                <div className="text-sm font-semibold text-gray-900">{project.name}</div>
+                                {project.description && (
+                                  <div className="text-sm text-gray-500 truncate max-w-xs">{project.description}</div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center">
+                              <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full shadow-sm ${
+                                project.status === 'LIVE' ? 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300' :
+                                project.status === 'DRAFT' ? 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border border-yellow-300' :
+                                project.status === 'COMPLETE' ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300' :
+                                'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300'
+                              }`}>
+                                <div className={`w-2 h-2 rounded-full mr-2 ${
+                                  project.status === 'LIVE' ? 'bg-green-500 animate-pulse' :
+                                  project.status === 'DRAFT' ? 'bg-yellow-500' :
+                                  project.status === 'COMPLETE' ? 'bg-blue-500' :
+                                  'bg-gray-500'
+                                }`}></div>
+                                {project.status}
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex flex-col">
+                                <div className="flex items-center space-x-2">
+                                  <CircleProgress
+                                    value={project.currentCompletions}
+                                    max={project.targetCompletions}
+                                    color="#10B981"
+                                    size={40}
+                                    strokeWidth={4}
+                                  />
+                                  <div className="text-xs">
+                                    <div className="font-semibold text-gray-900">
+                                      {Math.round((project.currentCompletions / (project.targetCompletions || 1)) * 100)}%
+                                    </div>
+                                    <div className="text-gray-500">
+                                      {project.currentCompletions}/{project.targetCompletions}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col space-y-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-lg font-bold text-gray-900">{projectStat.total.toLocaleString()}</span>
+                                <span className="text-xs text-gray-500">total</span>
+                              </div>
+                              <div className="flex space-x-3 text-xs">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-green-800">
+                                  ✓ {projectStat.completed}
+                                </span>
+                                <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                                  ⟳ {projectStat.inProgress}
+                                </span>
+                                {projectStat.flagged > 0 && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full bg-red-100 text-red-800">
+                                    ⚠ {projectStat.flagged}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex flex-col">
-                              <span className="font-medium">{projectStat.total}</span>
+                              <span className="text-sm font-medium text-gray-900">
+                                {new Date(project.createdAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                })}
+                              </span>
                               <span className="text-xs text-gray-500">
-                                {projectStat.completed} completed
+                                {new Date(project.createdAt).toLocaleDateString('en-US', {
+                                  weekday: 'short'
+                                })} at {new Date(project.createdAt).toLocaleTimeString('en-US', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(project.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex items-center space-x-2">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
                               <Link
                                 href={`/admin/projects/${project.id}`}
-                                className="text-blue-600 hover:text-blue-900"
+                                className="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105"
                               >
-                                View
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                <span className="hidden sm:inline">View</span>
+                                <span className="sm:hidden">View Details</span>
                               </Link>
                               
                               {/* Status Update Dropdown */}
                               <select
                                 value={project.status}
                                 onChange={(e) => handleUpdateProjectStatus(project.id, e.target.value)}
-                                className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                                className="w-full sm:w-auto text-xs border border-gray-200 rounded-lg px-3 py-2 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <option value="DRAFT">Draft</option>
@@ -555,17 +860,35 @@ export default function AdminDashboard() {
                               <button
                                 onClick={() => confirmDeleteProject(project)}
                                 disabled={isDeleting === project.id}
-                                className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                                className="w-full sm:w-auto inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                               >
-                                {isDeleting === project.id ? 'Deleting...' : 'Delete'}
+                                {isDeleting === project.id ? (
+                                  <>
+                                    <svg className="w-4 h-4 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                    </svg>
+                                    <span className="hidden sm:inline">Deleting...</span>
+                                    <span className="sm:hidden">Deleting...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    <span className="hidden sm:inline">Delete</span>
+                                    <span className="sm:hidden">Delete</span>
+                                  </>
+                                )}
                               </button>
                             </div>
                           </td>
-                        </tr>
-                      );
-                    })}
+                        </tr>                        );
+                      })
+                    )}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>
@@ -573,38 +896,84 @@ export default function AdminDashboard() {
 
         {/* Delete Confirmation Modal */}
         {showDeleteModal && projectToDelete && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <div className="mt-3 text-center">
-                <h3 className="text-lg font-medium text-gray-900">Confirm Delete</h3>
-                <div className="mt-2 px-7 py-3">
-                  <p className="text-sm text-gray-500">
-                    Are you sure you want to delete project "{projectToDelete.name}"? This action will permanently remove the project and all associated data including:
-                  </p>
-                  <ul className="text-sm text-gray-500 mt-2 list-disc list-inside">
-                    <li>All survey links</li>
-                    <li>All questions</li>
-                    <li>All vendor relationships</li>
-                    <li>All associated statistics</li>
-                  </ul>
-                  <p className="text-sm text-red-600 mt-2 font-medium">This action cannot be undone.</p>
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+            <div className="relative bg-white/95 backdrop-blur-md border border-gray-200/50 shadow-2xl rounded-2xl max-w-md w-full mx-auto transform transition-all duration-300 scale-100">
+              <div className="p-6">
+                <div className="flex items-center justify-center w-16 h-16 mx-auto bg-gradient-to-br from-red-100 to-red-200 rounded-full mb-4">
+                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
                 </div>
-                <div className="flex justify-center space-x-4 mt-4">
+                
+                <h3 className="text-xl font-bold text-gray-900 text-center mb-2">Delete Project</h3>
+                <p className="text-center text-gray-600 mb-4">
+                  Are you sure you want to permanently delete <span className="font-semibold text-gray-900">"{projectToDelete.name}"</span>?
+                </p>
+                
+                <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-xl p-4 mb-6">
+                  <h4 className="text-sm font-semibold text-red-800 mb-2 flex items-center">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    This will permanently remove:
+                  </h4>
+                  <ul className="text-sm text-red-700 space-y-1">
+                    <li className="flex items-center">
+                      <span className="w-1.5 h-1.5 bg-red-400 rounded-full mr-2"></span>
+                      All survey links
+                    </li>
+                    <li className="flex items-center">
+                      <span className="w-1.5 h-1.5 bg-red-400 rounded-full mr-2"></span>
+                      All questions and responses
+                    </li>
+                    <li className="flex items-center">
+                      <span className="w-1.5 h-1.5 bg-red-400 rounded-full mr-2"></span>
+                      All vendor relationships
+                    </li>
+                    <li className="flex items-center">
+                      <span className="w-1.5 h-1.5 bg-red-400 rounded-full mr-2"></span>
+                      All analytics and statistics
+                    </li>
+                  </ul>
+                  <p className="text-sm font-semibold text-red-800 mt-3 flex items-center">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    This action cannot be undone
+                  </p>
+                </div>
+                
+                <div className="flex space-x-3">
                   <button
                     onClick={() => {
                       setShowDeleteModal(false);
                       setProjectToDelete(null);
                     }}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                    className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-all duration-200 transform hover:scale-105"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleDeleteProject}
                     disabled={isDeleting !== null}
-                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center"
                   >
-                    {isDeleting ? 'Deleting...' : 'Delete'}
+                    {isDeleting ? (
+                      <>
+                        <svg className="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                        </svg>
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete Project
+                      </>
+                    )}
                   </button>
                 </div>
               </div>

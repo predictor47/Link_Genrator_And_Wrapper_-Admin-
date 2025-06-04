@@ -15,6 +15,31 @@ import { Chart as ChartJS,
 import { Doughnut, Bar } from 'react-chartjs-2';
 import ProtectedRoute from '@/lib/protected-route';
 import MetadataAnalyticsDashboard from '@/components/MetadataAnalyticsDashboard';
+import ComprehensiveAnalyticsDashboard from '@/components/ComprehensiveAnalyticsDashboard';
+
+// CSV Export Utilities
+function exportToCSV(data: any[], filename: string, headers: string[]) {
+  const csvContent = [
+    headers.join(','),
+    ...data.map(row => headers.map(header => {
+      const value = row[header] || '';
+      // Escape quotes and wrap in quotes if contains comma
+      return typeof value === 'string' && value.includes(',') 
+        ? `"${value.replace(/"/g, '""')}"` 
+        : value;
+    }).join(','))
+  ].join('\n');
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
 ChartJS.register(
   ArcElement, 
@@ -206,6 +231,7 @@ function ProjectAnalyticsComponent({
   const [rawDataSortField, setRawDataSortField] = useState<string>('createdAt');
   const [rawDataSortDirection, setRawDataSortDirection] = useState<'asc' | 'desc'>('desc');
   const [rawDataLinks, setRawDataLinks] = useState<any[]>([]);
+  const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
   
   // Auto-refresh functionality
   useEffect(() => {
@@ -353,6 +379,7 @@ function ProjectAnalyticsComponent({
     ],
   };
   
+  // Enhanced export functionality with multiple formats
   const exportData = async () => {
     setIsLoading(true);
     setError(null);
@@ -372,7 +399,7 @@ function ProjectAnalyticsComponent({
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
-      a.download = `${projectName}-analytics-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `${projectName}-raw-data-${new Date().toISOString().split('T')[0]}.csv`;
       
       document.body.appendChild(a);
       a.click();
@@ -381,10 +408,109 @@ function ProjectAnalyticsComponent({
       document.body.removeChild(a);
     } catch (err: any) {
       console.error('Error exporting data:', err);
-      setError(err?.response?.data?.message || 'Failed to export data');
+      setError(err?.response?.data?.message || 'Failed to export raw data');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Export analytics summary data
+  const exportAnalyticsSummary = () => {
+    const summaryData = [
+      {
+        metric: 'Total Vendors',
+        value: vendors.length,
+        category: 'Vendors'
+      },
+      {
+        metric: 'Total Links',
+        value: vendors.reduce((sum, v) => sum + (v.stats?.total || 0), 0),
+        category: 'Links'
+      },
+      {
+        metric: 'Completed Links',
+        value: vendors.reduce((sum, v) => sum + (v.stats?.completed || 0), 0),
+        category: 'Links'
+      },
+      {
+        metric: 'Flagged Links',
+        value: vendors.reduce((sum, v) => sum + (v.stats?.flagged || 0), 0),
+        category: 'Links'
+      },
+      {
+        metric: 'Test Links',
+        value: linkTypeData.test,
+        category: 'Link Types'
+      },
+      {
+        metric: 'Live Links',
+        value: linkTypeData.live,
+        category: 'Link Types'
+      },
+      {
+        metric: 'Total Countries',
+        value: geoData.length,
+        category: 'Geography'
+      },
+      {
+        metric: 'Total Flags',
+        value: flags.length,
+        category: 'Flags'
+      }
+    ];
+
+    const headers = ['Metric', 'Value', 'Category'];
+    exportToCSV(summaryData, `${projectName}-analytics-summary-${new Date().toISOString().split('T')[0]}.csv`, headers);
+  };
+
+  // Export vendor performance data
+  const exportVendorPerformance = () => {
+    const vendorData = vendors.map(vendor => ({
+      vendorName: vendor.name,
+      vendorCode: vendor.code,
+      totalLinks: vendor.stats?.total || 0,
+      pendingLinks: vendor.stats?.pending || 0,
+      startedLinks: vendor.stats?.started || 0,
+      completedLinks: vendor.stats?.completed || 0,
+      flaggedLinks: vendor.stats?.flagged || 0,
+      completionRate: vendor.stats?.total ? 
+        ((vendor.stats.completed / vendor.stats.total) * 100).toFixed(2) + '%' : '0%',
+      flagRate: vendor.stats?.total ? 
+        ((vendor.stats.flagged / vendor.stats.total) * 100).toFixed(2) + '%' : '0%'
+    }));
+
+    const headers = ['vendorName', 'vendorCode', 'totalLinks', 'pendingLinks', 'startedLinks', 'completedLinks', 'flaggedLinks', 'completionRate', 'flagRate'];
+    exportToCSV(vendorData, `${projectName}-vendor-performance-${new Date().toISOString().split('T')[0]}.csv`, headers);
+  };
+
+  // Export geographical analytics
+  const exportGeographicalData = () => {
+    const geoExportData = geoData.map(geo => ({
+      country: geo.country,
+      totalResponses: geo.count,
+      completedResponses: geo.completedCount,
+      flaggedResponses: geo.flaggedCount,
+      disqualifiedResponses: geo.disqualifiedCount,
+      completionRate: geo.count ? ((geo.completedCount / geo.count) * 100).toFixed(2) + '%' : '0%',
+      flagRate: geo.count ? ((geo.flaggedCount / geo.count) * 100).toFixed(2) + '%' : '0%'
+    }));
+
+    const headers = ['country', 'totalResponses', 'completedResponses', 'flaggedResponses', 'disqualifiedResponses', 'completionRate', 'flagRate'];
+    exportToCSV(geoExportData, `${projectName}-geographical-analytics-${new Date().toISOString().split('T')[0]}.csv`, headers);
+  };
+
+  // Export flag analysis
+  const exportFlagAnalysis = () => {
+    const flagData = flags.map(flag => ({
+      flagReason: flag.reason,
+      vendorName: flag.vendorName || 'Unknown',
+      linkType: flag.linkType || 'Unknown',
+      flaggedAt: flag.createdAt,
+      flagDate: new Date(flag.createdAt).toLocaleDateString()
+    }));
+
+    const headers = ['flagReason', 'vendorName', 'linkType', 'flaggedAt', 'flagDate'];
+    exportToCSV(flagData, `${projectName}-flag-analysis-${new Date().toISOString().split('T')[0]}.csv`, headers);
   };
   
   // Function to fetch raw data for the Raw Data tab
@@ -491,23 +617,86 @@ function ProjectAnalyticsComponent({
                 Refresh
               </button>
               
-              <button
-                onClick={exportData}
-                disabled={isLoading}
-                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 flex items-center"
-              >
-                {isLoading ? (
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              {/* Enhanced Export Dropdown */}
+              <div className="relative inline-block text-left">
+                <button
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  disabled={isLoading}
+                  className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 flex items-center"
+                >
+                  {isLoading ? (
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  )}
+                  Export Data
+                  <svg className="h-4 w-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                   </svg>
-                ) : (
-                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
+                </button>
+                
+                {showExportMenu && (
+                  <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                    <div className="py-1" role="menu" aria-orientation="vertical">
+                      <button
+                        onClick={() => { exportData(); setShowExportMenu(false); }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
+                      >
+                        <svg className="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Raw Data CSV
+                      </button>
+                      <button
+                        onClick={() => { exportAnalyticsSummary(); setShowExportMenu(false); }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
+                      >
+                        <svg className="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        Analytics Summary
+                      </button>
+                      <button
+                        onClick={() => { exportVendorPerformance(); setShowExportMenu(false); }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
+                      >
+                        <svg className="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Vendor Performance
+                      </button>
+                      <button
+                        onClick={() => { exportGeographicalData(); setShowExportMenu(false); }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
+                      >
+                        <svg className="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Geographic Analytics
+                      </button>
+                      <button
+                        onClick={() => { exportFlagAnalysis(); setShowExportMenu(false); }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
+                      >
+                        <svg className="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                        </svg>
+                        Flag Analysis
+                      </button>
+                    </div>
+                  </div>
                 )}
-                Export Data
-              </button>
+              </div>
             </div>
           </div>
         </div>
@@ -727,6 +916,16 @@ function ProjectAnalyticsComponent({
               }`}
             >
               Metadata Analytics
+            </button>
+            <button
+              onClick={() => setActiveTab('comprehensive')}
+              className={`py-4 px-6 font-medium text-sm ${
+                activeTab === 'comprehensive' 
+                  ? 'border-b-2 border-blue-500 text-blue-600' 
+                  : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Comprehensive Analytics
             </button>
             <button
               onClick={() => setActiveTab('rawdata')}
@@ -1506,6 +1705,12 @@ function ProjectAnalyticsComponent({
         {activeTab === 'metadata' && (
           <div className="space-y-8">
             <MetadataAnalyticsDashboard projectId={projectId} />
+          </div>
+        )}
+
+        {activeTab === 'comprehensive' && (
+          <div className="space-y-8">
+            <ComprehensiveAnalyticsDashboard projectId={projectId} projectName={projectName} />
           </div>
         )}
 

@@ -104,13 +104,13 @@ export default async function handler(
       // If both test and live counts are provided, use those instead
       totalCount = testCount + liveCount;
       
-      if (totalCount < 1 || totalCount > 1000) {
-        return res.status(400).json({ success: false, message: 'Total count must be between 1 and 1000' });
+      if (totalCount < 1 || totalCount > 10000) {
+        return res.status(400).json({ success: false, message: 'Total count must be between 1 and 10,000' });
       }
     } else {
       // Otherwise use the total count value
-      if (!count || count < 1 || count > 1000) {
-        return res.status(400).json({ success: false, message: 'Count must be between 1 and 1000' });
+      if (!count || count < 1 || count > 10000) {
+        return res.status(400).json({ success: false, message: 'Count must be between 1 and 10,000' });
       }
     }
 
@@ -226,19 +226,15 @@ export default async function handler(
     // Execute all creation promises
     const createdLinksResults = await Promise.all(creationPromises);
     
-    // Get the created links with vendor information
+    // Extract the IDs of the newly created links
+    const createdLinkIds = createdLinksResults.map(result => result.data?.id).filter(Boolean);
+    
+    // Get the created links with vendor information by their IDs
     const createdLinksResponse = await amplifyServerService.listSurveyLinksByProject(projectId);
-      // Sort by creation date with null safety
+    
+    // Filter to only include the newly created links and sort them
     const sortedLinks = createdLinksResponse.data
-      .filter((link: SurveyLink) => {
-        // Check if metadata contains originalUrl
-        try {
-          const metadata = link.metadata ? JSON.parse(link.metadata as string) : {};
-          return metadata.originalUrl === originalUrl;
-        } catch (e) {
-          return false;
-        }
-      })
+      .filter((link: SurveyLink) => createdLinkIds.includes(link.id))
       .sort((a: SurveyLink, b: SurveyLink) => {
         // First sort by vendor (links without vendor come first)
         const vendorA = a.vendorId || '';
@@ -254,8 +250,7 @@ export default async function handler(
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
-      })
-      .slice(0, totalCount);
+      });
     
     // Get vendor information for links that have vendors
     const vendorIds = sortedLinks

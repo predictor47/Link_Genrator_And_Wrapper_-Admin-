@@ -563,6 +563,7 @@ export default function ProjectView() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fetch project and related data client-side
   useEffect(() => {
@@ -651,17 +652,75 @@ export default function ProjectView() {
     }
   }, [project?.id]);
 
+  // Add a function to refresh project stats
+  const refreshProjectStats = async () => {
+    if (!id || id === 'new') return;
+    setIsRefreshing(true);
+    try {
+      const amplifyDataService = await getAmplifyDataService();
+      const surveyLinksResult = await amplifyDataService.surveyLinks.listByProject(id as string);
+      const surveyLinks = surveyLinksResult.data || [];
+      
+      // Calculate updated stats
+      const stats = {
+        total: surveyLinks.length,
+        pending: 0,
+        started: 0,
+        inProgress: 0,
+        completed: 0,
+        flagged: 0
+      };
+      
+      surveyLinks.forEach((link: any) => {
+        switch (link.status) {
+          case 'UNUSED':
+            stats.pending++;
+            break;
+          case 'CLICKED':
+            stats.started++;
+            stats.inProgress++;
+            break;
+          case 'COMPLETED':
+            stats.completed++;
+            break;
+          case 'DISQUALIFIED':
+          case 'QUOTA_FULL':
+            stats.flagged++;
+            break;
+        }
+      });
+      
+      // Update project with new stats
+      setProject(prev => prev ? { ...prev, stats } : null);
+    } catch (err) {
+      console.error('Failed to refresh stats:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const fetchVendors = async () => {
     if (!project) return;
     try {
       const amplifyDataService = await getAmplifyDataService();
       const response = await amplifyDataService.vendors.listByProject(project.id);
-      const safeVendors = (response.data || []).map((v: any) => ({
-        id: v.id,
-        name: v.name || 'Unknown Vendor',
-        code: v.code || (v.id ? v.id.substring(0, 8) : ''),
-        createdAt: v.createdAt || new Date().toISOString()
-      }));
+      const safeVendors = (response.data || []).map((v: any) => {
+        // Extract vendor code from settings if it exists
+        let vendorCode = '';
+        try {
+          const settings = v.settings ? JSON.parse(v.settings) : {};
+          vendorCode = settings.code || '';
+        } catch (e) {
+          vendorCode = '';
+        }
+
+        return {
+          id: v.id,
+          name: v.name || 'Unknown Vendor',
+          code: vendorCode || (v.id ? v.id.substring(0, 8) : ''),
+          createdAt: v.createdAt || new Date().toISOString()
+        };
+      });
       setVendors(safeVendors);
     } catch (error) {
       setError('Failed to fetch vendors');
@@ -685,11 +744,36 @@ export default function ProjectView() {
         setIsLoading(false);
         return;
       }
-      await amplifyDataService.vendors.create({
+      
+      // Create vendor with settings containing the code
+      const vendorSettings = JSON.stringify({ code: newVendor.code });
+      const vendorResult = await amplifyDataService.vendors.create({
         name: newVendor.name,
-        code: newVendor.code,
-        projectId: project.id
+        settings: vendorSettings
       });
+
+      if (!vendorResult.data) {
+        setError('Failed to create vendor');
+        setIsLoading(false);
+        return;
+      }
+
+      // Create ProjectVendor relationship
+      const projectVendorResult = await amplifyDataService.projectVendors.create({
+        projectId: project.id,
+        vendorId: vendorResult.data.id,
+        quota: 0,
+        currentCount: 0
+      });
+
+      if (!projectVendorResult.data) {
+        // If ProjectVendor creation fails, try to clean up the vendor
+        await amplifyDataService.vendors.delete(vendorResult.data.id);
+        setError('Failed to create project-vendor relationship');
+        setIsLoading(false);
+        return;
+      }
+
       setNewVendor({ name: '', code: '' });
       setSuccess('Vendor created successfully');
       fetchVendors();
@@ -911,6 +995,15 @@ export default function ProjectView() {
             >
               Wrapper Links
             </button>
+            <Link
+              href={`/admin/projects/${project.id}/analytics`}
+              className="py-4 px-6 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300 inline-flex items-center border-b-2 border-transparent hover:border-gray-300 transition-colors"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Analytics
+            </Link>
           </nav>
         </div>
 
@@ -918,10 +1011,24 @@ export default function ProjectView() {
         {activeTab === 'stats' && (
           <>
             {/* Project Stats with Circular Progress Bars */}
-            <div className="bg-white shadow rounded-lg mb-8">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-800">Project Statistics</h2>
-              </div>
+            <div className="bg-white shadow rounded-lg mb-8">            {/* Header with refresh button */}
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800">Project Statistics</h2>
+              <button
+                onClick={refreshProjectStats}
+                disabled={isRefreshing}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                {isRefreshing ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                ) : (
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                )}
+                {isRefreshing ? 'Refreshing...' : 'Refresh Stats'}
+              </button>
+            </div>
               <div className="p-6">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 justify-items-center">
                   <CircleProgress 

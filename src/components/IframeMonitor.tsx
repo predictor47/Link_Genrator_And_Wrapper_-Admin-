@@ -25,81 +25,137 @@ const IframeMonitor: React.FC<IframeMonitorProps> = ({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Set up monitoring
+  // Set up optimized monitoring with dynamic intervals and multiple detection methods
   useEffect(() => {
     if (!iframeLoaded || !iframeRef.current) return;
     
     let checkCount = 0;
-    const maxChecks = 300; // Check for 5 minutes (300s) max
+    let consecutiveErrors = 0;
+    const maxChecks = 600; // Extend to 10 minutes but with smart intervals
+    let currentInterval = 500; // Start with faster polling (500ms)
+    const maxInterval = 2000; // Max 2 seconds between checks
     
-    // Set up an interval to periodically check the iframe location
-    intervalRef.current = setInterval(() => {
+    // Track last known URL to detect changes faster
+    let lastKnownUrl = '';
+    
+    const performCheck = () => {
       checkCount++;
       try {
         // Try to access the location to check if it's on our domain
         const iframeLocation = iframeRef.current?.contentWindow?.location.href;
         
-        if (iframeLocation && iframeLocation.includes('protegeresearchsurvey.com')) {
-          // Survey has redirected to one of our completion pages
-          clearInterval(intervalRef.current!);
+        // Reset error count on successful access
+        consecutiveErrors = 0;
+        
+        // Check if URL has changed
+        if (iframeLocation !== lastKnownUrl) {
+          lastKnownUrl = iframeLocation || '';
           
-          // Determine completion status based on URL
-          let status = 'COMPLETED';
-          if (iframeLocation.includes('/quota')) {
-            status = 'QUOTA_FULL';
-          } else if (iframeLocation.includes('/not-eligible') || iframeLocation.includes('/disqualified')) {
-            status = 'DISQUALIFIED';
+          // If redirected to our completion domain, process immediately
+          if (iframeLocation && iframeLocation.includes('protegeresearchsurvey.com')) {
+            clearInterval(intervalRef.current!);
+            
+            // Determine completion status based on URL with improved detection
+            let status = 'COMPLETED';
+            const urlLower = iframeLocation.toLowerCase();
+            
+            if (urlLower.includes('/quota') || urlLower.includes('quota-full')) {
+              status = 'QUOTA_FULL';
+            } else if (urlLower.includes('/not-eligible') || urlLower.includes('/disqualified') || 
+                      urlLower.includes('/screened') || urlLower.includes('/terminate')) {
+              status = 'DISQUALIFIED';
+            } else if (urlLower.includes('/thank') || urlLower.includes('/complete') || 
+                      urlLower.includes('/finish') || urlLower.includes('/end')) {
+              status = 'COMPLETED';
+            }
+            
+            setCurrentStatus(status);
+            handleStatusChange(status, { completionUrl: iframeLocation });
+            return;
           }
-          
-          setCurrentStatus(status);
-          handleStatusChange(status, { completionUrl: iframeLocation });
         }
+        
+        // Adjust polling interval based on activity
+        if (checkCount < 60) {
+          // First minute: check every 500ms (high activity period)
+          currentInterval = 500;
+        } else if (checkCount < 180) {
+          // Next 2 minutes: check every 1s
+          currentInterval = 1000;
+        } else {
+          // After 3 minutes: check every 2s
+          currentInterval = 2000;
+        }
+        
       } catch (error) {
-        // If we get a cross-origin error, the iframe is on a different domain
-        // This is expected when the iframe is showing the survey
+        consecutiveErrors++;
+        
+        // If we get many consecutive errors, slow down polling to reduce CPU usage
+        if (consecutiveErrors > 10) {
+          currentInterval = Math.min(currentInterval * 1.5, maxInterval);
+        }
+        
+        // This is expected when the iframe is showing the survey (cross-origin)
         // We'll just continue monitoring
       }
       
       // Stop monitoring after max checks
       if (checkCount >= maxChecks) {
         clearInterval(intervalRef.current!);
+        console.log('IframeMonitor: Stopped monitoring after maximum checks reached');
+        return;
       }
-    }, 1000);
+      
+      // Schedule next check with dynamic interval
+      intervalRef.current = setTimeout(performCheck, currentInterval);
+    };
+    
+    // Start monitoring
+    intervalRef.current = setTimeout(performCheck, currentInterval);
     
     return () => {
       if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+        clearTimeout(intervalRef.current);
       }
     };
   }, [iframeLoaded, projectId, uid]);
 
-  // Handle status changes and report to backend
+  // Handle status changes and report to backend with optimized API calls
   const handleStatusChange = async (status: string, data?: any) => {
     try {
-      // Collect all available metadata
+      // Avoid duplicate API calls by tracking the last sent status
+      if (currentStatus === status) {
+        console.log('IframeMonitor: Skipping duplicate status update:', status);
+        return;
+      }
+      
+      // Collect essential metadata only to reduce payload size
       const metadata = {
         completionTimestamp: new Date().toISOString(),
-        browser: navigator.userAgent,
-        screenSize: {
-          width: window.screen.width,
-          height: window.screen.height,
-          colorDepth: window.screen.colorDepth,
-        },
+        browser: navigator.userAgent.substring(0, 200), // Truncate to reduce size
+        screenSize: `${window.screen.width}x${window.screen.height}`,
         language: navigator.language,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         completionUrl: data?.completionUrl,
-        referrer: document.referrer,
+        referrer: document.referrer.substring(0, 200), // Truncate to reduce size
       };
       
-      // Update the survey link status via API
-      await axios.post('/api/links/update-status', {
+      // Use Promise.race to implement timeout for API calls
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('API call timeout')), 5000)
+      );
+      
+      const apiPromise = axios.post('/api/links/update-status', {
         projectId,
         uid,
         status,
         metadata
       });
       
-      // Notify parent component
+      // Race between API call and timeout
+      await Promise.race([apiPromise, timeoutPromise]);
+      
+      // Notify parent component immediately (don't wait for API)
       onStatusChange(status, {
         metadata,
         timestamp: Date.now()
@@ -107,6 +163,12 @@ const IframeMonitor: React.FC<IframeMonitorProps> = ({
       
     } catch (error) {
       console.error('Failed to update survey status:', error);
+      
+      // Still notify parent component even if API fails
+      onStatusChange(status, {
+        metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+        timestamp: Date.now()
+      });
     }
   };
 

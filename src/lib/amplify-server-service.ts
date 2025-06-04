@@ -602,6 +602,121 @@ class AmplifyServerService {
     const result = await this.makeGraphQLRequest<{ updateProjectVendor: any }>(query, { input });
     return { data: result.data?.updateProjectVendor || null };
   }
+
+  // Additional utility methods
+  async listSurveyLinks(filter?: any): Promise<{ data: SurveyLink[] }> {
+    const query = `
+      query ListSurveyLinks($filter: ModelSurveyLinkFilterInput) {
+        listSurveyLinks(filter: $filter) {
+          items {
+            id
+            projectId
+            uid
+            vendorId
+            status
+            metadata
+            createdAt
+            updatedAt
+            clickedAt
+            completedAt
+            ipAddress
+            userAgent
+            geoData
+          }
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ listSurveyLinks: { items: SurveyLink[] } }>(query, { filter });
+    return { data: result.data?.listSurveyLinks?.items || [] };
+  }
+
+  async listFlagsByProject(projectId: string): Promise<{ data: any[] }> {
+    // Get all survey links for the project and analyze for flags
+    const surveyLinksResult = await this.listSurveyLinks({
+      projectId: { eq: projectId }
+    });
+
+    const flags = [];
+    for (const link of surveyLinksResult.data) {
+      if (link.metadata) {
+        try {
+          const metadata = typeof link.metadata === 'string' ? JSON.parse(link.metadata) : link.metadata;
+          
+          // Check for suspicious patterns
+          if (metadata.device?.isMobile === false && metadata.device?.isDesktop === false) {
+            flags.push({
+              id: `flag-${link.id}-device`,
+              linkId: link.id,
+              type: 'SUSPICIOUS_DEVICE',
+              message: 'Unknown device type detected',
+              severity: 'MEDIUM',
+              createdAt: link.createdAt
+            });
+          }
+
+          if (metadata.security?.vpnDetected) {
+            flags.push({
+              id: `flag-${link.id}-vpn`,
+              linkId: link.id,
+              type: 'VPN_DETECTED',
+              message: 'VPN or proxy detected',
+              severity: 'HIGH',
+              createdAt: link.createdAt
+            });
+          }
+
+          if (metadata.behavior?.timeOnPage && metadata.behavior.timeOnPage < 5) {
+            flags.push({
+              id: `flag-${link.id}-speed`,
+              linkId: link.id,
+              type: 'SUSPICIOUS_SPEED',
+              message: 'Completed survey too quickly',
+              severity: 'MEDIUM',
+              createdAt: link.createdAt
+            });
+          }
+
+          if (metadata.security?.botScore && metadata.security.botScore > 0.7) {
+            flags.push({
+              id: `flag-${link.id}-bot`,
+              linkId: link.id,
+              type: 'BOT_DETECTED',
+              message: 'High bot probability detected',
+              severity: 'HIGH',
+              createdAt: link.createdAt
+            });
+          }
+        } catch (e) {
+          // Ignore parsing errors
+        }
+      }
+    }
+
+    return { data: flags };
+  }
+
+  async listVendorsByProject(projectId: string): Promise<{ data: any[] }> {
+    // Get project vendors and their vendor details
+    const projectVendorsResult = await this.listProjectVendors({
+      projectId: { eq: projectId }
+    });
+
+    const vendorDetails = [];
+    for (const pv of projectVendorsResult.data) {
+      const vendorResult = await this.getVendor(pv.vendorId);
+      if (vendorResult.data) {
+        vendorDetails.push({
+          ...vendorResult.data,
+          quota: pv.quota,
+          currentCount: pv.currentCount,
+          projectVendorId: pv.id
+        });
+      }
+    }
+
+    return { data: vendorDetails };
+  }
 }
 
 // Create a singleton instance

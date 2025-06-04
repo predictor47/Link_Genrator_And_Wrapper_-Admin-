@@ -188,7 +188,7 @@ export const mcpIntegration = {
 /**
  * Export all helper functions
  */
-export default {
+const amplifyHelpers = {
   dataAnalysis,
   securityAnalysis,
   codeQuality,
@@ -197,3 +197,5 @@ export default {
   dataService: getAmplifyDataService,
   securityService
 };
+
+export default amplifyHelpers;

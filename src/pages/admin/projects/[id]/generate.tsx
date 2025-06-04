@@ -421,12 +421,58 @@ export default function GeneratePage() {
     
     const fetchVendors = async () => {
       try {
-        const response = await axios.get(`/api/vendors/list?projectId=${project?.id}`);
-        if (response.data.success) {
-          setVendors(response.data.vendors);
-        }
+        console.log('🔍 Fetching vendors for project:', project.id);
+        
+        // Use client-side Amplify service to be consistent with main project page
+        const amplifyDataService = await getAmplifyDataService();
+        const vendorsResult = await amplifyDataService.vendors.listByProject(project.id);
+        const vendorsData = vendorsResult.data || [];
+        
+        // Process vendors to extract code from settings
+        const processedVendors = vendorsData.map((vendor: any) => {
+          let vendorCode = '';
+          try {
+            const settings = vendor.settings ? JSON.parse(vendor.settings) : {};
+            vendorCode = settings.code || '';
+          } catch (e) {
+            vendorCode = '';
+          }
+
+          return {
+            id: vendor.id,
+            name: vendor.name || '',
+            code: vendorCode || (vendor.id ? vendor.id.substring(0, 8) : '')
+          };
+        });
+        
+        setVendors(processedVendors);
+        console.log('🔍 Vendors set via client-side service:', processedVendors);
+        
       } catch (error) {
-        console.error('Failed to fetch vendors:', error);
+        console.error('🔍 Failed to fetch vendors via client-side service:', error);
+        
+        // Fallback to server-side API route
+        try {
+          console.log('🔍 Trying server-side API fallback...');
+          const response = await axios.get(`/api/vendors/list?projectId=${project?.id}`);
+          console.log('🔍 Vendors API response:', response.data);
+          
+          if (response.data.success) {
+            setVendors(response.data.vendors);
+            console.log('🔍 Vendors set via server-side API:', response.data.vendors);
+          } else {
+            console.warn('🔍 Vendors API returned unsuccessful:', response.data);
+          }
+          
+          // Also try the debug endpoint for troubleshooting
+          if (response.data.vendors.length === 0) {
+            console.log('🔍 No vendors found, trying debug endpoint...');
+            const debugResponse = await axios.get(`/api/debug/vendors?projectId=${project?.id}`);
+            console.log('🔍 Debug response:', debugResponse.data);
+          }
+        } catch (apiError) {
+          console.error('🔍 Server-side API also failed:', apiError);
+        }
       }
     };
     
@@ -590,20 +636,51 @@ export default function GeneratePage() {
     setAddingVendor(true);
     
     try {
-      const response = await axios.post('/api/vendors/create', {
-        projectId: project?.id,
+      // Use client-side Amplify service to be consistent with main project page
+      const amplifyDataService = await getAmplifyDataService();
+      
+      // Create vendor with settings containing the code
+      const vendorSettings = JSON.stringify({ code: vendorCode });
+      const vendorResult = await amplifyDataService.vendors.create({
+        name: vendorName,
+        settings: vendorSettings
+      });
+
+      if (!vendorResult.data) {
+        setError('Failed to create vendor');
+        return;
+      }
+
+      // Create ProjectVendor relationship
+      const projectVendorResult = await amplifyDataService.projectVendors.create({
+        projectId: project!.id,
+        vendorId: vendorResult.data.id,
+        quota: 0,
+        currentCount: 0
+      });
+
+      if (!projectVendorResult.data) {
+        // If ProjectVendor creation fails, try to clean up the vendor
+        await amplifyDataService.vendors.delete(vendorResult.data.id);
+        setError('Failed to create project-vendor relationship');
+        return;
+      }
+
+      // Add the new vendor to the local state
+      const newVendor = {
+        id: vendorResult.data.id,
         name: vendorName,
         code: vendorCode
-      });
+      };
       
-      if (response.data.success) {
-        setVendors([...vendors, response.data.vendor]);
-        setVendorName('');
-        setVendorCode('');
-        setShowVendorForm(false);
-      }
+      setVendors([...vendors, newVendor]);
+      setVendorName('');
+      setVendorCode('');
+      setShowVendorForm(false);
+      
     } catch (error: any) {
-      setError(error.response?.data?.message || 'Failed to add vendor');
+      console.error('Error creating vendor:', error);
+      setError(error.message || 'Failed to add vendor');
     } finally {
       setAddingVendor(false);
     }
