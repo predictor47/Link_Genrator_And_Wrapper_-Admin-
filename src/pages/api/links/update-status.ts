@@ -1,5 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getAmplifyServerService } from '@/lib/amplify-server-service';
+import { domainBlacklistService } from '@/lib/domain-blacklist';
+import { honeypotService } from '@/lib/honeypot-service';
+import { flatlineDetectionService } from '@/lib/flatline-detection';
+import { genAIDetectionService } from '@/lib/genai-detection';
 
 // Define proper types that match our server service
 interface Vendor {

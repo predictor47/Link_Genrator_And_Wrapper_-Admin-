@@ -78,6 +78,61 @@ interface ProjectVendor {
   updatedAt: string;
 }
 
+interface RawDataRecord {
+  id: string;
+  projectId: string;
+  uid: string;
+  surveyData?: any;
+  presurveyAnswers?: any;
+  completionData?: any;
+  enhancedFingerprint?: any;
+  behavioralData?: any;
+  securityContext?: any;
+  geoLocationData?: any;
+  vpnDetectionData?: any;
+  ipAddress?: string;
+  userAgent?: string;
+  submittedAt: string;
+  processingFlags?: any;
+  dataQualityScore?: number;
+  timeOnSurvey?: number;
+  deviceType?: string;
+  browserType?: string;
+  locationAccuracy?: string;
+  securityRisk?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface PresurveyAnswer {
+  id: string;
+  projectId: string;
+  uid: string;
+  questionId: string;
+  questionText: string;
+  answer: string;
+  answerType?: string;
+  metadata?: any;
+  ipAddress?: string;
+  userAgent?: string;
+  submittedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Flag {
+  id: string;
+  surveyLinkId: string;
+  projectId: string;
+  reason: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  message?: string;
+  metadata?: any;
+  resolvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface GraphQLResponse<T> {
   data?: T;
   errors?: Array<{ message: string }>;
@@ -348,6 +403,31 @@ class AmplifyServerService {
     const result = await this.makeGraphQLRequest<{ listSurveyLinks: { items: SurveyLink[] } }>(query, { filter });
     const items = result.data?.listSurveyLinks?.items || [];
     return { data: items.length > 0 ? items[0] : null };
+  }
+
+  async getSurveyLinkById(id: string): Promise<{ data: SurveyLink | null }> {
+    const query = `
+      query GetSurveyLink($id: ID!) {
+        getSurveyLink(id: $id) {
+          id
+          projectId
+          uid
+          vendorId
+          status
+          metadata
+          createdAt
+          updatedAt
+          clickedAt
+          completedAt
+          ipAddress
+          userAgent
+          geoData
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ getSurveyLink: SurveyLink }>(query, { id });
+    return { data: result.data?.getSurveyLink || null };
   }
 
   async updateSurveyLink(id: string, input: {
@@ -716,6 +796,254 @@ class AmplifyServerService {
     }
 
     return { data: vendorDetails };
+  }
+
+  // Enhanced data collection methods
+  async createRawDataRecord(input: Omit<RawDataRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<{ data: RawDataRecord | null }> {
+    const query = `
+      mutation CreateRawDataRecord($input: CreateRawDataRecordInput!) {
+        createRawDataRecord(input: $input) {
+          id
+          projectId
+          uid
+          surveyData
+          presurveyAnswers
+          completionData
+          enhancedFingerprint
+          behavioralData
+          securityContext
+          geoLocationData
+          vpnDetectionData
+          ipAddress
+          userAgent
+          submittedAt
+          processingFlags
+          dataQualityScore
+          timeOnSurvey
+          deviceType
+          browserType
+          locationAccuracy
+          securityRisk
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ createRawDataRecord: RawDataRecord }>(query, { input });
+    return { data: result.data?.createRawDataRecord || null };
+  }
+
+  async getRawDataRecord(id: string): Promise<{ data: RawDataRecord | null }> {
+    const query = `
+      query GetRawDataRecord($id: ID!) {
+        getRawDataRecord(id: $id) {
+          id
+          projectId
+          uid
+          surveyData
+          presurveyAnswers
+          completionData
+          enhancedFingerprint
+          behavioralData
+          securityContext
+          geoLocationData
+          vpnDetectionData
+          ipAddress
+          userAgent
+          submittedAt
+          processingFlags
+          dataQualityScore
+          timeOnSurvey
+          deviceType
+          browserType
+          locationAccuracy
+          securityRisk
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ getRawDataRecord: RawDataRecord }>(query, { id });
+    return { data: result.data?.getRawDataRecord || null };
+  }
+
+  async listRawDataRecords(filter?: any): Promise<{ data: RawDataRecord[] }> {
+    const query = `
+      query ListRawDataRecords($filter: ModelRawDataRecordFilterInput) {
+        listRawDataRecords(filter: $filter) {
+          items {
+            id
+            projectId
+            uid
+            surveyData
+            presurveyAnswers
+            completionData
+            enhancedFingerprint
+            behavioralData
+            securityContext
+            geoLocationData
+            vpnDetectionData
+            ipAddress
+            userAgent
+            submittedAt
+            processingFlags
+            dataQualityScore
+            timeOnSurvey
+            deviceType
+            browserType
+            locationAccuracy
+            securityRisk
+            createdAt
+            updatedAt
+          }
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ listRawDataRecords: { items: RawDataRecord[] } }>(query, { filter });
+    return { data: result.data?.listRawDataRecords?.items || [] };
+  }
+
+  async listRawDataRecordsByProject(projectId: string): Promise<{ data: RawDataRecord[] }> {
+    const filter = { projectId: { eq: projectId } };
+    return this.listRawDataRecords(filter);
+  }
+
+  async createPresurveyAnswer(input: Omit<PresurveyAnswer, 'id' | 'createdAt' | 'updatedAt'>): Promise<{ data: PresurveyAnswer | null }> {
+    const query = `
+      mutation CreatePresurveyAnswer($input: CreatePresurveyAnswerInput!) {
+        createPresurveyAnswer(input: $input) {
+          id
+          projectId
+          uid
+          questionId
+          questionText
+          answer
+          answerType
+          metadata
+          ipAddress
+          userAgent
+          submittedAt
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ createPresurveyAnswer: PresurveyAnswer }>(query, { input });
+    return { data: result.data?.createPresurveyAnswer || null };
+  }
+
+  async listPresurveyAnswers(filter?: any): Promise<{ data: PresurveyAnswer[] }> {
+    const query = `
+      query ListPresurveyAnswers($filter: ModelPresurveyAnswerFilterInput) {
+        listPresurveyAnswers(filter: $filter) {
+          items {
+            id
+            projectId
+            uid
+            questionId
+            questionText
+            answer
+            answerType
+            metadata
+            ipAddress
+            userAgent
+            submittedAt
+            createdAt
+            updatedAt
+          }
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ listPresurveyAnswers: { items: PresurveyAnswer[] } }>(query, { filter });
+    return { data: result.data?.listPresurveyAnswers?.items || [] };
+  }
+
+  async listPresurveyAnswersByProject(projectId: string): Promise<{ data: PresurveyAnswer[] }> {
+    const filter = { projectId: { eq: projectId } };
+    return this.listPresurveyAnswers(filter);
+  }
+
+  async listPresurveyAnswersByUid(uid: string): Promise<{ data: PresurveyAnswer[] }> {
+    const filter = { uid: { eq: uid } };
+    return this.listPresurveyAnswers(filter);
+  }
+
+  async createFlag(input: Omit<Flag, 'id' | 'createdAt' | 'updatedAt'>): Promise<{ data: Flag | null }> {
+    const query = `
+      mutation CreateFlag($input: CreateFlagInput!) {
+        createFlag(input: $input) {
+          id
+          surveyLinkId
+          projectId
+          reason
+          severity
+          message
+          metadata
+          resolvedAt
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ createFlag: Flag }>(query, { input });
+    return { data: result.data?.createFlag || null };
+  }
+
+  async updateFlag(id: string, input: Partial<Flag>): Promise<{ data: Flag | null }> {
+    const query = `
+      mutation UpdateFlag($input: UpdateFlagInput!) {
+        updateFlag(input: $input) {
+          id
+          surveyLinkId
+          projectId
+          reason
+          severity
+          message
+          metadata
+          resolvedAt
+          createdAt
+          updatedAt
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ updateFlag: Flag }>(query, { input: { id, ...input } });
+    return { data: result.data?.updateFlag || null };
+  }
+
+  async listFlags(filter?: any): Promise<{ data: Flag[] }> {
+    const query = `
+      query ListFlags($filter: ModelFlagFilterInput) {
+        listFlags(filter: $filter) {
+          items {
+            id
+            surveyLinkId
+            projectId
+            reason
+            severity
+            message
+            metadata
+            resolvedAt
+            createdAt
+            updatedAt
+          }
+        }
+      }
+    `;
+
+    const result = await this.makeGraphQLRequest<{ listFlags: { items: Flag[] } }>(query, { filter });
+    return { data: result.data?.listFlags?.items || [] };
+  }
+
+  async listFlagsByProjectEnhanced(projectId: string): Promise<{ data: Flag[] }> {
+    const filter = { projectId: { eq: projectId } };
+    return this.listFlags(filter);
   }
 }
 

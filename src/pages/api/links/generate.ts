@@ -35,13 +35,15 @@ interface Vendor {
 type GenerateLinksRequest = {
   projectId: string;
   originalUrl: string;
-  count: number;
+  count?: number;
   vendorId?: string;
+  vendorIds?: string[]; // Support multiple vendors
   linkType: 'TEST' | 'LIVE';
   geoRestriction?: string[];
-  testCount?: number; // For split between test/live links
-  liveCount?: number; // For split between test/live links
-  useDevelopmentDomain?: boolean; // For localhost development
+  testCount?: number; // Per vendor test count
+  liveCount?: number; // Per vendor live count
+  useDevelopmentDomain?: boolean;
+  generatePerVendor?: boolean; // Flag to generate specified counts for EACH vendor
 };
 
 // Domain configuration
@@ -74,11 +76,13 @@ export default async function handler(
       originalUrl, 
       count, 
       vendorId, 
+      vendorIds,
       linkType, 
       geoRestriction,
       testCount,
       liveCount,
-      useDevelopmentDomain 
+      useDevelopmentDomain,
+      generatePerVendor
     } = req.body as GenerateLinksRequest;
 
     // Get client IP for security logging
@@ -86,140 +90,307 @@ export default async function handler(
                req.socket.remoteAddress || 
                'unknown';
     
+    // Determine which vendors to generate links for
+    const targetVendorIds: string[] = [];
+    if (generatePerVendor && vendorIds && vendorIds.length > 0) {
+      targetVendorIds.push(...vendorIds);
+    } else if (vendorId) {
+      targetVendorIds.push(vendorId);
+    }
+    
+    // Calculate total expected links for logging
+    let expectedTotalLinks = 0;
+    if (generatePerVendor && targetVendorIds.length > 0) {
+      // Per vendor generation: multiply counts by number of vendors
+      if (testCount !== undefined && liveCount !== undefined) {
+        expectedTotalLinks = (testCount + liveCount) * targetVendorIds.length;
+      } else if (count) {
+        expectedTotalLinks = count * targetVendorIds.length;
+      }
+    } else {
+      // Traditional single generation
+      expectedTotalLinks = count || (testCount && liveCount ? testCount + liveCount : 0);
+    }
+    
     // Log security event
     await securityService.logSecurityEvent('LINK_GENERATION_ATTEMPT', {
       projectId,
-      vendorId,
+      vendorIds: targetVendorIds,
       ip,
-      count: count || (testCount && liveCount ? testCount + liveCount : 0)
+      expectedCount: expectedTotalLinks,
+      generatePerVendor
     });
 
     if (!projectId || !originalUrl) {
       return res.status(400).json({ success: false, message: 'Missing required parameters' });
     }
 
-    // Validate count logic
-    let totalCount = count;
-    if (testCount !== undefined && liveCount !== undefined) {
-      // If both test and live counts are provided, use those instead
-      totalCount = testCount + liveCount;
+    // Enhanced validation for new per-vendor generation logic
+    if (generatePerVendor) {
+      if (!vendorIds || vendorIds.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'vendorIds array is required when generatePerVendor is true' 
+        });
+      }
       
-      if (totalCount < 1 || totalCount > 10000) {
-        return res.status(400).json({ success: false, message: 'Total count must be between 1 and 10,000' });
+      // Validate count logic for per-vendor generation
+      if (testCount !== undefined && liveCount !== undefined) {
+        if (testCount < 0 || liveCount < 0 || (testCount + liveCount) > 5000) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Per-vendor counts must be non-negative and total ≤ 5,000 per vendor' 
+          });
+        }
+      } else if (count !== undefined) {
+        if (count < 1 || count > 5000) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Per-vendor count must be between 1 and 5,000' 
+          });
+        }
+      } else {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Either count or both testCount and liveCount must be provided' 
+        });
+      }
+      
+      // Validate total across all vendors doesn't exceed system limits
+      const totalLinks = expectedTotalLinks;
+      if (totalLinks > 50000) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Total links across all vendors cannot exceed 50,000' 
+        });
       }
     } else {
-      // Otherwise use the total count value
-      if (!count || count < 1 || count > 10000) {
-        return res.status(400).json({ success: false, message: 'Count must be between 1 and 10,000' });
+      // Original validation logic for single generation
+      if (testCount !== undefined && liveCount !== undefined) {
+        const totalCount = testCount + liveCount;
+        if (totalCount < 1 || totalCount > 10000) {
+          return res.status(400).json({ success: false, message: 'Total count must be between 1 and 10,000' });
+        }
+      } else if (count !== undefined) {
+        if (count < 1 || count > 10000) {
+          return res.status(400).json({ success: false, message: 'Count must be between 1 and 10,000' });
+        }
+      } else {
+        return res.status(400).json({ success: false, message: 'Count or both testCount and liveCount must be provided' });
       }
     }
 
     // Validate project exists
     const projectResult = await amplifyServerService.getProject(projectId);
-    
-    // Fix: Extract project correctly by accessing .data property
     const project = projectResult.data;
 
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
-    // Validate vendor if provided
-    if (vendorId) {
-      const vendorResult = await amplifyServerService.getVendor(vendorId);
-      const vendor = vendorResult?.data;
 
-      if (!vendor) {
-        return res.status(404).json({ success: false, message: 'Vendor not found' });
-      }
+    // Validate vendors if provided
+    const validatedVendors: Record<string, { name: string; code: string }> = {};
+    
+    if (targetVendorIds.length > 0) {
+      for (const vId of targetVendorIds) {
+        const vendorResult = await amplifyServerService.getVendor(vId);
+        const vendor = vendorResult?.data;
 
-      // Check if vendor belongs to this project by checking the ProjectVendor relationship
-      const projectVendorResult = await amplifyServerService.listProjectVendors({
-        and: [
-          { projectId: { eq: projectId } },
-          { vendorId: { eq: vendorId } }
-        ]
-      });
+        if (!vendor) {
+          return res.status(404).json({ 
+            success: false, 
+            message: `Vendor not found: ${vId}` 
+          });
+        }
 
-      if (!projectVendorResult.data || projectVendorResult.data.length === 0) {
-        return res.status(400).json({ success: false, message: 'Vendor does not belong to this project' });
+        // Check if vendor belongs to this project
+        const projectVendorResult = await amplifyServerService.listProjectVendors({
+          and: [
+            { projectId: { eq: projectId } },
+            { vendorId: { eq: vId } }
+          ]
+        });
+
+        if (!projectVendorResult.data || projectVendorResult.data.length === 0) {
+          return res.status(400).json({ 
+            success: false, 
+            message: `Vendor ${vId} does not belong to this project` 
+          });
+        }
+
+        // Extract vendor code
+        let vendorCode = '';
+        if (vendor.settings) {
+          try {
+            const settings = JSON.parse(vendor.settings as string);
+            vendorCode = settings.code || '';
+          } catch (e) {
+            console.error('Error parsing vendor settings:', e);
+          }
+        }
+
+        validatedVendors[vId] = {
+          name: vendor.name,
+          code: vendorCode
+        };
       }
     }
 
-    // Generate links
-    const links = [];
+    // Generate links with enhanced per-vendor logic
     const creationPromises = [];
     
-    // Get vendor code for UID generation if vendor is specified
-    let vendorCode = '';
-    if (vendorId) {
-      const vendorResult = await amplifyServerService.getVendor(vendorId);
-      const vendor = vendorResult?.data;
-      if (vendor && vendor.settings) {
-        try {
-          const settings = JSON.parse(vendor.settings as string);
-          vendorCode = settings.code || '';
-        } catch (e) {
-          console.error('Error parsing vendor settings:', e);
+    if (generatePerVendor && targetVendorIds.length > 0) {
+      // Generate specified counts for EACH vendor
+      for (const vId of targetVendorIds) {
+        const vendorInfo = validatedVendors[vId];
+        
+        if (testCount !== undefined && liveCount !== undefined) {
+          // Generate TEST links for this vendor
+          for (let i = 0; i < testCount; i++) {
+            const baseUid = nanoid(8);
+            const uid = vendorInfo.code ? 
+              `${vendorInfo.code}_TEST_${baseUid}` : 
+              `V${vId.slice(-4)}_TEST_${baseUid}`;
+              
+            const linkData = {
+              projectId,
+              uid,
+              vendorId: vId,
+              status: 'UNUSED',
+              metadata: JSON.stringify({
+                originalUrl,
+                linkType: 'TEST',
+                geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined,
+                vendorName: vendorInfo.name
+              })
+            };
+            
+            creationPromises.push(amplifyServerService.createSurveyLink(linkData));
+          }
+
+          // Generate LIVE links for this vendor
+          for (let i = 0; i < liveCount; i++) {
+            const baseUid = nanoid(8);
+            const uid = vendorInfo.code ? 
+              `${vendorInfo.code}_LIVE_${baseUid}` : 
+              `V${vId.slice(-4)}_LIVE_${baseUid}`;
+              
+            const linkData = {
+              projectId,
+              uid,
+              vendorId: vId,
+              status: 'UNUSED',
+              metadata: JSON.stringify({
+                originalUrl,
+                linkType: 'LIVE',
+                geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined,
+                vendorName: vendorInfo.name
+              })
+            };
+            
+            creationPromises.push(amplifyServerService.createSurveyLink(linkData));
+          }
+        } else if (count !== undefined) {
+          // Generate the specified count of links for this vendor
+          for (let i = 0; i < count; i++) {
+            const baseUid = nanoid(8);
+            const linkTypePrefix = linkType || 'LIVE';
+            const uid = vendorInfo.code ? 
+              `${vendorInfo.code}_${linkTypePrefix}_${baseUid}` : 
+              `V${vId.slice(-4)}_${linkTypePrefix}_${baseUid}`;
+              
+            const linkData = {
+              projectId,
+              uid,
+              vendorId: vId,
+              status: 'UNUSED',
+              metadata: JSON.stringify({
+                originalUrl,
+                linkType: linkType || 'LIVE',
+                geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined,
+                vendorName: vendorInfo.name
+              })
+            };
+            
+            creationPromises.push(amplifyServerService.createSurveyLink(linkData));
+          }
         }
       }
-    }
-    
-      // Handle mixed TEST/LIVE links if counts are provided
-    if (testCount !== undefined && liveCount !== undefined) {
-      // Generate TEST links
-      for (let i = 0; i < testCount; i++) {
-        const baseUid = nanoid(8); // Generate a shorter base ID
-        const uid = vendorCode ? `${vendorCode}_TEST_${baseUid}` : `TEST_${baseUid}`;
-        const linkData = {
-          projectId,
-          uid,
-          vendorId: vendorId || undefined,
-          status: 'UNUSED',
-          metadata: JSON.stringify({
-            originalUrl,
-            linkType: 'TEST',
-            geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined
-          })
-        };
-        
-        creationPromises.push(amplifyServerService.createSurveyLink(linkData));
-      }
+    } else {
+      // Original single vendor/no vendor generation logic
+      const singleVendorId = targetVendorIds.length > 0 ? targetVendorIds[0] : undefined;
+      const singleVendorInfo = singleVendorId ? validatedVendors[singleVendorId] : null;
+      
+      if (testCount !== undefined && liveCount !== undefined) {
+        // Generate TEST links
+        for (let i = 0; i < testCount; i++) {
+          const baseUid = nanoid(8);
+          const uid = singleVendorInfo?.code ? 
+            `${singleVendorInfo.code}_TEST_${baseUid}` : 
+            `TEST_${baseUid}`;
+            
+          const linkData = {
+            projectId,
+            uid,
+            vendorId: singleVendorId || undefined,
+            status: 'UNUSED',
+            metadata: JSON.stringify({
+              originalUrl,
+              linkType: 'TEST',
+              geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined,
+              vendorName: singleVendorInfo?.name
+            })
+          };
+          
+          creationPromises.push(amplifyServerService.createSurveyLink(linkData));
+        }
+
         // Generate LIVE links
-      for (let i = 0; i < liveCount; i++) {
-        const baseUid = nanoid(8); // Generate a shorter base ID
-        const uid = vendorCode ? `${vendorCode}_LIVE_${baseUid}` : `LIVE_${baseUid}`;
-        const linkData = {
-          projectId,
-          uid,
-          vendorId: vendorId || undefined,
-          status: 'UNUSED',
-          metadata: JSON.stringify({
-            originalUrl,
-            linkType: 'LIVE',
-            geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined
-          })
-        };
-        
-        creationPromises.push(amplifyServerService.createSurveyLink(linkData));
-      }    } else {
-      // Original behavior - generate all links of the same type
-      for (let i = 0; i < count; i++) {
-        const baseUid = nanoid(8); // Generate a shorter base ID
-        const linkType_prefix = linkType || 'LIVE';
-        const uid = vendorCode ? `${vendorCode}_${linkType_prefix}_${baseUid}` : `${linkType_prefix}_${baseUid}`;
-        const linkData = {
-          projectId,
-          uid,
-          vendorId: vendorId || undefined,
-          status: 'UNUSED',
-          metadata: JSON.stringify({
-            originalUrl,
-            linkType: linkType || 'LIVE',
-            geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined
-          })
-        };
-        
-        creationPromises.push(amplifyServerService.createSurveyLink(linkData));
+        for (let i = 0; i < liveCount; i++) {
+          const baseUid = nanoid(8);
+          const uid = singleVendorInfo?.code ? 
+            `${singleVendorInfo.code}_LIVE_${baseUid}` : 
+            `LIVE_${baseUid}`;
+            
+          const linkData = {
+            projectId,
+            uid,
+            vendorId: singleVendorId || undefined,
+            status: 'UNUSED',
+            metadata: JSON.stringify({
+              originalUrl,
+              linkType: 'LIVE',
+              geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined,
+              vendorName: singleVendorInfo?.name
+            })
+          };
+          
+          creationPromises.push(amplifyServerService.createSurveyLink(linkData));
+        }
+      } else if (count !== undefined) {
+        // Generate single type links
+        for (let i = 0; i < count; i++) {
+          const baseUid = nanoid(8);
+          const linkTypePrefix = linkType || 'LIVE';
+          const uid = singleVendorInfo?.code ? 
+            `${singleVendorInfo.code}_${linkTypePrefix}_${baseUid}` : 
+            `${linkTypePrefix}_${baseUid}`;
+            
+          const linkData = {
+            projectId,
+            uid,
+            vendorId: singleVendorId || undefined,
+            status: 'UNUSED',
+            metadata: JSON.stringify({
+              originalUrl,
+              linkType: linkType || 'LIVE',
+              geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined,
+              vendorName: singleVendorInfo?.name
+            })
+          };
+          
+          creationPromises.push(amplifyServerService.createSurveyLink(linkData));
+        }
       }
     }
 
@@ -253,12 +424,12 @@ export default async function handler(
       });
     
     // Get vendor information for links that have vendors
-    const vendorIds = sortedLinks
+    const linkedVendorIds = sortedLinks
       .filter((link: SurveyLink) => link.vendorId)
       .map((link: SurveyLink) => link.vendorId as string);  // Add type assertion to ensure string type
     
-    const vendorResults = vendorIds.length > 0 ? 
-      await amplifyServerService.listVendors({ id: { in: vendorIds } }) : 
+    const vendorResults = linkedVendorIds.length > 0 ? 
+      await amplifyServerService.listVendors({ id: { in: linkedVendorIds } }) : 
       { data: [] };
       const vendors = vendorResults.data.reduce((acc: Record<string, { name: string; code: string }>, vendor: Vendor) => {
       // Fix: Add null safety for vendor id index access

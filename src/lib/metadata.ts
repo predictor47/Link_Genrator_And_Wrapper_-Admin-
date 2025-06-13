@@ -1,5 +1,6 @@
 import { NextApiRequest } from 'next';
 import { detectVPN } from './vpn-detection';
+import { enhancedFingerprintingService, EnhancedFingerprint } from './enhanced-fingerprinting';
 
 export interface UserMetadata {
   ip: string | null;
@@ -10,6 +11,10 @@ export interface UserMetadata {
   timestamp: number;
   fingerprint: string | null;
   language: string | null;
+  
+  // Enhanced fingerprinting data
+  enhancedFingerprint?: EnhancedFingerprint;
+  
   screen?: {
     width: number;
     height: number;
@@ -46,6 +51,8 @@ export interface UserMetadata {
     isProxy?: boolean;
     isTor?: boolean;
     isHosting?: boolean;
+    confidence?: number;
+    risk?: string;
     details?: any;
   };
   geoLocation?: {
@@ -147,19 +154,100 @@ export function collectMetadata(req: NextApiRequest): UserMetadata {
 }
 
 /**
- * Collect client-side metadata (to be called from browser)
+ * Collect enhanced client-side metadata with comprehensive fingerprinting
  */
+export async function collectEnhancedClientMetadata(): Promise<UserMetadata> {
+  try {
+    // Generate comprehensive fingerprint
+    const enhancedFingerprint = await enhancedFingerprintingService.generateFingerprint();
+    
+    // Basic info that's always available
+    const metadata: UserMetadata = {
+      ip: null, // Will be added from server-side
+      userAgent: navigator.userAgent,
+      browser: detectBrowser(),
+      device: detectDevice(),
+      language: navigator.language,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timestamp: Date.now(),
+      fingerprint: enhancedFingerprint.deviceId,
+      enhancedFingerprint
+    };
+
+    // Extract data from enhanced fingerprint for compatibility
+    if (enhancedFingerprint.screen) {
+      metadata.screen = enhancedFingerprint.screen;
+    }
+
+    if (enhancedFingerprint.browser) {
+      metadata.plugins = enhancedFingerprint.browser.plugins;
+    }
+
+    if (enhancedFingerprint.graphics) {
+      metadata.webGL = enhancedFingerprint.graphics.webGL;
+      metadata.canvas = enhancedFingerprint.graphics.canvas.fingerprint;
+    }
+
+    if (enhancedFingerprint.behavioral) {
+      metadata.behavioral = {
+        mouseMovements: enhancedFingerprint.behavioral.mouseMovements.length,
+        keyboardEvents: enhancedFingerprint.behavioral.keyboardEvents.length,
+        totalTime: enhancedFingerprint.behavioral.timeOnPage,
+        idleTime: enhancedFingerprint.behavioral.idleTime,
+        scrollEvents: enhancedFingerprint.behavioral.scrollEvents.length,
+        focusEvents: enhancedFingerprint.behavioral.focusEvents.length,
+        resizeEvents: enhancedFingerprint.behavioral.resizeEvents.length,
+        suspiciousPatterns: enhancedFingerprint.behavioral.suspiciousPatterns
+      };
+    }
+
+    if (enhancedFingerprint.network) {
+      metadata.network = enhancedFingerprint.network;
+    }
+
+    if (enhancedFingerprint.hardware) {
+      metadata.hardware = {
+        cores: enhancedFingerprint.hardware.cores,
+        memory: enhancedFingerprint.hardware.memory,
+        platform: enhancedFingerprint.platform,
+        maxTouchPoints: enhancedFingerprint.hardware.maxTouchPoints
+      };
+    }
+
+    if (enhancedFingerprint.browser) {
+      metadata.security = {
+        cookiesEnabled: enhancedFingerprint.browser.cookiesEnabled,
+        doNotTrack: enhancedFingerprint.browser.doNotTrack,
+        secureContext: window.isSecureContext,
+        permissions: enhancedFingerprint.advanced.permissions
+      };
+    }
+
+    if (enhancedFingerprint.advanced) {
+      metadata.fonts = enhancedFingerprint.advanced.fonts;
+    }
+
+    return metadata;
+  } catch (error) {
+    console.error('Error collecting enhanced metadata:', error);
+    // Fallback to basic collection
+    return collectClientMetadata();
+  }
+}
+
 export function collectClientMetadata(): UserMetadata {
-  // Basic info that's always available
+  const timestamp = Date.now();
+  const fingerprint = generateFingerprint();
+  
   const metadata: UserMetadata = {
-    ip: null, // Will be added from server-side
+    ip: null, // Will be set server-side
     userAgent: navigator.userAgent,
     browser: detectBrowser(),
     device: detectDevice(),
     language: navigator.language,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    timestamp: Date.now(),
-    fingerprint: generateFingerprint(),
+    timestamp,
+    fingerprint,
     screen: {
       width: window.screen.width,
       height: window.screen.height,
@@ -178,39 +266,10 @@ export function collectClientMetadata(): UserMetadata {
       focusEvents: 0,
       resizeEvents: 0,
       suspiciousPatterns: [],
-    },
-    hardware: {
-      cores: navigator.hardwareConcurrency,
-      memory: (navigator as any).deviceMemory,
-      platform: navigator.platform,
-      maxTouchPoints: navigator.maxTouchPoints,
-    },
-    security: {
-      cookiesEnabled: navigator.cookieEnabled,
-      doNotTrack: navigator.doNotTrack === '1',
-      secureContext: window.isSecureContext,
-    },
-    network: {},
-    advanced: {},
+    }
   };
 
-  // Collect network information if available
-  try {
-    const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
-    if (connection) {
-      metadata.network = {
-        connectionType: connection.type,
-        effectiveType: connection.effectiveType,
-        downlink: connection.downlink,
-        rtt: connection.rtt,
-        saveData: connection.saveData,
-      };
-    }
-  } catch (e) {
-    console.log('Network information not available');
-  }
-
-  // Collect advanced fingerprinting data
+  // Collect plugins if available
   try {
     metadata.plugins = Array.from(navigator.plugins).map(p => p.name);
     
@@ -245,108 +304,28 @@ export function collectClientMetadata(): UserMetadata {
     // Enhanced WebGL fingerprinting
     try {
       const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl') as WebGLRenderingContext;
-      if (gl) {
-        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (gl && 'getParameter' in gl) {
+        const webglContext = gl as WebGLRenderingContext;
+        const debugInfo = webglContext.getExtension('WEBGL_debug_renderer_info');
         metadata.webGL = {
-          vendor: gl.getParameter(gl.VENDOR),
-          renderer: gl.getParameter(gl.RENDERER),
-          version: gl.getParameter(gl.VERSION),
-          extensions: gl.getSupportedExtensions() || [],
-          maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE),
+          vendor: webglContext.getParameter(webglContext.VENDOR),
+          renderer: webglContext.getParameter(webglContext.RENDERER),
+          version: webglContext.getParameter(webglContext.VERSION),
+          extensions: webglContext.getSupportedExtensions() || [],
+          maxTextureSize: webglContext.getParameter(webglContext.MAX_TEXTURE_SIZE),
         };
         
         if (debugInfo) {
-          metadata.webGL.vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
-          metadata.webGL.renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+          metadata.webGL.vendor = webglContext.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+          metadata.webGL.renderer = webglContext.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
         }
       }
     } catch (e) {
-      console.log('WebGL not available');
+      console.log('WebGL fingerprinting not available');
     }
-
-    // Audio fingerprinting
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const analyser = audioContext.createAnalyser();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.type = 'triangle';
-      oscillator.frequency.value = 10000;
-      
-      gainNode.gain.value = 0;
-      oscillator.connect(analyser);
-      analyser.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.start();
-      
-      const frequencyData = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(frequencyData);
-      
-      metadata.advanced!.audioFingerprint = Array.from(frequencyData).slice(0, 30).join(',');
-      
-      oscillator.stop();
-      audioContext.close();
-    } catch (e) {
-      console.log('Audio fingerprinting not available');
-    }
-
-    // Speech synthesis voices
-    try {
-      const voices = speechSynthesis.getVoices();
-      metadata.advanced!.speechSynthesis = voices.map(v => `${v.name}:${v.lang}`);
-    } catch (e) {
-      console.log('Speech synthesis not available');
-    }
-
-    // Media devices
-    try {
-      navigator.mediaDevices?.enumerateDevices().then(devices => {
-        metadata.advanced!.mediaDevices = devices.map(d => d.kind);
-      }).catch(e => console.log('Media devices not available'));
-    } catch (e) {
-      console.log('Media devices API not available');
-    }
-
-    // Battery API
-    try {
-      (navigator as any).getBattery?.().then((battery: any) => {
-        metadata.advanced!.batteryLevel = Math.round(battery.level * 100);
-        metadata.advanced!.charging = battery.charging;
-      }).catch((e: any) => console.log('Battery API not available'));
-    } catch (e) {
-      console.log('Battery API not available');
-    }
-
-    // Gamepad API
-    try {
-      const gamepads = navigator.getGamepads?.();
-      metadata.advanced!.gamepads = gamepads ? Array.from(gamepads).filter(Boolean).length : 0;
-    } catch (e) {
-      console.log('Gamepad API not available');
-    }
-
-    // Permission queries
-    try {
-      const permissions = ['geolocation', 'notifications', 'camera', 'microphone'];
-      metadata.security!.permissions = {};
-      
-      permissions.forEach(async (perm) => {
-        try {
-          const result = await navigator.permissions.query({ name: perm as PermissionName });
-          metadata.security!.permissions![perm] = result.state;
-        } catch (e) {
-          metadata.security!.permissions![perm] = 'unknown';
-        }
-      });
-    } catch (e) {
-      console.log('Permissions API not available');
-    }
-
   } catch (e) {
-    console.error('Error collecting advanced fingerprinting data:', e);
+    console.log('Canvas fingerprinting not available');
   }
 
   return metadata;
@@ -685,56 +664,61 @@ export async function enhanceMetadataWithVPNDetection(metadata: UserMetadata): P
   }
 }
 
-/**
- * Generate a browser fingerprint
- */
+// Helper functions
 function generateFingerprint(): string {
-  const components = [
-    navigator.userAgent,
-    navigator.language,
-    new Date().getTimezoneOffset(),
-    screen.colorDepth,
-    navigator.cookieEnabled,
-    navigator.hardwareConcurrency,
-    screen.width + 'x' + screen.height,
-    navigator.platform,
-  ];
-  
-  // Create a hash of the components
-  let hash = 0;
-  const str = components.join('###');
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash |= 0; // Convert to 32bit integer
+  try {
+    const components = [
+      navigator.userAgent,
+      navigator.language,
+      screen.width + 'x' + screen.height,
+      screen.colorDepth,
+      new Date().getTimezoneOffset(),
+      navigator.platform,
+      navigator.cookieEnabled,
+      navigator.doNotTrack || 'unknown'
+    ];
+    
+    // Simple hash function
+    let hash = 0;
+    const str = components.join('|');
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(16);
+  } catch (e) {
+    return Math.random().toString(16).substring(2);
   }
-  
-  return hash.toString(16);
 }
 
-/**
- * Detect browser from user agent
- */
 function detectBrowser(): string | null {
-  const ua = navigator.userAgent;
-  
-  if (ua.includes('Firefox')) return 'Firefox';
-  if (ua.includes('Chrome')) return 'Chrome';
-  if (ua.includes('Safari') && !ua.includes('Chrome')) return 'Safari';
-  if (ua.includes('Edge')) return 'Edge';
-  if (ua.includes('MSIE') || ua.includes('Trident/')) return 'Internet Explorer';
-  
-  return null;
+  try {
+    const userAgent = navigator.userAgent;
+    if (userAgent.includes('Firefox')) return 'Firefox';
+    if (userAgent.includes('Chrome') && !userAgent.includes('Edge')) return 'Chrome';
+    if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) return 'Safari';
+    if (userAgent.includes('Edge')) return 'Edge';
+    if (userAgent.includes('Opera')) return 'Opera';
+    return 'Unknown';
+  } catch (e) {
+    return null;
+  }
 }
 
-/**
- * Detect device type from user agent
- */
 function detectDevice(): string {
-  const ua = navigator.userAgent;
-  
-  if (/Mobi|Android/i.test(ua) && !/Tablet|iPad/i.test(ua)) return 'Mobile';
-  if (/Tablet|iPad/i.test(ua)) return 'Tablet';
-  return 'Desktop';
+  try {
+    const userAgent = navigator.userAgent;
+    if (/Mobile|Android|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(userAgent)) {
+      return 'Mobile';
+    }
+    if (/Tablet|iPad/i.test(userAgent)) {
+      return 'Tablet';
+    }
+    return 'Desktop';
+  } catch (e) {
+    return 'Unknown';
+  }
 }
 
 /**

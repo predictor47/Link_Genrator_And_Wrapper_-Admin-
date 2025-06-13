@@ -11,8 +11,8 @@ interface IframeMonitorProps {
 /**
  * Component that monitors an iframe for domain changes to detect survey completion
  * 
- * This component embeds a survey URL in an iframe and watches for redirects to 
- * predetermined completion URLs to determine survey outcome.
+ * Enhanced to detect specific redirect URLs and handle completion properly
+ * Monitors for quota-full, disqualified, and thank-you-completed patterns
  */
 const IframeMonitor: React.FC<IframeMonitorProps> = ({
   projectId,
@@ -22,103 +22,257 @@ const IframeMonitor: React.FC<IframeMonitorProps> = ({
 }) => {
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
+  const [lastDetectedUrl, setLastDetectedUrl] = useState<string>('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const urlCheckRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Set up optimized monitoring with dynamic intervals and multiple detection methods
+  // Enhanced completion detection patterns
+  const COMPLETION_PATTERNS = {
+    COMPLETED: [
+      '/thank-you-completed',
+      '/thank-you',
+      '/thankyou',
+      '/complete',
+      '/completed',
+      '/finish',
+      '/finished',
+      '/success',
+      '/end',
+      'status=complete',
+      'status=completed',
+      'status=success'
+    ],
+    QUOTA_FULL: [
+      '/quota-full',
+      '/quota',
+      '/quotafull',
+      '/full',
+      'status=quota',
+      'status=quotafull',
+      'status=quota-full',
+      'reason=quota'
+    ],
+    DISQUALIFIED: [
+      '/disqualified',
+      '/not-eligible',
+      '/screened',
+      '/terminate',
+      '/terminated',
+      '/ineligible',
+      '/rejected',
+      'status=disqualified',
+      'status=screened',
+      'status=terminate',
+      'status=ineligible',
+      'reason=disqualified'
+    ]
+  };
+
+  // Enhanced URL monitoring with multiple detection methods
   useEffect(() => {
     if (!iframeLoaded || !iframeRef.current) return;
     
     let checkCount = 0;
     let consecutiveErrors = 0;
-    const maxChecks = 600; // Extend to 10 minutes but with smart intervals
-    let currentInterval = 500; // Start with faster polling (500ms)
-    const maxInterval = 2000; // Max 2 seconds between checks
+    const maxChecks = 1200; // Extended to 20 minutes with smart intervals
+    let currentInterval = 200; // Start with very fast polling (200ms)
+    const maxInterval = 3000; // Max 3 seconds between checks
     
-    // Track last known URL to detect changes faster
-    let lastKnownUrl = '';
+    // Enhanced URL detection methods
+    const detectCompletionUrl = (detectedUrl: string): string | null => {
+      if (!detectedUrl) return null;
+      
+      const urlLower = detectedUrl.toLowerCase();
+      
+      // Check completion patterns with priority order
+      for (const [status, patterns] of Object.entries(COMPLETION_PATTERNS)) {
+        for (const pattern of patterns) {
+          if (urlLower.includes(pattern.toLowerCase())) {
+            return status;
+          }
+        }
+      }
+      
+      // Additional domain-based detection for our completion domain
+      if (urlLower.includes('protegeresearchsurvey.com')) {
+        // If it's our domain but no specific pattern, assume completed
+        return 'COMPLETED';
+      }
+      
+      return null;
+    };
     
     const performCheck = () => {
       checkCount++;
       try {
-        // Try to access the location to check if it's on our domain
+        // Method 1: Try to access iframe location directly
         const iframeLocation = iframeRef.current?.contentWindow?.location.href;
         
-        // Reset error count on successful access
-        consecutiveErrors = 0;
-        
-        // Check if URL has changed
-        if (iframeLocation !== lastKnownUrl) {
-          lastKnownUrl = iframeLocation || '';
+        if (iframeLocation && iframeLocation !== lastDetectedUrl) {
+          setLastDetectedUrl(iframeLocation);
           
-          // If redirected to our completion domain, process immediately
-          if (iframeLocation && iframeLocation.includes('protegeresearchsurvey.com')) {
-            clearInterval(intervalRef.current!);
-            
-            // Determine completion status based on URL with improved detection
-            let status = 'COMPLETED';
-            const urlLower = iframeLocation.toLowerCase();
-            
-            if (urlLower.includes('/quota') || urlLower.includes('quota-full')) {
-              status = 'QUOTA_FULL';
-            } else if (urlLower.includes('/not-eligible') || urlLower.includes('/disqualified') || 
-                      urlLower.includes('/screened') || urlLower.includes('/terminate')) {
-              status = 'DISQUALIFIED';
-            } else if (urlLower.includes('/thank') || urlLower.includes('/complete') || 
-                      urlLower.includes('/finish') || urlLower.includes('/end')) {
-              status = 'COMPLETED';
-            }
-            
-            setCurrentStatus(status);
-            handleStatusChange(status, { completionUrl: iframeLocation });
+          const detectedStatus = detectCompletionUrl(iframeLocation);
+          if (detectedStatus) {
+            clearAllTimers();
+            setCurrentStatus(detectedStatus);
+            handleStatusChange(detectedStatus, { 
+              completionUrl: iframeLocation,
+              detectionMethod: 'iframe_location_direct'
+            });
             return;
           }
         }
         
-        // Adjust polling interval based on activity
-        if (checkCount < 60) {
-          // First minute: check every 500ms (high activity period)
+        consecutiveErrors = 0;
+        
+        // Method 2: Monitor iframe document changes (if accessible)
+        try {
+          const iframeDoc = iframeRef.current?.contentDocument || 
+                           iframeRef.current?.contentWindow?.document;
+          
+          if (iframeDoc) {
+            const currentDocUrl = iframeDoc.URL;
+            if (currentDocUrl && currentDocUrl !== lastDetectedUrl) {
+              setLastDetectedUrl(currentDocUrl);
+              
+              const detectedStatus = detectCompletionUrl(currentDocUrl);
+              if (detectedStatus) {
+                clearAllTimers();
+                setCurrentStatus(detectedStatus);
+                handleStatusChange(detectedStatus, { 
+                  completionUrl: currentDocUrl,
+                  detectionMethod: 'iframe_document_url'
+                });
+                return;
+              }
+            }
+          }
+        } catch (docError) {
+          // Expected for cross-origin content
+        }
+        
+        // Adaptive polling intervals based on activity and time
+        if (checkCount < 150) {
+          // First 30 seconds: check every 200ms (high activity period)
+          currentInterval = 200;
+        } else if (checkCount < 300) {
+          // Next minute: check every 500ms
           currentInterval = 500;
-        } else if (checkCount < 180) {
+        } else if (checkCount < 600) {
           // Next 2 minutes: check every 1s
           currentInterval = 1000;
         } else {
-          // After 3 minutes: check every 2s
-          currentInterval = 2000;
+          // After 3 minutes: check every 3s
+          currentInterval = 3000;
         }
         
       } catch (error) {
         consecutiveErrors++;
         
-        // If we get many consecutive errors, slow down polling to reduce CPU usage
-        if (consecutiveErrors > 10) {
-          currentInterval = Math.min(currentInterval * 1.5, maxInterval);
+        // If we get many consecutive errors, slow down polling
+        if (consecutiveErrors > 20) {
+          currentInterval = Math.min(currentInterval * 1.2, maxInterval);
         }
-        
-        // This is expected when the iframe is showing the survey (cross-origin)
-        // We'll just continue monitoring
       }
       
       // Stop monitoring after max checks
       if (checkCount >= maxChecks) {
-        clearInterval(intervalRef.current!);
-        console.log('IframeMonitor: Stopped monitoring after maximum checks reached');
+        clearAllTimers();
+        console.log('IframeMonitor: Stopped monitoring after maximum time reached');
+        // Mark as timed out but don't change status if already detected
+        if (!currentStatus) {
+          handleStatusChange('TIMEOUT', { 
+            reason: 'Maximum monitoring time exceeded',
+            totalChecks: checkCount
+          });
+        }
         return;
       }
       
-      // Schedule next check with dynamic interval
+      // Schedule next check with adaptive interval
       intervalRef.current = setTimeout(performCheck, currentInterval);
     };
     
-    // Start monitoring
-    intervalRef.current = setTimeout(performCheck, currentInterval);
-    
-    return () => {
-      if (intervalRef.current) {
-        clearTimeout(intervalRef.current);
+    // Additional monitoring method: Listen for postMessage events
+    const handlePostMessage = (event: MessageEvent) => {
+      // Listen for completion messages from survey iframe
+      if (event.origin && event.data) {
+        try {
+          const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+          
+          if (data.type === 'survey_completion' && data.status) {
+            clearAllTimers();
+            setCurrentStatus(data.status);
+            handleStatusChange(data.status, { 
+              completionData: data,
+              detectionMethod: 'post_message'
+            });
+          }
+        } catch (e) {
+          // Ignore malformed messages
+        }
       }
     };
-  }, [iframeLoaded, projectId, uid]);
+    
+    // Clear all timers helper
+    const clearAllTimers = () => {
+      if (intervalRef.current) {
+        clearTimeout(intervalRef.current);
+        intervalRef.current = null;
+      }
+      if (urlCheckRef.current) {
+        clearTimeout(urlCheckRef.current);
+        urlCheckRef.current = null;
+      }
+      window.removeEventListener('message', handlePostMessage);
+    };
+    
+    // Start monitoring
+    window.addEventListener('message', handlePostMessage);
+    intervalRef.current = setTimeout(performCheck, currentInterval);
+    
+    return clearAllTimers;
+  }, [iframeLoaded, projectId, uid, lastDetectedUrl]);
+
+  // Enhanced URL monitoring using iframe onLoad events
+  useEffect(() => {
+    if (!iframeRef.current) return;
+
+    const iframe = iframeRef.current;
+    
+    const handleIframeLoad = () => {
+      try {
+        const iframeUrl = iframe.contentWindow?.location.href;
+        if (iframeUrl && iframeUrl !== lastDetectedUrl) {
+          setLastDetectedUrl(iframeUrl);
+          
+          // Check for immediate completion detection
+          const urlLower = iframeUrl.toLowerCase();
+          for (const [status, patterns] of Object.entries(COMPLETION_PATTERNS)) {
+            for (const pattern of patterns) {
+              if (urlLower.includes(pattern.toLowerCase())) {
+                setCurrentStatus(status);
+                handleStatusChange(status, { 
+                  completionUrl: iframeUrl,
+                  detectionMethod: 'iframe_load_event'
+                });
+                return;
+              }
+            }
+          }
+        }
+      } catch (error) {
+        // Expected for cross-origin
+      }
+    };
+
+    iframe.addEventListener('load', handleIframeLoad);
+    
+    return () => {
+      iframe.removeEventListener('load', handleIframeLoad);
+    };
+  }, [lastDetectedUrl]);
 
   // Handle status changes and report to backend with optimized API calls
   const handleStatusChange = async (status: string, data?: any) => {

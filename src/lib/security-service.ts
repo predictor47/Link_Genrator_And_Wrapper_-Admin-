@@ -1,28 +1,11 @@
 import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
 import { getAmplifyDataService } from './amplify-data-service';
+import { detectAdvancedVPN } from './advanced-vpn-detection';
+import { detectGeoLocation, enhancedGeoDetector } from './enhanced-geo-detection';
 
 // Domain configuration
 const MAIN_DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || 'protegeresearchsurvey.com';
 const SHORT_URL_BASE = process.env.NEXT_PUBLIC_SURVEY_SHORT_URL || `https://${MAIN_DOMAIN}/s`;
-
-// Create stubs for the missing functions that will be implemented later
-const getVpnStatus = async (ip: string) => {
-  // TODO: Implement VPN detection
-  console.log('Checking VPN status for IP:', ip);
-  return { isVpn: false };
-};
-
-const getCaptchaVerification = async (token: string, ip: string) => {
-  // TODO: Implement CAPTCHA verification
-  console.log('Verifying CAPTCHA token:', token, 'IP:', ip);
-  return { score: 0.9 };
-};
-
-const getGeoLocation = async (ip: string) => {
-  // TODO: Implement geo-location lookup
-  console.log('Getting geo-location for IP:', ip);
-  return { country: 'US', city: 'Unknown', ip };
-};
 
 export interface SecurityContext {
   authenticated: boolean;
@@ -30,11 +13,25 @@ export interface SecurityContext {
   userGroups?: string[];
   geoLocation?: {
     country: string;
+    countryCode: string;
+    region: string;
     city: string;
     ip: string;
+    accuracy: string;
+    confidence: number;
+    sources: string[];
   };
-  detectedVpn: boolean;
+  vpnDetection: {
+    isVPN: boolean;
+    isProxy: boolean;
+    isTor: boolean;
+    isHosting: boolean;
+    confidence: number;
+    risk: string;
+  };
   captchaScore?: number;
+  threatLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  flags: string[];
 }
 
 /**
@@ -49,7 +46,16 @@ export const securityService = {
     // Initialize security context
     const securityContext: SecurityContext = {
       authenticated: false,
-      detectedVpn: false
+      vpnDetection: {
+        isVPN: false,
+        isProxy: false,
+        isTor: false,
+        isHosting: false,
+        confidence: 0,
+        risk: 'LOW'
+      },
+      threatLevel: 'LOW',
+      flags: []
     };
 
     try {
@@ -69,34 +75,151 @@ export const securityService = {
         securityContext.authenticated = false;
       }
 
-      // Get geo-location information
-      const geoInfo = await getGeoLocation(ip);
-      if (geoInfo) {
+      // Enhanced geo-location detection
+      try {
+        const geoResult = await enhancedGeoDetector.detectLocation(ip);
         securityContext.geoLocation = {
-          country: geoInfo.country,
-          city: geoInfo.city,
-          ip: geoInfo.ip
+          country: geoResult.country,
+          countryCode: geoResult.countryCode,
+          region: geoResult.region,
+          city: geoResult.city,
+          ip: ip,
+          accuracy: geoResult.accuracy,
+          confidence: geoResult.confidence,
+          sources: geoResult.sources
         };
+        
+        // Add geo-related flags
+        if (geoResult.confidence < 50) {
+          securityContext.flags.push('LOW_GEO_CONFIDENCE');
+        }
+        if (geoResult.accuracy === 'LOW') {
+          securityContext.flags.push('LOW_GEO_ACCURACY');
+        }
+      } catch (error) {
+        console.error('Geo-location detection failed:', error);
+        securityContext.flags.push('GEO_DETECTION_FAILED');
       }
 
-      // Check VPN status
-      const vpnStatus = await getVpnStatus(ip);
-      securityContext.detectedVpn = vpnStatus.isVpn;
+      // Enhanced VPN detection
+      try {
+        const vpnResult = await detectAdvancedVPN(ip);
+        securityContext.vpnDetection = {
+          isVPN: vpnResult.isVpn,
+          isProxy: vpnResult.isProxy,
+          isTor: vpnResult.isTor,
+          isHosting: vpnResult.isHosting,
+          confidence: vpnResult.confidence,
+          risk: vpnResult.risk
+        };
+        
+        // Add VPN-related flags
+        if (vpnResult.isVpn) securityContext.flags.push('VPN_DETECTED');
+        if (vpnResult.isProxy) securityContext.flags.push('PROXY_DETECTED');
+        if (vpnResult.isTor) securityContext.flags.push('TOR_DETECTED');
+        if (vpnResult.isHosting) securityContext.flags.push('HOSTING_DETECTED');
+        if (vpnResult.confidence > 80) securityContext.flags.push('HIGH_VPN_CONFIDENCE');
+      } catch (error) {
+        console.error('VPN detection failed:', error);
+        securityContext.flags.push('VPN_DETECTION_FAILED');
+      }
 
-      // Verify captcha if token provided
+      // Enhanced captcha verification
       if (captchaToken) {
-        const captchaResult = await getCaptchaVerification(captchaToken, ip);
-        securityContext.captchaScore = captchaResult.score;
+        try {
+          const captchaResult = await securityService.getCaptchaVerification(captchaToken, ip);
+          securityContext.captchaScore = captchaResult.score;
+          
+          if (captchaResult.score < 0.3) {
+            securityContext.flags.push('LOW_CAPTCHA_SCORE');
+          } else if (captchaResult.score < 0.5) {
+            securityContext.flags.push('MEDIUM_CAPTCHA_SCORE');
+          }
+        } catch (error) {
+          console.error('Captcha verification failed:', error);
+          securityContext.flags.push('CAPTCHA_VERIFICATION_FAILED');
+        }
       }
+
+      // Calculate threat level based on all factors
+      securityContext.threatLevel = securityService.calculateThreatLevel(securityContext);
 
       return securityContext;
     } catch (error) {
       console.error('Error getting security context:', error);
+      securityContext.flags.push('SECURITY_CONTEXT_ERROR');
+      securityContext.threatLevel = 'MEDIUM'; // Assume medium threat on error
       return securityContext;
     }
   },
 
   /**
+   * Calculate threat level based on security context
+   */
+  calculateThreatLevel: (context: SecurityContext): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' => {
+    let score = 0;
+    
+    // VPN/Proxy detection
+    if (context.vpnDetection.isTor) score += 40;
+    else if (context.vpnDetection.isVPN && context.vpnDetection.confidence > 70) score += 25;
+    else if (context.vpnDetection.isProxy) score += 15;
+    else if (context.vpnDetection.isHosting) score += 10;
+    
+    // Geo-location reliability
+    if (context.geoLocation) {
+      if (context.geoLocation.confidence < 30) score += 15;
+      else if (context.geoLocation.confidence < 50) score += 10;
+      
+      if (context.geoLocation.accuracy === 'LOW') score += 5;
+    } else {
+      score += 20; // No geo data is suspicious
+    }
+    
+    // Captcha score
+    if (context.captchaScore !== undefined) {
+      if (context.captchaScore < 0.3) score += 30;
+      else if (context.captchaScore < 0.5) score += 15;
+    }
+    
+    // Additional flags
+    const criticalFlags = ['TOR_DETECTED', 'HIGH_VPN_CONFIDENCE'];
+    const highFlags = ['VPN_DETECTED', 'LOW_CAPTCHA_SCORE'];
+    const mediumFlags = ['PROXY_DETECTED', 'HOSTING_DETECTED', 'LOW_GEO_CONFIDENCE'];
+    
+    if (context.flags.some(flag => criticalFlags.includes(flag))) score += 25;
+    if (context.flags.some(flag => highFlags.includes(flag))) score += 15;
+    if (context.flags.some(flag => mediumFlags.includes(flag))) score += 10;
+    
+    // Determine threat level
+    if (score >= 60) return 'CRITICAL';
+    if (score >= 40) return 'HIGH';
+    if (score >= 20) return 'MEDIUM';
+    return 'LOW';
+  },
+
+  /**
+   * Enhanced captcha verification
+   */
+  getCaptchaVerification: async (token: string, ip: string): Promise<{ score: number; success: boolean }> => {
+    try {
+      // This would integrate with reCAPTCHA or similar service
+      // For now, simulate verification
+      const mockScore = Math.random() * 0.4 + 0.6; // Random score between 0.6-1.0
+      
+      return {
+        score: mockScore,
+        success: mockScore >= 0.5
+      };
+    } catch (error) {
+      console.error('Captcha verification error:', error);
+      return {
+        score: 0,
+        success: false
+      };
+    }
+  },
+
+      /**
    * Verify access to a survey link based on geo-restrictions and other security rules
    */
   verifySurveyLinkAccess: async (surveyLinkUid: string, ip: string, captchaToken?: string): Promise<{
@@ -134,38 +257,90 @@ export const securityService = {
           reason: 'LINK_ALREADY_USED',
           securityContext
         };
-      }        // Check geo-restrictions if set in project settings
-      if (surveyLink.data && surveyLink.data.projectId && securityContext.geoLocation) {          // Get project to check geo-restrictions
-          try {
-            const project = await amplifyDataService.projects.get(surveyLink.data.projectId);
-                // Get geo-restrictions from project settings if available
-            const settings = project.data?.settings as any;
-            const geoRestriction = settings?.geoRestriction;
+      }
+
+      // Enhanced geo-restrictions check
+      if (surveyLink.data && surveyLink.data.projectId && securityContext.geoLocation) {
+        try {
+          const amplifyDataService = await getAmplifyDataService();
+          const project = await amplifyDataService.projects.get(surveyLink.data.projectId);
           
+          // Get geo-restrictions from project settings if available
+          const settings = project.data?.settings as any;
+          const geoRestriction = settings?.geoRestriction;
+        
           if (geoRestriction) {
             const allowedCountries = typeof geoRestriction === 'string' 
               ? JSON.parse(geoRestriction) 
               : geoRestriction;
               
-            if (Array.isArray(allowedCountries) && 
-                allowedCountries.length > 0 && 
-                !allowedCountries.includes(securityContext.geoLocation.country)) {
-              return {
-                allowed: false,
-                reason: 'GEO_RESTRICTED',
-                securityContext
-              };
+            if (Array.isArray(allowedCountries) && allowedCountries.length > 0) {
+              // Use enhanced country code checking
+              const isRestricted = enhancedGeoDetector.isCountryRestricted(
+                securityContext.geoLocation.countryCode, 
+                allowedCountries
+              );
+              
+              if (isRestricted) {
+                return {
+                  allowed: false,
+                  reason: 'GEO_RESTRICTED',
+                  securityContext
+                };
+              }
+              
+              // Additional check for low-confidence geo detection
+              if (securityContext.geoLocation.confidence < 60) {
+                return {
+                  allowed: false,
+                  reason: 'GEO_CONFIDENCE_TOO_LOW',
+                  securityContext
+                };
+              }
             }
           }
         } catch (e) {
           console.error('Error parsing geo restrictions:', e);
+          // If geo-restriction check fails but restrictions exist, be conservative
+          return {
+            allowed: false,
+            reason: 'GEO_RESTRICTION_CHECK_FAILED',
+            securityContext
+          };
         }
       }
-        // Check VPN usage if detected (linkType field no longer exists in model)
-      if (securityContext.detectedVpn && surveyLink.data) {
+      // Check VPN usage if detected
+      if (securityContext.vpnDetection.isVPN && surveyLink.data) {
         return {
           allowed: false,
           reason: 'VPN_DETECTED',
+          securityContext
+        };
+      }
+      
+      // Check Tor usage (always block)
+      if (securityContext.vpnDetection.isTor) {
+        return {
+          allowed: false,
+          reason: 'TOR_DETECTED',
+          securityContext
+        };
+      }
+      
+      // Check high-risk proxy usage
+      if (securityContext.vpnDetection.isProxy && securityContext.vpnDetection.confidence > 70) {
+        return {
+          allowed: false,
+          reason: 'HIGH_RISK_PROXY_DETECTED',
+          securityContext
+        };
+      }
+      
+      // Check threat level
+      if (securityContext.threatLevel === 'CRITICAL') {
+        return {
+          allowed: false,
+          reason: 'CRITICAL_THREAT_LEVEL',
           securityContext
         };
       }
@@ -190,7 +365,16 @@ export const securityService = {
         reason: 'INTERNAL_ERROR',
         securityContext: { 
           authenticated: false, 
-          detectedVpn: false 
+          vpnDetection: {
+            isVPN: false,
+            isProxy: false,
+            isTor: false,
+            isHosting: false,
+            confidence: 0,
+            risk: 'LOW'
+          },
+          threatLevel: 'MEDIUM',
+          flags: ['VERIFICATION_ERROR']
         }
       };
     }

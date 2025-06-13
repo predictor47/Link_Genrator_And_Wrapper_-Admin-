@@ -82,6 +82,87 @@ const schema = a.schema({
     .authorization((allow) => [
       allow.authenticated().to(['create', 'read', 'update', 'delete']),
       allow.publicApiKey().to(['create', 'read', 'update', 'delete']),
+    ]),
+
+  RawDataRecord: a
+    .model({
+      projectId: a.id().required(),
+      uid: a.string().required(),
+      surveyData: a.json(),
+      presurveyAnswers: a.json(),
+      completionData: a.json(),
+      enhancedFingerprint: a.json(),
+      behavioralData: a.json(),
+      securityContext: a.json(),
+      geoLocationData: a.json(),
+      vpnDetectionData: a.json(),
+      ipAddress: a.string(),
+      userAgent: a.string(),
+      submittedAt: a.datetime().required(),
+      processingFlags: a.json(),
+      dataQualityScore: a.integer(),
+      timeOnSurvey: a.integer(),
+      deviceType: a.string(),
+      browserType: a.string(),
+      locationAccuracy: a.string(),
+      securityRisk: a.string(),
+      createdAt: a.datetime().required(),
+      updatedAt: a.datetime().required()
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['create', 'read', 'update', 'delete']),
+      allow.publicApiKey().to(['create', 'read', 'update', 'delete']),
+    ]),
+
+  PresurveyAnswer: a
+    .model({
+      projectId: a.id().required(),
+      uid: a.string().required(),
+      questionId: a.string().required(),
+      questionText: a.string().required(),
+      answer: a.string().required(),
+      answerType: a.string(),
+      metadata: a.json(),
+      ipAddress: a.string(),
+      userAgent: a.string(),
+      submittedAt: a.datetime().required(),
+      createdAt: a.datetime().required(),
+      updatedAt: a.datetime().required()
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['create', 'read', 'update', 'delete']),
+      allow.publicApiKey().to(['create', 'read', 'update', 'delete']),
+    ]),
+
+  Response: a
+    .model({
+      surveyLinkId: a.id().required(),
+      questionId: a.id().required(),
+      answer: a.string().required(),
+      metadata: a.json(),
+      createdAt: a.datetime().required(),
+      updatedAt: a.datetime().required()
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['create', 'read', 'update', 'delete']),
+      allow.publicApiKey().to(['create', 'read', 'update', 'delete']),
+    ]),
+
+  Flag: a
+    .model({
+      surveyLinkId: a.id().required(),
+      projectId: a.id().required(),
+      reason: a.string().required(),
+      severity: a.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+      message: a.string(),
+      metadata: a.json(),
+      resolvedAt: a.datetime(),
+      createdAt: a.datetime().required(),
+      updatedAt: a.datetime().required()
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['create', 'read', 'update', 'delete']),
+      allow.publicApiKey().to(['create', 'read', 'update', 'delete']),
     ])
 });
 

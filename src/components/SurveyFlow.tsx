@@ -5,6 +5,9 @@ import BehaviorTracker, { BehaviorData } from './BehaviorTracker';
 import TrapQuestion from './TrapQuestion';
 import CustomCaptcha from './CustomCaptcha';
 import IframeMonitor from './IframeMonitor';
+import { enhancedFingerprintingService } from '@/lib/enhanced-fingerprinting';
+import { securityService } from '@/lib/security-service';
+import { collectEnhancedClientMetadata } from '@/lib/metadata';
 
 interface SurveyFlowProps {
   projectId: string;
@@ -31,6 +34,8 @@ const SurveyFlow: React.FC<SurveyFlowProps> = ({
   const [behaviorData, setBehaviorData] = useState<BehaviorData | null>(null);
   const [captchaVerified, setCaptchaVerified] = useState(false);
   const [trapQuestionsVerified, setTrapQuestionsVerified] = useState(false);
+  const [enhancedFingerprint, setEnhancedFingerprint] = useState<any>(null);
+  const [securityContext, setSecurityContext] = useState<any>(null);
   const [sessionData, setSessionData] = useState<any>({
     token: Math.random().toString(36).substring(2, 15),
     projectId,
@@ -38,7 +43,9 @@ const SurveyFlow: React.FC<SurveyFlowProps> = ({
     vendorId,
     startTime: Date.now(),
     answers: [],
-    metadata: {}
+    metadata: {},
+    enhancedFingerprint: null,
+    securityContext: null
   });
 
   // Track suspicious behaviors
@@ -54,6 +61,39 @@ const SurveyFlow: React.FC<SurveyFlowProps> = ({
   useEffect(() => {
     const validateSurveyAccess = async () => {
       try {
+        // Initialize enhanced fingerprinting and security checks
+        const initializeEnhancedTracking = async () => {
+          try {
+            // Generate enhanced fingerprint
+            const fingerprint = await enhancedFingerprintingService.generateFingerprint();
+            setEnhancedFingerprint(fingerprint);
+
+            // Collect metadata and run security checks
+            const metadata = await collectEnhancedClientMetadata();
+            const security = await securityService.getSecurityContext(metadata.ip || '');
+            setSecurityContext(security);
+
+            // Update session data with enhanced tracking
+            setSessionData((prev: any) => ({
+              ...prev,
+              enhancedFingerprint: fingerprint,
+              securityContext: security,
+              metadata
+            }));
+
+            console.log('Enhanced tracking initialized:', {
+              fingerprint: fingerprint.deviceId,
+              security: security.threatLevel
+            });
+
+          } catch (error) {
+            console.error('Failed to initialize enhanced tracking:', error);
+          }
+        };
+
+        // Start enhanced tracking
+        await initializeEnhancedTracking();
+
         const response = await axios.post('/api/links/validate', {
           projectId,
           uid
@@ -82,6 +122,11 @@ const SurveyFlow: React.FC<SurveyFlowProps> = ({
     };
 
     validateSurveyAccess();
+
+    // Cleanup function to stop behavioral tracking
+    return () => {
+      enhancedFingerprintingService.stopBehavioralTracking();
+    };
   }, [projectId, uid, router]);
 
   // Save session data to browser storage
@@ -184,9 +229,45 @@ const SurveyFlow: React.FC<SurveyFlowProps> = ({
   };
 
   // Handle survey status changes from IframeMonitor
-  const handleSurveyStatusChange = (status: string, data?: any) => {
+  const handleSurveyStatusChange = async (status: string, data?: any) => {
+    // Get current enhanced fingerprint with latest behavioral data
+    const currentFingerprint = enhancedFingerprintingService.getCurrentFingerprint();
+    
+    // Submit comprehensive data before redirecting
+    const submitEnhancedData = async (completionStatus: string) => {
+      try {
+        // Prepare comprehensive data submission
+        const enhancedData = {
+          projectId,
+          uid,
+          surveyData: data || {},
+          enhancedFingerprint: currentFingerprint,
+          behavioralData: behaviorData,
+          completionData: {
+            completedAt: new Date().toISOString(),
+            completionTime: Date.now() - sessionData.startTime,
+            finalUrl: data?.finalUrl,
+            status: completionStatus
+          },
+          metadata: {
+            ...sessionData.metadata,
+            suspiciousFlags: suspiciousActivity.current.flags,
+            sessionData: sessionData
+          }
+        };
+
+        // Submit to raw data collection API
+        await axios.post('/api/raw-data/submit', enhancedData);
+        console.log('Enhanced survey data submitted successfully');
+
+      } catch (error) {
+        console.error('Failed to submit enhanced survey data:', error);
+      }
+    };
+
     switch (status) {
       case 'COMPLETED':
+        await submitEnhancedData('COMPLETED');
         setCurrentStep('completed');
         // Redirect after a short delay
         setTimeout(() => {
@@ -195,6 +276,7 @@ const SurveyFlow: React.FC<SurveyFlowProps> = ({
         break;
       
       case 'QUOTA_FULL':
+        await submitEnhancedData('QUOTA_FULL');
         setCurrentStep('quota-full');
         // Redirect after a short delay
         setTimeout(() => {
@@ -203,6 +285,7 @@ const SurveyFlow: React.FC<SurveyFlowProps> = ({
         break;
       
       case 'DISQUALIFIED':
+        await submitEnhancedData('DISQUALIFIED');
         setCurrentStep('disqualified');
         // Redirect after a short delay
         setTimeout(() => {

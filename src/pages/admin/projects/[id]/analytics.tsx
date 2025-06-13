@@ -16,6 +16,8 @@ import { Doughnut, Bar } from 'react-chartjs-2';
 import ProtectedRoute from '@/lib/protected-route';
 import MetadataAnalyticsDashboard from '@/components/MetadataAnalyticsDashboard';
 import ComprehensiveAnalyticsDashboard from '@/components/ComprehensiveAnalyticsDashboard';
+import EnhancedAnalyticsDashboard from '@/components/EnhancedAnalyticsDashboard';
+import QCDashboard from '@/components/QCDashboard';
 
 // CSV Export Utilities
 function exportToCSV(data: any[], filename: string, headers: string[]) {
@@ -898,6 +900,16 @@ function ProjectAnalyticsComponent({
               Flags ({filteredFlags.length})
             </button>
             <button
+              onClick={() => setActiveTab('qc')}
+              className={`py-4 px-6 font-medium text-sm ${
+                activeTab === 'qc' 
+                  ? 'border-b-2 border-blue-500 text-blue-600' 
+                  : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Quality Control
+            </button>
+            <button
               onClick={() => setActiveTab('realtime')}
               className={`py-4 px-6 font-medium text-sm ${
                 activeTab === 'realtime' 
@@ -926,6 +938,16 @@ function ProjectAnalyticsComponent({
               }`}
             >
               Comprehensive Analytics
+            </button>
+            <button
+              onClick={() => setActiveTab('enhanced')}
+              className={`py-4 px-6 font-medium text-sm ${
+                activeTab === 'enhanced' 
+                  ? 'border-b-2 border-blue-500 text-blue-600' 
+                  : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Enhanced Analytics
             </button>
             <button
               onClick={() => setActiveTab('rawdata')}
@@ -1895,6 +1917,65 @@ function ProjectAnalyticsComponent({
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Enhanced Analytics Tab */}
+        {activeTab === 'enhanced' && (
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Enhanced Analytics Dashboard</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Advanced analytics with security, behavioral, and data quality metrics
+              </p>
+            </div>
+            <div className="p-6">
+              <EnhancedAnalyticsDashboard
+                projectId={projectId}
+                dateRange={dateRange !== 'all' ? {
+                  start: (() => {
+                    const now = new Date();
+                    switch (dateRange) {
+                      case 'today':
+                        return new Date(now.setHours(0, 0, 0, 0)).toISOString();
+                      case 'yesterday':
+                        const yesterday = new Date(now);
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        return new Date(yesterday.setHours(0, 0, 0, 0)).toISOString();
+                      case 'week':
+                        const weekAgo = new Date(now);
+                        weekAgo.setDate(weekAgo.getDate() - 7);
+                        return weekAgo.toISOString();
+                      case 'month':
+                        const monthAgo = new Date(now);
+                        monthAgo.setDate(monthAgo.getDate() - 30);
+                        return monthAgo.toISOString();
+                      default:
+                        const defaultStart = new Date(now);
+                        defaultStart.setDate(defaultStart.getDate() - 30);
+                        return defaultStart.toISOString();
+                    }
+                  })(),
+                  end: new Date().toISOString()
+                } : undefined}
+                refreshInterval={autoRefresh ? refreshInterval * 1000 : 0}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Quality Control Tab */}
+        {activeTab === 'qc' && (
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Quality Control Dashboard</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Comprehensive quality assurance and fraud detection for survey responses
+              </p>
+            </div>
+            <div className="p-6">
+              <QCDashboard projectId={projectId} />
             </div>
           </div>
         )}

@@ -1,6 +1,9 @@
 /**
- * VPN detection service using IPinfo API
+ * VPN detection service using advanced custom detection
+ * Replaced third-party dependency with sophisticated in-house solution
  */
+
+import { detectAdvancedVPN } from './advanced-vpn-detection';
 
 interface IPInfoResponse {
   ip: string;
@@ -31,15 +34,16 @@ interface IPInfoResponse {
 
 /**
  * Check if an IP address is from a VPN, proxy, or Tor network
+ * Now uses advanced custom detection instead of third-party API
  * @param ipAddress - The IP address to check
  * @returns Object containing detection results
  */
 export async function detectVPN(ipAddress: string) {
   try {
-    const apiToken = process.env.IPINFO_API_TOKEN;
+    // Use advanced custom VPN detection
+    const result = await detectAdvancedVPN(ipAddress);
     
-    if (!apiToken) {
-      console.error('Missing IPINFO_API_TOKEN environment variable');
+    if (!result.detectionSuccess) {
       return {
         isVpn: false,
         isProxy: false,
@@ -47,47 +51,26 @@ export async function detectVPN(ipAddress: string) {
         isRelay: false,
         isHosting: false,
         detectionSuccess: false,
-        error: 'API token not configured'
+        error: result.error || 'Detection failed'
       };
     }
-
-    const response = await fetch(`https://ipinfo.io/${ipAddress}/privacy?token=${apiToken}`);
-    
-    if (!response.ok) {
-      throw new Error(`IPinfo API responded with status ${response.status}`);
-    }
-
-    const data: IPInfoResponse = await response.json();
-
-    // If privacy data is not available, the API token might not have the required plan
-    if (!data.privacy) {
-      return {
-        isVpn: false,
-        isProxy: false,
-        isTor: false,
-        isRelay: false, 
-        isHosting: false,
-        detectionSuccess: false,
-        error: 'Privacy detection not available with current IPinfo plan'
-      };
-    }
-
-    const { vpn, proxy, tor, relay, hosting, service } = data.privacy;
 
     return {
-      isVpn: vpn,
-      isProxy: proxy,
-      isTor: tor,
-      isRelay: relay,
-      isHosting: hosting,
-      service: service || '',
+      isVpn: result.isVpn,
+      isProxy: result.isProxy,
+      isTor: result.isTor,
+      isRelay: result.isRelay,
+      isHosting: result.isHosting,
+      confidence: result.confidence,
+      risk: result.risk,
+      service: '', // Not provided by custom detection
       detectionSuccess: true,
       ipInfo: {
-        ip: data.ip,
-        city: data.city,
-        region: data.region,
-        country: data.country,
-        org: data.org
+        ip: ipAddress,
+        city: 'Unknown', // Would need separate geolocation service
+        region: 'Unknown',
+        country: 'Unknown',
+        org: 'Unknown'
       }
     };
   } catch (error) {
