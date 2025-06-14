@@ -580,43 +580,48 @@ export default function GeneratePage() {
         geoRestriction = selectedCountries;
       }
 
-      // Handle multiple vendors - if no vendors selected, generate without vendor
-      const vendorsToProcess = selectedVendors.length > 0 ? selectedVendors : [null];
-      const allGeneratedLinks: any[] = [];
-      let totalLinksGenerated = 0;
+      // Prepare payload for link generation
+      const payload: any = {
+        projectId: project?.id,
+        originalUrl: data.originalUrl,
+        geoRestriction,
+        useDevelopmentDomain: process.env.NODE_ENV === 'development'
+      };
 
-      for (const vendorId of vendorsToProcess) {
-        const payload: any = {
-          projectId: project?.id,
-          originalUrl: data.originalUrl,
-          vendorId: vendorId,
-          geoRestriction,
-          useDevelopmentDomain: process.env.NODE_ENV === 'development'
-        };
-        
-        // Handle split link types or single type
-        if (splitLinkTypes) {
-          payload.testCount = parseInt(data.testCount) || 0;
-          payload.liveCount = parseInt(data.liveCount) || 0;
-          payload.count = payload.testCount + payload.liveCount;
-        } else {
-          payload.count = parseInt(data.count) || 1;
-          payload.linkType = data.linkType || 'LIVE';
-        }
-
-        const response = await axios.post('/api/links/generate', payload);
-        
-        if (response.data.success) {
-          allGeneratedLinks.push(...response.data.links);
-          totalLinksGenerated += response.data.count;
-        } else {
-          setError(response.data.message || 'Failed to generate links');
-          return;
-        }
+      // Handle vendor selection
+      if (selectedVendors.length > 1) {
+        // Multiple vendors selected - generate specified count for EACH vendor
+        payload.vendorIds = selectedVendors;
+        payload.generatePerVendor = true;
+      } else if (selectedVendors.length === 1) {
+        // Single vendor selected
+        payload.vendorId = selectedVendors[0];
       }
+      // If no vendors selected, generate without vendor (payload.vendorId remains undefined)
       
-      setSuccess(`Successfully generated ${totalLinksGenerated} links${selectedVendors.length > 1 ? ` across ${selectedVendors.length} vendors` : ''}.`);
-      setGeneratedLinks(allGeneratedLinks);
+      // Handle split link types or single type
+      if (splitLinkTypes) {
+        payload.testCount = parseInt(data.testCount) || 0;
+        payload.liveCount = parseInt(data.liveCount) || 0;
+        payload.count = payload.testCount + payload.liveCount;
+      } else {
+        payload.count = parseInt(data.count) || 1;
+        payload.linkType = data.linkType || 'LIVE';
+      }
+
+      // Make a single API call
+      const response = await axios.post('/api/links/generate', payload);
+      
+      if (response.data.success) {
+        const allGeneratedLinks = response.data.links || [];
+        const totalLinksGenerated = response.data.count || 0;
+        
+        setSuccess(`Successfully generated ${totalLinksGenerated} links${selectedVendors.length > 1 ? ` across ${selectedVendors.length} vendors` : ''}.`);
+        setGeneratedLinks(allGeneratedLinks);
+      } else {
+        setError(response.data.message || 'Failed to generate links');
+        return;
+      }
     } catch (error: any) {
       setError(error.response?.data?.message || 'Error generating links');
       console.error('Error:', error);

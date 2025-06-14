@@ -25,6 +25,7 @@ interface EnhancedRawDataRecord {
   id: string;
   projectId: string;
   uid: string;
+  surveyLinkId?: string; // Added survey link ID reference
   
   // Survey data
   surveyData?: any;
@@ -107,6 +108,7 @@ export default async function handler(
     }
 
     const surveyLink = surveyLinkResult.data[0];
+    const surveyLinkId = surveyLink.id; // Capture the survey link ID
 
     // Collect enhanced security and geo data
     const securityContext = await securityService.getSecurityContext(ip);
@@ -146,6 +148,7 @@ export default async function handler(
     const rawDataRecord: Omit<EnhancedRawDataRecord, 'id' | 'createdAt' | 'updatedAt'> = {
       projectId,
       uid,
+      surveyLinkId, // Include the survey link ID
       surveyData,
       presurveyAnswers,
       completionData,

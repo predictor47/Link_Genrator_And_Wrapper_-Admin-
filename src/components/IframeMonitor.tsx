@@ -357,7 +357,18 @@ const IframeMonitor: React.FC<IframeMonitorProps> = ({
 
   return (
     <div className="iframe-container w-full h-full relative">
-      {currentStatus && (
+      {!iframeLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center z-20 bg-white">
+          <div className="text-center p-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <h3 className="text-lg font-medium text-gray-700 mb-2">Loading Survey</h3>
+            <p className="text-sm text-gray-500">Please wait while we load your survey...</p>
+            <p className="text-xs text-gray-400 mt-2">Survey URL: {url}</p>
+          </div>
+        </div>
+      )}
+
+      {currentStatus && currentStatus !== 'STARTED' && (
         <div className="absolute inset-0 flex items-center justify-center z-10 bg-white bg-opacity-90">
           <div className="text-center p-8">
             {currentStatus === 'COMPLETED' && (
@@ -380,6 +391,13 @@ const IframeMonitor: React.FC<IframeMonitorProps> = ({
                 <p>You don't match the criteria for this survey. Thank you for your interest!</p>
               </div>
             )}
+
+            {currentStatus === 'TIMEOUT' && (
+              <div>
+                <h3 className="text-xl font-bold text-orange-600 mb-4">Survey Timed Out</h3>
+                <p>The survey monitoring has timed out. Please refresh and try again.</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -388,9 +406,16 @@ const IframeMonitor: React.FC<IframeMonitorProps> = ({
         ref={iframeRef}
         src={url}
         onLoad={handleIframeLoad}
+        onError={(e) => {
+          console.error('Iframe failed to load:', e);
+          handleStatusChange('ERROR', { 
+            error: 'Failed to load survey iframe',
+            url: url 
+          });
+        }}
         className="w-full h-full border-0 min-h-[500px]"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
         title="Survey iframe"
       />
     </div>

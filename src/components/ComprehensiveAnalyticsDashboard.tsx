@@ -305,32 +305,219 @@ const ComprehensiveAnalyticsDashboard: React.FC<ComprehensiveAnalyticsProps> = (
 
     return (
       <div className="space-y-6">
-        {/* Security Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Security Overview Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-800">VPN Detection</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">VPN Detection</h3>
             <p className="text-3xl font-bold text-orange-600">{analytics.securityAnalysis.vpnDetected}</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {((analytics.securityAnalysis.vpnDetected / analytics.summary.totalLinks) * 100).toFixed(1)}% of total links
+            </p>
           </div>
+          
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-800">Proxy Detection</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Proxy Detection</h3>
             <p className="text-3xl font-bold text-red-600">{analytics.securityAnalysis.proxyDetected}</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {((analytics.securityAnalysis.proxyDetected / analytics.summary.totalLinks) * 100).toFixed(1)}% of total links
+            </p>
           </div>
+          
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-semibold text-gray-800">Tor Detection</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Tor Detection</h3>
             <p className="text-3xl font-bold text-purple-600">{analytics.securityAnalysis.torDetected}</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {((analytics.securityAnalysis.torDetected / analytics.summary.totalLinks) * 100).toFixed(1)}% of total links
+            </p>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Suspicious IPs</h3>
+            <p className="text-3xl font-bold text-amber-600">{analytics.securityAnalysis.suspiciousIPs}</p>
+            <p className="text-sm text-gray-500 mt-1">High threat level detected</p>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Fingerprint Matches</h3>
+            <p className="text-3xl font-bold text-blue-600">{analytics.securityAnalysis.fingerprintMatches}</p>
+            <p className="text-sm text-gray-500 mt-1">Device fingerprints detected</p>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Geo Mismatches</h3>
+            <p className="text-3xl font-bold text-indigo-600">{analytics.securityAnalysis.geoMismatches}</p>
+            <p className="text-sm text-gray-500 mt-1">Location inconsistencies</p>
           </div>
         </div>
 
         {/* Flag Reasons */}
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Flag Reasons</h3>
+          <h3 className="text-lg font-semibold mb-4">Security Flags Breakdown</h3>
           <div className="space-y-2">
             {Object.entries(analytics.flagAnalysis.byReason).map(([reason, count]) => (
               <div key={reason} className="flex justify-between items-center p-3 bg-gray-50 rounded">
                 <span className="font-medium">{reason}</span>
-                <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm">{count}</span>
+                <div className="flex items-center space-x-2">
+                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm">{count}</span>
+                  <span className="text-xs text-gray-500">
+                    ({((count as number / analytics.flagAnalysis.totalFlagged) * 100).toFixed(1)}%)
+                  </span>
+                </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Behavioral Security Metrics */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-lg font-semibold mb-4">Behavioral Security Analysis</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <p className="text-2xl font-bold text-blue-600">{analytics.behaviorAnalysis.suspiciousBehavior}</p>
+              <p className="text-sm text-gray-600">Suspicious Behavior</p>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <p className="text-2xl font-bold text-green-600">
+                {(analytics.behaviorAnalysis.averageTimeToComplete / 1000 / 60).toFixed(1)}min
+              </p>
+              <p className="text-sm text-gray-600">Avg. Completion Time</p>
+            </div>
+            <div className="text-center p-4 bg-purple-50 rounded-lg">
+              <p className="text-2xl font-bold text-purple-600">
+                {analytics.behaviorAnalysis.averageMouseMovements.toFixed(0)}
+              </p>
+              <p className="text-sm text-gray-600">Avg. Mouse Movements</p>
+            </div>
+            <div className="text-center p-4 bg-yellow-50 rounded-lg">
+              <p className="text-2xl font-bold text-yellow-600">
+                {(analytics.behaviorAnalysis.averageIdleTime / 1000).toFixed(1)}s
+              </p>
+              <p className="text-sm text-gray-600">Avg. Idle Time</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDeviceTab = () => {
+    if (!analytics) return null;
+
+    const browserData = {
+      labels: Object.keys(analytics.deviceAnalysis.browsers),
+      datasets: [{
+        label: 'Browser Usage',
+        data: Object.values(analytics.deviceAnalysis.browsers),
+        backgroundColor: [
+          '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', 
+          '#EC4899', '#6B7280', '#14B8A6', '#F97316', '#84CC16'
+        ]
+      }]
+    };
+
+    const deviceData = {
+      labels: Object.keys(analytics.deviceAnalysis.devices),
+      datasets: [{
+        label: 'Device Types',
+        data: Object.values(analytics.deviceAnalysis.devices),
+        backgroundColor: ['#10B981', '#3B82F6', '#F59E0B', '#EF4444']
+      }]
+    };
+
+    const osData = {
+      labels: Object.keys(analytics.deviceAnalysis.operatingSystems),
+      datasets: [{
+        label: 'Operating Systems',
+        data: Object.values(analytics.deviceAnalysis.operatingSystems),
+        backgroundColor: [
+          '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+          '#EC4899', '#6B7280', '#14B8A6', '#F97316', '#84CC16'
+        ]
+      }]
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Device Analysis Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold mb-4">Browser Distribution</h3>
+            <div className="h-64">
+              <Doughnut data={browserData} options={{ maintainAspectRatio: false }} />
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold mb-4">Device Types</h3>
+            <div className="h-64">
+              <Doughnut data={deviceData} options={{ maintainAspectRatio: false }} />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold mb-4">Operating Systems</h3>
+            <div className="h-64">
+              <Bar data={osData} options={{ maintainAspectRatio: false }} />
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold mb-4">Screen Resolutions</h3>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {Object.entries(analytics.deviceAnalysis.screenResolutions).map(([resolution, count]) => (
+                <div key={resolution} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                  <span className="font-medium">{resolution}</span>
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Detailed Stats Tables */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold mb-4">Browser Details</h3>
+            <div className="space-y-2">
+              {Object.entries(analytics.deviceAnalysis.browsers)
+                .sort(([,a], [,b]) => (b as number) - (a as number))
+                .map(([browser, count]) => (
+                <div key={browser} className="flex justify-between items-center">
+                  <span className="text-sm">{browser}</span>
+                  <span className="font-semibold">{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold mb-4">Device Details</h3>
+            <div className="space-y-2">
+              {Object.entries(analytics.deviceAnalysis.devices)
+                .sort(([,a], [,b]) => (b as number) - (a as number))
+                .map(([device, count]) => (
+                <div key={device} className="flex justify-between items-center">
+                  <span className="text-sm">{device}</span>
+                  <span className="font-semibold">{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-semibold mb-4">OS Details</h3>
+            <div className="space-y-2">
+              {Object.entries(analytics.deviceAnalysis.operatingSystems)
+                .sort(([,a], [,b]) => (b as number) - (a as number))
+                .map(([os, count]) => (
+                <div key={os} className="flex justify-between items-center">
+                  <span className="text-sm">{os}</span>
+                  <span className="font-semibold">{count}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -603,6 +790,7 @@ const ComprehensiveAnalyticsDashboard: React.FC<ComprehensiveAnalyticsProps> = (
               { id: 'overview', label: 'Overview' },
               { id: 'vendors', label: 'Vendor Analysis' },
               { id: 'security', label: 'Security & Flags' },
+              { id: 'devices', label: 'Device Analysis' },
               { id: 'geographic', label: 'Geographic' },
               { id: 'rawdata', label: 'Raw Data & Export' }
             ].map((tab) => (
@@ -625,6 +813,7 @@ const ComprehensiveAnalyticsDashboard: React.FC<ComprehensiveAnalyticsProps> = (
           {activeTab === 'overview' && renderOverviewTab()}
           {activeTab === 'vendors' && renderVendorAnalysisTab()}
           {activeTab === 'security' && renderSecurityTab()}
+          {activeTab === 'devices' && renderDeviceTab()}
           {activeTab === 'geographic' && renderGeographicTab()}
           {activeTab === 'rawdata' && renderRawDataTab()}
         </div>

@@ -68,9 +68,21 @@ const SurveyFlow: React.FC<SurveyFlowProps> = ({
             const fingerprint = await enhancedFingerprintingService.generateFingerprint();
             setEnhancedFingerprint(fingerprint);
 
+            // Get IP address and location first
+            const ipResponse = await axios.get('/api/ip-check');
+            const ipData = ipResponse.data;
+            
             // Collect metadata and run security checks
             const metadata = await collectEnhancedClientMetadata();
-            const security = await securityService.getSecurityContext(metadata.ip || '');
+            // Use IP from our dedicated endpoint
+            metadata.ip = ipData.ip;
+            metadata.geoLocation = {
+              country: ipData.country,
+              city: ipData.city,
+              region: ipData.region
+            };
+            
+            const security = await securityService.getSecurityContext(ipData.ip);
             setSecurityContext(security);
 
             // Update session data with enhanced tracking
@@ -222,6 +234,35 @@ const SurveyFlow: React.FC<SurveyFlowProps> = ({
       } catch (err) {
         console.error('Failed to flag incorrect trap question:', err);
       }
+    }
+
+    // Submit presurvey data before proceeding to main survey
+    try {
+      const presurveyData = {
+        projectId,
+        uid,
+        answers: { trapQuestion: answer },
+        metadata: {
+          ...sessionData.metadata,
+          enhancedFingerprint,
+          securityContext,
+          behaviorData,
+          suspiciousFlags: suspiciousActivity.current.flags,
+          startTime: new Date(sessionData.startTime).toISOString(),
+          completionTime: Date.now() - sessionData.startTime,
+          questionOrder: ['captcha', 'trap-question'],
+          deviceInfo: sessionData.metadata?.deviceInfo,
+          browserInfo: sessionData.metadata?.browserInfo
+        }
+      };
+
+      console.log('Submitting presurvey data:', presurveyData);
+      await axios.post('/api/presurvey/submit', presurveyData);
+      console.log('Presurvey data submitted successfully');
+
+    } catch (error) {
+      console.error('Failed to submit presurvey data:', error);
+      // Continue anyway - don't block the user
     }
 
     setTrapQuestionsVerified(true);

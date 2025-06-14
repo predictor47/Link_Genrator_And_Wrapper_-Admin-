@@ -3,6 +3,8 @@ import { useRouter } from 'next/router';
 import axios from 'axios';
 import { detectVPN } from '@/lib/vpn-detection';
 import { collectClientMetadata } from '@/lib/metadata';
+import ConsentPage from '@/components/ConsentPage';
+import ConditionalPresurveyFlow from '@/components/ConditionalPresurveyFlow';
 
 // Types for our component
 interface Question {
@@ -11,17 +13,44 @@ interface Question {
   options: string[];
 }
 
+interface ConsentItem {
+  id: string;
+  title: string;
+  description: string;
+  required: boolean;
+  type: 'privacy' | 'data_collection' | 'participation' | 'recording' | 'cookies' | 'marketing' | 'custom';
+}
+
+interface PresurveyQuestion {
+  id: string;
+  text: string;
+  type: 'single_choice' | 'multiple_choice' | 'text' | 'number' | 'email' | 'boolean';
+  options?: string[];
+  required: boolean;
+  conditions?: {
+    showIf?: { questionId: string; value: any; operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than' }[];
+    qualification?: 'qualify' | 'disqualify' | 'continue';
+    qualificationMessage?: string;
+  };
+}
+
 interface SessionData {
   token: string;
   projectId: string;
   uid: string;
   linkType: string;
+  consents: Record<string, boolean>;
+  presurveyAnswers: Record<string, any>;
+  isQualified: boolean;
   answers: Array<{
     questionId: string;
     value: string;
   }>;
   metadata: any;
 }
+
+// Flow states enum
+type FlowState = 'CONSENT' | 'PRESURVEY' | 'DISQUALIFIED' | 'MAIN_SURVEY' | 'COMPLETED';
 
 export default function SurveyPage({ 
   isValid, 
@@ -30,6 +59,9 @@ export default function SurveyPage({
   linkType,
   vendorCode,
   questions = [],
+  projectTitle,
+  consentItems = [],
+  presurveyQuestions = [],
 }: { 
   isValid: boolean;
   originalUrl: string | null;
@@ -37,20 +69,19 @@ export default function SurveyPage({
   linkType: 'TEST' | 'LIVE';
   vendorCode: string | null;
   questions: Question[];
+  projectTitle?: string;
+  consentItems: ConsentItem[];
+  presurveyQuestions: PresurveyQuestion[];
 }) {
   const router = useRouter();
+  const [flowState, setFlowState] = useState<FlowState>('CONSENT');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showVpnWarning, setShowVpnWarning] = useState(false);
-  const [geoBlocked, setGeoBlocked] = useState(false);
-  const [userCountry, setUserCountry] = useState<string>('Unknown');
-  const [question, setQuestion] = useState<Question | null>(null);
-  const [selectedAnswer, setSelectedAnswer] = useState<string>('');
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   
-  // New states for mid-survey validation
+  // States for mid-survey validation (keep existing functionality)
   const [showMidSurveyQuestion, setShowMidSurveyQuestion] = useState(false);
   const [midSurveyQuestion, setMidSurveyQuestion] = useState<Question | null>(null);
   const [midSurveyAnswer, setMidSurveyAnswer] = useState<string>('');
@@ -58,17 +89,128 @@ export default function SurveyPage({
   const [validationTimer, setValidationTimer] = useState<NodeJS.Timeout | null>(null);
   const [validationFailed, setValidationFailed] = useState(false);
 
-  // Set up a random question for pre-survey screening
+  // Initialize session data and check validity
   useEffect(() => {
-    if (questions.length > 0 && !question) {
-      const randomIndex = Math.floor(Math.random() * questions.length);
-      setQuestion(questions[randomIndex]);
+    if (!isValid || !originalUrl) return;
+    
+    const initializeSession = async () => {
+      const sessionToken = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      const metadata = collectClientMetadata();
+      
+      const session: SessionData = {
+        token: sessionToken,
+        projectId: router.query.projectId as string,
+        uid: router.query.uid as string,
+        linkType: linkType,
+        consents: {},
+        presurveyAnswers: {},
+        isQualified: false,
+        answers: [],
+        metadata: {
+          ...metadata,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+          vendor: vendorCode
+        }
+      };
+      
+      sessionStorage.setItem('surveySession', JSON.stringify(session));
+      setSessionData(session);
+      setIsLoading(false);
+    };
+    
+    initializeSession();
+  }, [isValid, originalUrl, linkType, router.query, vendorCode]);
+
+  // Handle consent completion
+  const handleConsentComplete = async (consents: Record<string, boolean>) => {
+    if (!sessionData) return;
+    
+    try {
+      // Record consent
+      await axios.post('/api/consent/record', {
+        projectId: sessionData.projectId,
+        uid: sessionData.uid,
+        consents,
+        token: sessionData.token,
+        metadata: sessionData.metadata
+      });
+      
+      // Update session
+      const updatedSession = {
+        ...sessionData,
+        consents
+      };
+      
+      sessionStorage.setItem('surveySession', JSON.stringify(updatedSession));
+      setSessionData(updatedSession);
+      
+      // Move to presurvey flow
+      setFlowState('PRESURVEY');
+    } catch (error) {
+      console.error('Error recording consent:', error);
+      setError('Failed to record consent. Please try again.');
     }
-  }, [questions]);
+  };
+
+  // Handle VPN detection during consent
+  const handleVpnDetected = () => {
+    setError('VPN or proxy detected. Please disable your VPN and refresh this page to continue.');
+  };
+
+  // Handle geo-restriction during consent
+  const handleGeoRestricted = (country: string) => {
+    setError(`We're sorry, but this survey is not available in your country (${country}). This survey is only available to participants from specific regions.`);
+  };
+
+  // Handle presurvey completion
+  const handlePresurveyComplete = async (qualified: boolean, answers: Record<string, any>) => {
+    if (!sessionData) return;
+    
+    try {
+      // Update session with presurvey results
+      const updatedSession = {
+        ...sessionData,
+        presurveyAnswers: answers,
+        isQualified: qualified
+      };
+      
+      sessionStorage.setItem('surveySession', JSON.stringify(updatedSession));
+      setSessionData(updatedSession);
+      
+      // Update status in database
+      await axios.post('/api/links/update-status', {
+        projectId: sessionData.projectId,
+        uid: sessionData.uid,
+        status: qualified ? 'QUALIFIED' : 'DISQUALIFIED',
+        token: sessionData.token,
+        presurveyData: {
+          answers,
+          qualified,
+          timestamp: new Date().toISOString()
+        }
+      });
+      
+      if (qualified) {
+        setFlowState('MAIN_SURVEY');
+      } else {
+        setFlowState('DISQUALIFIED');
+      }
+    } catch (error) {
+      console.error('Error updating presurvey results:', error);
+      setError('Failed to process presurvey results. Please try again.');
+    }
+  };
+
+  // Handle presurvey error
+  const handlePresurveyError = (error: string) => {
+    setError(error);
+  };
   
-  // Set up mid-survey validation timer
+  
+  // Set up mid-survey validation timer (only for main survey)
   useEffect(() => {
-    if (sessionData && iframeLoaded && !validationTimer && questions.length > 0 && !showMidSurveyQuestion) {
+    if (flowState === 'MAIN_SURVEY' && sessionData && iframeLoaded && !validationTimer && questions.length > 0 && !showMidSurveyQuestion) {
       // Only set up validation for LIVE links with questions
       if (linkType === 'LIVE') {
         // Set a timer for a random time between 30-120 seconds
@@ -87,7 +229,7 @@ export default function SurveyPage({
         clearTimeout(validationTimer);
       }
     };
-  }, [sessionData, iframeLoaded, questions, showMidSurveyQuestion]);
+  }, [flowState, sessionData, iframeLoaded, questions, showMidSurveyQuestion]);
   
   // Function to trigger mid-survey validation
   const triggerMidSurveyValidation = () => {
@@ -199,193 +341,11 @@ export default function SurveyPage({
     }
   };
 
-  // Perform initial check for VPN and geo-restriction
-  useEffect(() => {
-    const checkSecurityConstraints = async () => {
-      if (!isValid || !originalUrl) return;
-      
-      setIsLoading(true);
-      try {
-        // Get IP information
-        const ipResponse = await axios.get('/api/ip-check');
-        const isVpn = await detectVPN(ipResponse.data.ip);
-        const country = ipResponse.data.country || 'Unknown';
-        
-        setUserCountry(country);
-        
-        // Check if user's country is in the allowed list
-        const isGeoAllowed = !geoRestriction || 
-          !geoRestriction.length || 
-          geoRestriction.includes(country);
-        
-        // Handle VPN detection based on link type
-        if (isVpn) {
-          if (linkType === 'LIVE') {
-            setShowVpnWarning(true);
-            
-            // Log this VPN detection
-            await axios.post('/api/links/flag', {
-              projectId: router.query.projectId as string,
-              uid: router.query.uid as string,
-              reason: 'VPN detected',
-              metadata: {
-                ip: ipResponse.data.ip,
-                country
-              }
-            });
-          } else {
-            // For TEST links, log but allow
-            console.log('VPN detected but allowed in TEST mode');
-            
-            // Still flag it but continue
-            await axios.post('/api/links/flag', {
-              projectId: router.query.projectId as string,
-              uid: router.query.uid as string,
-              reason: 'VPN detected (TEST link)',
-              metadata: {
-                ip: ipResponse.data.ip,
-                country
-              }
-            });
-          }
-        }
-        
-        // Handle geo-restriction based on link type  
-        if (!isGeoAllowed) {
-          if (linkType === 'LIVE') {
-            setGeoBlocked(true);
-            
-            // Flag the geo-restriction violation
-            await axios.post('/api/links/flag', {
-              projectId: router.query.projectId as string,
-              uid: router.query.uid as string,
-              reason: 'Geographic restriction violation',
-              metadata: {
-                ip: ipResponse.data.ip,
-                country,
-                allowedCountries: geoRestriction
-              }
-            });
-          } else {
-            // For TEST links, log but allow
-            console.log('Geo-restriction violated but allowed in TEST mode');
-            
-            // Still flag it but continue
-            await axios.post('/api/links/flag', {
-              projectId: router.query.projectId as string,
-              uid: router.query.uid as string,
-              reason: 'Geographic restriction violation (TEST link)',
-              metadata: {
-                ip: ipResponse.data.ip,
-                country,
-                allowedCountries: geoRestriction
-              }
-            });
-          }
-        }
-        
-        // Collect metadata about user session
-        const metadata = collectClientMetadata();
-        
-        // Store session data
-        if (!showVpnWarning && !geoBlocked) {
-          const sessionToken = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-          
-          const session: SessionData = {
-            token: sessionToken,
-            projectId: router.query.projectId as string,
-            uid: router.query.uid as string,
-            linkType: linkType,
-            answers: question ? [{ questionId: question.id, value: selectedAnswer || '' }] : [],
-            metadata: {
-              ...metadata,
-              ip: ipResponse.data.ip,
-              country,
-              timestamp: new Date().toISOString(),
-              userAgent: navigator.userAgent,
-              vendor: vendorCode
-            }
-          };
-          
-          sessionStorage.setItem('surveySession', JSON.stringify(session));
-          setSessionData(session);
-          
-          // Update the survey link status to STARTED
-          try {
-            await axios.post('/api/links/update-status', {
-              projectId: router.query.projectId as string,
-              uid: router.query.uid as string,
-              status: 'STARTED',
-              token: sessionToken,
-              metadata: session.metadata
-            });
-          } catch (error) {
-            console.error('Failed to update status to STARTED:', error);
-          }
-        }
-      } catch (error) {
-        console.error('Error during security checks:', error);
-        setError('Failed to perform security checks. Please try again later.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    checkSecurityConstraints();
-  }, [originalUrl, isValid, geoRestriction, linkType, router.query, vendorCode]);
-
-  // Handle pre-survey question submission
-  const handleQuestionSubmit = async () => {
-    if (!selectedAnswer || !question) {
-      setError('Please select an answer to continue');
-      return;
-    }
-    
-    try {
-      // Store the answer
-      const storedSession = sessionStorage.getItem('surveySession');
-      if (storedSession) {
-        const session: SessionData = JSON.parse(storedSession);
-        
-        // Add/update this answer
-        const answerIndex = session.answers.findIndex(a => a.questionId === question.id);
-        if (answerIndex >= 0) {
-          session.answers[answerIndex].value = selectedAnswer;
-        } else {
-          session.answers.push({
-            questionId: question.id,
-            value: selectedAnswer
-          });
-        }
-        
-        sessionStorage.setItem('surveySession', JSON.stringify(session));
-        setSessionData(session);
-        
-        // Save the answer to database
-        await axios.post('/api/links/update-status', {
-          projectId: router.query.projectId as string,
-          uid: router.query.uid as string,
-          status: 'IN_PROGRESS',
-          questionId: question.id,
-          answer: selectedAnswer,
-          token: session.token
-        });
-      }
-      
-      // Continue to survey
-      setQuestion(null);
-    } catch (error) {
-      console.error('Error saving answer:', error);
-      setError('Failed to save your answer. Please try again.');
-    }
-  };
-  
   // Handle iframe load event
   const handleIframeLoad = () => {
     setIframeLoaded(true);
   };
-  
-  // If the link is invalid, show an error
+   // If the link is invalid, show an error
   if (!isValid) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -398,7 +358,7 @@ export default function SurveyPage({
       </div>
     );
   }
-  
+
   // Loading state
   if (isLoading) {
     return (
@@ -425,41 +385,7 @@ export default function SurveyPage({
       </div>
     );
   }
-  
-  // VPN Warning
-  if (showVpnWarning) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8 text-center">
-          <h1 className="text-2xl font-bold text-amber-600 mb-4">VPN Detected</h1>
-          <p className="text-gray-700 mb-6">
-            It appears you're using a VPN or proxy. To ensure data quality, please disable your VPN and refresh this page.
-          </p>
-          <p className="text-gray-500 text-sm">
-            This helps us maintain the integrity of survey responses.
-          </p>
-        </div>
-      </div>
-    );
-  }
-  
-  // Geo-restriction block
-  if (geoBlocked) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8 text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Geographic Restriction</h1>
-          <p className="text-gray-700 mb-6">
-            We're sorry, but this survey is not available in your country ({userCountry}).
-          </p>
-          <p className="text-gray-500 text-sm">
-            This survey is only available to participants from specific regions.
-          </p>
-        </div>
-      </div>
-    );
-  }
-  
+
   // Mid-survey validation failed
   if (validationFailed) {
     return (
@@ -476,52 +402,9 @@ export default function SurveyPage({
       </div>
     );
   }
-  
-  // Show pre-survey question
-  if (question) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Pre-Survey Question</h1>
-          <p className="text-gray-500 text-sm mb-6">
-            Please answer this question before proceeding to the survey.
-          </p>
-          
-          <div className="mb-6">
-            <h2 className="text-lg font-medium text-gray-700 mb-3">{question.text}</h2>
-            <div className="space-y-2">
-              {question.options.map((option, index) => (
-                <div key={index} className="flex items-center">
-                  <input
-                    id={`option-${index}`}
-                    type="radio"
-                    name="question"
-                    value={option}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-                    onChange={() => setSelectedAnswer(option)}
-                    checked={selectedAnswer === option}
-                  />
-                  <label htmlFor={`option-${index}`} className="ml-2 block text-gray-700">
-                    {option}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          <button
-            onClick={handleQuestionSubmit}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-          >
-            Continue to Survey
-          </button>
-        </div>
-      </div>
-    );
-  }
-  
-  // Show mid-survey validation
-  if (showMidSurveyQuestion && midSurveyQuestion) {
+
+  // Show mid-survey validation during main survey
+  if (showMidSurveyQuestion && midSurveyQuestion && flowState === 'MAIN_SURVEY') {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8">
@@ -569,34 +452,171 @@ export default function SurveyPage({
       </div>
     );
   }
-  
-  // Show the survey in an iframe
-  return (
-    <div className="flex flex-col min-h-screen">
-      {/* Survey Header */}
-      <header className="bg-white shadow-sm p-4">
-        <div className="container mx-auto">
-          <h1 className="text-lg font-medium text-gray-800">Survey in Progress</h1>
+
+  // Show consent page
+  if (flowState === 'CONSENT') {
+    return (
+      <ConsentPage
+        projectId={router.query.projectId as string}
+        uid={router.query.uid as string}
+        projectTitle={projectTitle}
+        requiredConsents={consentItems}
+        onConsentComplete={handleConsentComplete}
+        onVpnDetected={handleVpnDetected}
+        onGeoRestricted={handleGeoRestricted}
+      />
+    );
+  }
+
+  // Show presurvey flow
+  if (flowState === 'PRESURVEY') {
+    return (
+      <ConditionalPresurveyFlow
+        projectId={router.query.projectId as string}
+        uid={router.query.uid as string}
+        questions={presurveyQuestions}
+        onComplete={handlePresurveyComplete}
+        onError={handlePresurveyError}
+      />
+    );
+  }
+
+  // Show disqualification page
+  if (flowState === 'DISQUALIFIED') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8 text-center">
+          <h1 className="text-2xl font-bold text-amber-600 mb-4">Survey Complete</h1>
+          <p className="text-gray-700 mb-6">
+            Thank you for your time. Based on your responses, you do not qualify for this particular survey.
+          </p>
+          <p className="text-gray-500 text-sm">
+            We appreciate your participation and may have other opportunities available in the future.
+          </p>
         </div>
-      </header>
-      
-      {/* Survey Iframe */}
-      <main className="flex-grow relative">
-        {originalUrl && (
-          <iframe 
-            ref={iframeRef}
-            src={originalUrl}
-            className="w-full h-full absolute top-0 left-0 border-0"
-            onLoad={handleIframeLoad}
-            title="Survey"
-          ></iframe>
-        )}
-      </main>
+      </div>
+    );
+  }
+
+  // Show the main survey in an iframe
+  if (flowState === 'MAIN_SURVEY') {
+    return (
+      <div className="flex flex-col min-h-screen">
+        {/* Survey Header */}
+        <header className="bg-white shadow-sm p-4">
+          <div className="container mx-auto">
+            <h1 className="text-lg font-medium text-gray-800">Survey in Progress</h1>
+          </div>
+        </header>
+        
+        {/* Survey Iframe */}
+        <main className="flex-grow relative">
+          {originalUrl && (
+            <iframe 
+              ref={iframeRef}
+              src={originalUrl}
+              className="w-full h-full absolute top-0 left-0 border-0"
+              onLoad={handleIframeLoad}
+              title="Survey"
+            ></iframe>
+          )}
+        </main>
+      </div>
+    );
+  }
+
+  // Fallback loading state
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8 text-center">
+        <h1 className="text-2xl font-bold text-gray-800 mb-4">Loading...</h1>
+        <p className="text-gray-600 mb-6">Setting up your survey experience...</p>
+        <div className="flex justify-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
     </div>
   );
 }
 
-export async function getServerSideProps() {
-  // All data fetching is now client-side. Do not use amplifyDataService here.
-  return { props: {} };
+export async function getServerSideProps(context: any) {
+  const { projectId, uid } = context.params;
+  
+  try {
+    // In a real implementation, these would be fetched from your database
+    // For now, we'll return mock data that should be replaced with actual API calls
+    
+    const props = {
+      isValid: true, // This should be validated based on the link
+      originalUrl: null, // This should be fetched from your database
+      geoRestriction: null, // Project-specific geo restrictions
+      linkType: 'LIVE' as const, // Determined from the link
+      vendorCode: null, // Vendor associated with this link
+      questions: [], // Legacy questions for mid-survey validation
+      projectTitle: 'Research Survey', // Project title
+      consentItems: [
+        {
+          id: 'privacy',
+          title: 'Privacy Policy',
+          description: 'I agree to the privacy policy and understand how my data will be used.',
+          required: true,
+          type: 'privacy' as const
+        },
+        {
+          id: 'data_collection',
+          title: 'Data Collection',
+          description: 'I consent to the collection and processing of my survey responses.',
+          required: true,
+          type: 'data_collection' as const
+        },
+        {
+          id: 'participation',
+          title: 'Voluntary Participation',
+          description: 'I understand that my participation is voluntary and I can withdraw at any time.',
+          required: true,
+          type: 'participation' as const
+        }
+      ], // Consent items required for this project
+      presurveyQuestions: [
+        {
+          id: 'age_check',
+          text: 'Are you 18 years of age or older?',
+          type: 'single_choice' as const,
+          options: ['Yes', 'No'],
+          required: true,
+          conditions: {
+            qualification: 'disqualify' as const,
+            qualificationMessage: 'You must be 18 or older to participate in this survey.'
+          }
+        },
+        {
+          id: 'country_check',
+          text: 'Which country do you currently reside in?',
+          type: 'single_choice' as const,
+          options: ['United States', 'Canada', 'United Kingdom', 'Australia', 'Other'],
+          required: true,
+          conditions: {
+            qualification: 'qualify' as const
+          }
+        }
+      ] // Presurvey questions with conditional logic
+    };
+    
+    return { props };
+  } catch (error) {
+    console.error('Error in getServerSideProps:', error);
+    return {
+      props: {
+        isValid: false,
+        originalUrl: null,
+        geoRestriction: null,
+        linkType: 'LIVE' as const,
+        vendorCode: null,
+        questions: [],
+        projectTitle: 'Survey',
+        consentItems: [],
+        presurveyQuestions: []
+      }
+    };
+  }
 }

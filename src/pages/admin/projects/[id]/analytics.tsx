@@ -14,9 +14,7 @@ import { Chart as ChartJS,
 } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import ProtectedRoute from '@/lib/protected-route';
-import MetadataAnalyticsDashboard from '@/components/MetadataAnalyticsDashboard';
 import ComprehensiveAnalyticsDashboard from '@/components/ComprehensiveAnalyticsDashboard';
-import EnhancedAnalyticsDashboard from '@/components/EnhancedAnalyticsDashboard';
 import QCDashboard from '@/components/QCDashboard';
 
 // CSV Export Utilities
@@ -360,27 +358,6 @@ function ProjectAnalyticsComponent({
     ]
   };
     // Prepare test vs. live comparison data
-  const linkTypeChartData = {
-    labels: ['Test Links', 'Live Links'],
-    datasets: [
-      {
-        label: 'Total',
-        data: [linkTypeData.test, linkTypeData.live],
-        backgroundColor: 'rgba(99, 102, 241, 0.6)',
-      },
-      {
-        label: 'Completed',
-        data: [linkTypeData.testCompleted, linkTypeData.liveCompleted],
-        backgroundColor: 'rgba(5, 150, 105, 0.6)',
-      },
-      {
-        label: 'Disqualified/Quota Full',
-        data: [linkTypeData.testDisqualified, linkTypeData.liveDisqualified],
-        backgroundColor: 'rgba(239, 68, 68, 0.6)',
-      },
-    ],
-  };
-  
   // Enhanced export functionality with multiple formats
   const exportData = async () => {
     setIsLoading(true);
@@ -880,16 +857,6 @@ function ProjectAnalyticsComponent({
               Geographic Distribution
             </button>
             <button
-              onClick={() => setActiveTab('testlive')}
-              className={`py-4 px-6 font-medium text-sm ${
-                activeTab === 'testlive' 
-                  ? 'border-b-2 border-blue-500 text-blue-600' 
-                  : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Test vs. Live
-            </button>
-            <button
               onClick={() => setActiveTab('flags')}
               className={`py-4 px-6 font-medium text-sm ${
                 activeTab === 'flags' 
@@ -910,26 +877,6 @@ function ProjectAnalyticsComponent({
               Quality Control
             </button>
             <button
-              onClick={() => setActiveTab('realtime')}
-              className={`py-4 px-6 font-medium text-sm ${
-                activeTab === 'realtime' 
-                  ? 'border-b-2 border-blue-500 text-blue-600' 
-                  : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Real-time Activity
-            </button>
-            <button
-              onClick={() => setActiveTab('metadata')}
-              className={`py-4 px-6 font-medium text-sm ${
-                activeTab === 'metadata' 
-                  ? 'border-b-2 border-blue-500 text-blue-600' 
-                  : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Metadata Analytics
-            </button>
-            <button
               onClick={() => setActiveTab('comprehensive')}
               className={`py-4 px-6 font-medium text-sm ${
                 activeTab === 'comprehensive' 
@@ -937,17 +884,7 @@ function ProjectAnalyticsComponent({
                   : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              Comprehensive Analytics
-            </button>
-            <button
-              onClick={() => setActiveTab('enhanced')}
-              className={`py-4 px-6 font-medium text-sm ${
-                activeTab === 'enhanced' 
-                  ? 'border-b-2 border-blue-500 text-blue-600' 
-                  : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Enhanced Analytics
+              Advanced Analytics
             </button>
             <button
               onClick={() => setActiveTab('rawdata')}
@@ -1267,109 +1204,6 @@ function ProjectAnalyticsComponent({
           </div>
         )}
         
-        {activeTab === 'testlive' && (
-          <div className="bg-white shadow rounded-lg mb-8">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800">Test vs. Live Comparison</h2>
-              {selectedVendor !== 'all' && (
-                <p className="mt-1 text-sm text-gray-500">
-                  Filtered by vendor: {vendors.find(v => v.id === selectedVendor)?.name}
-                </p>
-              )}
-            </div>
-            <div className="p-6">
-              <div className="h-96">
-                <Bar 
-                  data={linkTypeChartData} 
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                      x: {
-                        title: {
-                          display: true,
-                          text: 'Link Type'
-                        }
-                      },
-                      y: {
-                        title: {
-                          display: true,
-                          text: 'Number of Links'
-                        }
-                      }
-                    }
-                  }}
-                />
-              </div>
-              
-              {/* Test/Live Comparison Table */}
-              <div className="mt-8">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Test vs. Live Metrics</h3>
-                <div className="overflow-hidden bg-gray-50 shadow sm:rounded-lg">
-                  <div className="px-4 py-5 sm:px-6">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">Performance Comparison</h3>
-                    <p className="mt-1 max-w-2xl text-sm text-gray-500">Detailed metrics for test and live environments.</p>
-                  </div>
-                  <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
-                    <dl className="sm:divide-y sm:divide-gray-200">
-                      <div className="py-4 sm:py-5 sm:grid sm:grid-cols-4 sm:gap-4 sm:px-6">
-                        <dt className="text-sm font-medium text-gray-500">Metric</dt>
-                        <dd className="text-sm font-medium text-gray-700 sm:col-span-1">Test Links</dd>
-                        <dd className="text-sm font-medium text-gray-700 sm:col-span-1">Live Links</dd>
-                        <dd className="text-sm font-medium text-gray-700 sm:col-span-1">Difference</dd>
-                      </div>
-                      <div className="py-4 sm:py-5 sm:grid sm:grid-cols-4 sm:gap-4 sm:px-6">
-                        <dt className="text-sm font-medium text-gray-500">Total Links</dt>
-                        <dd className="text-sm text-gray-900 sm:col-span-1">{linkTypeData.test}</dd>
-                        <dd className="text-sm text-gray-900 sm:col-span-1">{linkTypeData.live}</dd>
-                        <dd className="text-sm text-gray-900 sm:col-span-1">-</dd>
-                      </div>
-                      <div className="py-4 sm:py-5 sm:grid sm:grid-cols-4 sm:gap-4 sm:px-6">
-                        <dt className="text-sm font-medium text-gray-500">Completion Rate</dt>
-                        <dd className="text-sm text-gray-900 sm:col-span-1">
-                          {linkTypeData.test > 0 ? Math.round((linkTypeData.testCompleted / linkTypeData.test) * 100) : 0}% 
-                        </dd>
-                        <dd className="text-sm text-gray-900 sm:col-span-1">
-                          {linkTypeData.live > 0 ? Math.round((linkTypeData.liveCompleted / linkTypeData.live) * 100) : 0}% 
-                        </dd>
-                        <dd className="text-sm text-gray-900 sm:col-span-1">
-                          {(() => {
-                            const testRate = linkTypeData.test > 0 ? (linkTypeData.testCompleted / linkTypeData.test) * 100 : 0;
-                            const liveRate = linkTypeData.live > 0 ? (linkTypeData.liveCompleted / linkTypeData.live) * 100 : 0;
-                            const diff = Math.round(testRate - liveRate);
-                            const color = diff > 0 ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-gray-600';
-                            const prefix = diff > 0 ? '+' : '';
-                            return <span className={color}>{prefix}{diff}%</span>;
-                          })()}
-                        </dd>
-                      </div>
-                      <div className="py-4 sm:py-5 sm:grid sm:grid-cols-4 sm:gap-4 sm:px-6">
-                        <dt className="text-sm font-medium text-gray-500">Flag Rate</dt>
-                        <dd className="text-sm text-gray-900 sm:col-span-1">
-                          {linkTypeData.test > 0 ? Math.round((linkTypeData.testDisqualified / linkTypeData.test) * 100) : 0}% 
-                        </dd>
-                        <dd className="text-sm text-gray-900 sm:col-span-1">
-                          {linkTypeData.live > 0 ? Math.round((linkTypeData.liveFlagged / linkTypeData.live) * 100) : 0}% 
-                        </dd>
-                        <dd className="text-sm text-gray-900 sm:col-span-1">
-                          {(() => {
-                            const testRate = linkTypeData.test > 0 ? (linkTypeData.testFlagged / linkTypeData.test) * 100 : 0;
-                            const liveRate = linkTypeData.live > 0 ? (linkTypeData.liveFlagged / linkTypeData.live) * 100 : 0;
-                            const diff = Math.round(testRate - liveRate);
-                            const color = diff < 0 ? 'text-green-600' : diff > 0 ? 'text-red-600' : 'text-gray-600';
-                            const prefix = diff > 0 ? '+' : '';
-                            return <span className={color}>{prefix}{diff}%</span>;
-                          })()}
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        
         {activeTab === 'flags' && (
           <div className="bg-white shadow rounded-lg mb-8">
             <div className="px-6 py-4 border-b border-gray-200">
@@ -1477,258 +1311,9 @@ function ProjectAnalyticsComponent({
           </div>
         )}
 
-        {activeTab === 'realtime' && (
-          <div className="bg-white shadow rounded-lg mb-8">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800">Real-time Activity</h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Live activity feed showing recent link interactions and survey responses
-              </p>
-            </div>
-            <div className="p-6">
-              {/* Activity Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                      </svg>
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Active Now</p>
-                      <p className="text-2xl font-semibold text-gray-900">
-                        {vendors.reduce((acc, vendor) => acc + (vendor.stats?.started || 0), 0)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Completed Today</p>
-                      <p className="text-2xl font-semibold text-gray-900">
-                        {vendors.reduce((acc, vendor) => acc + (vendor.stats?.completed || 0), 0)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="bg-yellow-50 p-4 rounded-lg">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-yellow-100 rounded-lg">
-                      <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                      </svg>
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Flagged Today</p>
-                      <p className="text-2xl font-semibold text-gray-900">
-                        {filteredFlags.length}
-                      </p>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <div className="flex items-center">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                      </svg>
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Total Links</p>
-                      <p className="text-2xl font-semibold text-gray-900">
-                        {linkTypeData.test + linkTypeData.live}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Activity Timeline */}
-              <div className="mb-8">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flow-root">
-                    <ul className="-mb-8">
-                      {/* Generate activity items based on flags and recent activity */}
-                      {filteredFlags.slice(0, 10).map((flag, index) => (
-                        <li key={flag.id}>
-                          <div className="relative pb-8">
-                            {index !== filteredFlags.slice(0, 10).length - 1 && (
-                              <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
-                            )}
-                            <div className="relative flex space-x-3">
-                              <div className="h-8 w-8 bg-red-500 rounded-full flex items-center justify-center ring-8 ring-white">
-                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                </svg>
-                              </div>
-                              <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                                <div>
-                                  <p className="text-sm text-gray-500">
-                                    Flag detected: <span className="font-medium text-gray-900">{flag.reason}</span>
-                                    {flag.vendorName && (
-                                      <span className="text-gray-400"> • Vendor: {flag.vendorName}</span>
-                                    )}
-                                  </p>
-                                </div>
-                                <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                                  <time dateTime={flag.createdAt}>
-                                    {new Date(flag.createdAt).toLocaleTimeString()}
-                                  </time>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                      
-                      {/* Add some sample completed activity items */}
-                      {vendors.slice(0, 5).map((vendor, index) => (
-                        vendor.stats && vendor.stats.completed > 0 && (
-                          <li key={`completed-${vendor.id}`}>
-                            <div className="relative pb-8">
-                              {index !== 4 && (
-                                <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
-                              )}
-                              <div className="relative flex space-x-3">
-                                <div className="h-8 w-8 bg-green-500 rounded-full flex items-center justify-center ring-8 ring-white">
-                                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                </div>
-                                <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                                  <div>
-                                    <p className="text-sm text-gray-500">
-                                      Survey completed by <span className="font-medium text-gray-900">{vendor.name}</span>
-                                      <span className="text-gray-400"> • {vendor.stats.completed} total completions</span>
-                                    </p>
-                                  </div>
-                                  <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                                    <time>
-                                      {new Date(Date.now() - Math.random() * 3600000).toLocaleTimeString()}
-                                    </time>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </li>
-                        )
-                      ))}
-                      
-                      {filteredFlags.length === 0 && vendors.every(v => !v.stats || v.stats.completed === 0) && (
-                        <li>
-                          <div className="relative flex space-x-3">
-                            <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center ring-8 ring-white">
-                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2 2v-5m16 0h-3m-13 0h3m-3 0v-3m3 3v-3" />
-                              </svg>
-                            </div>
-                            <div className="min-w-0 flex-1 pt-1.5">
-                              <p className="text-sm text-gray-500 italic">
-                                No recent activity found. Activity will appear here as users interact with survey links.
-                              </p>
-                            </div>
-                          </div>
-                        </li>
-                      )}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* Live Performance Metrics */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Response Rate Chart */}
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Response Rate by Vendor</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="space-y-4">
-                      {filteredVendors.map((vendor) => {
-                        const total = vendor.stats ? 
-                          vendor.stats.pending + vendor.stats.started + vendor.stats.inProgress + vendor.stats.completed + vendor.stats.flagged : 0;
-                        const completed = vendor.stats?.completed || 0;
-                        const responseRate = total > 0 ? Math.round((completed / total) * 100) : 0;
-                        
-                        return (
-                          <div key={vendor.id} className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex justify-between mb-1">
-                                <span className="text-sm font-medium text-gray-700">{vendor.name}</span>
-                                <span className="text-sm text-gray-500">{responseRate}%</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div 
-                                  className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                                  style={{ width: `${responseRate}%` }}
-                                ></div>
-                              </div>
-                              <div className="flex justify-between mt-1 text-xs text-gray-500">
-                                <span>{completed} completed</span>
-                                <span>{total} total</span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Geographic Distribution */}
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Geographic Distribution</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="space-y-3">
-                      {geoData.slice(0, 8).map((geo, index) => {
-                        const maxCount = Math.max(...geoData.map(g => g.count));
-                        const widthPercentage = maxCount > 0 ? (geo.count / maxCount) * 100 : 0;
-                        
-                        return (
-                          <div key={`${geo.country}-${index}`} className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex justify-between mb-1">
-                                <span className="text-sm font-medium text-gray-700">{geo.country}</span>
-                                <span className="text-sm text-gray-500">{geo.count}</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div 
-                                  className="bg-green-600 h-2 rounded-full transition-all duration-300" 
-                                  style={{ width: `${widthPercentage}%` }}
-                                ></div>
-                              </div>
-                              <div className="flex justify-between mt-1 text-xs text-gray-500">
-                                <span>{geo.completedCount} completed</span>
-                                {geo.flaggedCount > 0 && (
-                                  <span className="text-red-500">{geo.flaggedCount} flagged</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'metadata' && (
-          <div className="space-y-8">
-            <MetadataAnalyticsDashboard projectId={projectId} />
-          </div>
-        )}
 
         {activeTab === 'comprehensive' && (
           <div className="space-y-8">
@@ -1921,49 +1506,7 @@ function ProjectAnalyticsComponent({
           </div>
         )}
 
-        {/* Enhanced Analytics Tab */}
-        {activeTab === 'enhanced' && (
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800">Enhanced Analytics Dashboard</h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Advanced analytics with security, behavioral, and data quality metrics
-              </p>
-            </div>
-            <div className="p-6">
-              <EnhancedAnalyticsDashboard
-                projectId={projectId}
-                dateRange={dateRange !== 'all' ? {
-                  start: (() => {
-                    const now = new Date();
-                    switch (dateRange) {
-                      case 'today':
-                        return new Date(now.setHours(0, 0, 0, 0)).toISOString();
-                      case 'yesterday':
-                        const yesterday = new Date(now);
-                        yesterday.setDate(yesterday.getDate() - 1);
-                        return new Date(yesterday.setHours(0, 0, 0, 0)).toISOString();
-                      case 'week':
-                        const weekAgo = new Date(now);
-                        weekAgo.setDate(weekAgo.getDate() - 7);
-                        return weekAgo.toISOString();
-                      case 'month':
-                        const monthAgo = new Date(now);
-                        monthAgo.setDate(monthAgo.getDate() - 30);
-                        return monthAgo.toISOString();
-                      default:
-                        const defaultStart = new Date(now);
-                        defaultStart.setDate(defaultStart.getDate() - 30);
-                        return defaultStart.toISOString();
-                    }
-                  })(),
-                  end: new Date().toISOString()
-                } : undefined}
-                refreshInterval={autoRefresh ? refreshInterval * 1000 : 0}
-              />
-            </div>
-          </div>
-        )}
+
 
         {/* Quality Control Tab */}
         {activeTab === 'qc' && (
