@@ -112,6 +112,14 @@ export default async function handler(
       expectedTotalLinks = count || (testCount && liveCount ? testCount + liveCount : 0);
     }
     
+    console.log('=== LINK GENERATION DEBUG ===');
+    console.log('Request body:', req.body);
+    console.log('Target vendor IDs:', targetVendorIds);
+    console.log('Expected total links:', expectedTotalLinks);
+    console.log('Count:', count);
+    console.log('Test/Live counts:', testCount, liveCount);
+    console.log('Generate per vendor:', generatePerVendor);
+    
     // Log security event
     await securityService.logSecurityEvent('LINK_GENERATION_ATTEMPT', {
       projectId,
@@ -125,6 +133,25 @@ export default async function handler(
       return res.status(400).json({ success: false, message: 'Missing required parameters' });
     }
 
+    console.log('=== VALIDATION DEBUG ===');
+    console.log('generatePerVendor:', generatePerVendor);
+    console.log('testCount:', testCount, '(type:', typeof testCount, ')');
+    console.log('liveCount:', liveCount, '(type:', typeof liveCount, ')');
+    console.log('count:', count, '(type:', typeof count, ')');
+    console.log('Condition 1 (split):', testCount !== undefined && liveCount !== undefined && (testCount > 0 || liveCount > 0));
+    console.log('Condition 2 (single):', count !== undefined && count > 0);
+    
+    // --- DEBUG: Log incoming types and values for testCount/liveCount ---
+    const parsedTestCount = testCount !== undefined ? parseInt(testCount as any, 10) : 0;
+    const parsedLiveCount = liveCount !== undefined ? parseInt(liveCount as any, 10) : 0;
+    console.log('DEBUG: parsedTestCount:', parsedTestCount, 'parsedLiveCount:', parsedLiveCount);
+    console.log('DEBUG: Will use split mode:', (testCount !== undefined && liveCount !== undefined) && (parsedTestCount > 0 || parsedLiveCount > 0));
+
+    // Use parsed values for all logic below - THIS WAS THE ORIGINAL BROKEN PLACEHOLDER CODE
+    // The actual generation logic is implemented below in the main generation section
+    // Remove this placeholder section entirely to fix the issue
+    // ...existing code...
+    
     // Enhanced validation for new per-vendor generation logic
     if (generatePerVendor) {
       if (!vendorIds || vendorIds.length === 0) {
@@ -135,14 +162,14 @@ export default async function handler(
       }
       
       // Validate count logic for per-vendor generation
-      if (testCount !== undefined && liveCount !== undefined) {
-        if (testCount < 0 || liveCount < 0 || (testCount + liveCount) > 5000) {
+      if (parsedTestCount !== undefined && parsedLiveCount !== undefined && (parsedTestCount > 0 || parsedLiveCount > 0)) {
+        if (parsedTestCount < 0 || parsedLiveCount < 0 || (parsedTestCount + parsedLiveCount) > 5000) {
           return res.status(400).json({ 
             success: false, 
             message: 'Per-vendor counts must be non-negative and total ≤ 5,000 per vendor' 
           });
         }
-      } else if (count !== undefined) {
+      } else if (count !== undefined && count > 0) {
         if (count < 1 || count > 5000) {
           return res.status(400).json({ 
             success: false, 
@@ -166,12 +193,12 @@ export default async function handler(
       }
     } else {
       // Original validation logic for single generation
-      if (testCount !== undefined && liveCount !== undefined) {
-        const totalCount = testCount + liveCount;
+      if (parsedTestCount !== undefined && parsedLiveCount !== undefined && (parsedTestCount > 0 || parsedLiveCount > 0)) {
+        const totalCount = parsedTestCount + parsedLiveCount;
         if (totalCount < 1 || totalCount > 10000) {
           return res.status(400).json({ success: false, message: 'Total count must be between 1 and 10,000' });
         }
-      } else if (count !== undefined) {
+      } else if (count !== undefined && count > 0) {
         if (count < 1 || count > 10000) {
           return res.status(400).json({ success: false, message: 'Count must be between 1 and 10,000' });
         }
@@ -239,14 +266,20 @@ export default async function handler(
     // Generate links with enhanced per-vendor logic
     const creationPromises = [];
     
+    console.log('=== GENERATION PATH SELECTION ===');
+    console.log('generatePerVendor:', generatePerVendor);
+    console.log('targetVendorIds.length:', targetVendorIds.length);
+    
     if (generatePerVendor && targetVendorIds.length > 0) {
+      console.log('Taking per-vendor generation path');
       // Generate specified counts for EACH vendor
       for (const vId of targetVendorIds) {
         const vendorInfo = validatedVendors[vId];
         
-        if (testCount !== undefined && liveCount !== undefined) {
+        if ((testCount !== undefined && liveCount !== undefined) && (parsedTestCount > 0 || parsedLiveCount > 0)) {
+          console.log(`[VENDOR ${vId}] Generating split links: ${parsedTestCount} test + ${parsedLiveCount} live`);
           // Generate TEST links for this vendor
-          for (let i = 0; i < testCount; i++) {
+          for (let i = 0; i < parsedTestCount; i++) {
             const baseUid = nanoid(8);
             const uid = vendorInfo.code ? 
               `${vendorInfo.code}_TEST_${baseUid}` : 
@@ -269,7 +302,7 @@ export default async function handler(
           }
 
           // Generate LIVE links for this vendor
-          for (let i = 0; i < liveCount; i++) {
+          for (let i = 0; i < parsedLiveCount; i++) {
             const baseUid = nanoid(8);
             const uid = vendorInfo.code ? 
               `${vendorInfo.code}_LIVE_${baseUid}` : 
@@ -292,7 +325,10 @@ export default async function handler(
           }
         } else if (count !== undefined) {
           // Generate the specified count of links for this vendor
-          for (let i = 0; i < count; i++) {
+          const linkCount = parseInt(String(count), 10);
+          console.log(`Generating ${linkCount} links for vendor ${vId}`);
+          
+          for (let i = 0; i < linkCount; i++) {
             const baseUid = nanoid(8);
             const linkTypePrefix = linkType || 'LIVE';
             const uid = vendorInfo.code ? 
@@ -312,18 +348,21 @@ export default async function handler(
               })
             };
             
+            console.log(`Creating vendor link ${i + 1}/${linkCount} for ${vendorInfo.name}:`, uid);
             creationPromises.push(amplifyServerService.createSurveyLink(linkData));
           }
         }
       }
     } else {
+      console.log('Taking single/no vendor generation path');
+      console.log('testCount:', testCount, 'liveCount:', liveCount, 'count:', count);
       // Original single vendor/no vendor generation logic
       const singleVendorId = targetVendorIds.length > 0 ? targetVendorIds[0] : undefined;
       const singleVendorInfo = singleVendorId ? validatedVendors[singleVendorId] : null;
       
-      if (testCount !== undefined && liveCount !== undefined) {
+      if ((testCount !== undefined && liveCount !== undefined) && (parsedTestCount > 0 || parsedLiveCount > 0)) {
         // Generate TEST links
-        for (let i = 0; i < testCount; i++) {
+        for (let i = 0; i < parsedTestCount; i++) {
           const baseUid = nanoid(8);
           const uid = singleVendorInfo?.code ? 
             `${singleVendorInfo.code}_TEST_${baseUid}` : 
@@ -346,7 +385,7 @@ export default async function handler(
         }
 
         // Generate LIVE links
-        for (let i = 0; i < liveCount; i++) {
+        for (let i = 0; i < parsedLiveCount; i++) {
           const baseUid = nanoid(8);
           const uid = singleVendorInfo?.code ? 
             `${singleVendorInfo.code}_LIVE_${baseUid}` : 
@@ -369,7 +408,10 @@ export default async function handler(
         }
       } else if (count !== undefined) {
         // Generate single type links
-        for (let i = 0; i < count; i++) {
+        const linkCount = parseInt(String(count), 10);
+        console.log('Generating single type links, parsed count:', linkCount);
+        
+        for (let i = 0; i < linkCount; i++) {
           const baseUid = nanoid(8);
           const linkTypePrefix = linkType || 'LIVE';
           const uid = singleVendorInfo?.code ? 
@@ -389,10 +431,14 @@ export default async function handler(
             })
           };
           
+          console.log(`Creating link ${i + 1}/${linkCount}:`, uid);
           creationPromises.push(amplifyServerService.createSurveyLink(linkData));
         }
       }
     }
+
+    console.log('=== CREATION PROMISES ===');
+    console.log('Total creation promises:', creationPromises.length);
 
     // Execute all creation promises
     const createdLinksResults = await Promise.all(creationPromises);
@@ -428,9 +474,21 @@ export default async function handler(
       .filter((link: SurveyLink) => link.vendorId)
       .map((link: SurveyLink) => link.vendorId as string);  // Add type assertion to ensure string type
     
-    const vendorResults = linkedVendorIds.length > 0 ? 
-      await amplifyServerService.listVendors({ id: { in: linkedVendorIds } }) : 
-      { data: [] };
+    // Fetch vendors individually to avoid GraphQL filter issues
+    const vendorResults = { data: [] as Vendor[] };
+    if (linkedVendorIds.length > 0) {
+      const uniqueVendorIds = Array.from(new Set(linkedVendorIds)); // Remove duplicates
+      for (const vendorId of uniqueVendorIds) {
+        try {
+          const vendorResult = await amplifyServerService.getVendor(vendorId);
+          if (vendorResult.data) {
+            vendorResults.data.push(vendorResult.data);
+          }
+        } catch (error) {
+          console.error(`Failed to fetch vendor ${vendorId}:`, error);
+        }
+      }
+    }
       const vendors = vendorResults.data.reduce((acc: Record<string, { name: string; code: string }>, vendor: Vendor) => {
       // Fix: Add null safety for vendor id index access
       if (vendor && vendor.id) {
@@ -457,7 +515,7 @@ export default async function handler(
     const protocol = useDevelopmentDomain ? 'http' : 'https';
     const baseUrl = `${protocol}://${domain}`;    // Format the response with complete URLs
     const formattedLinks = sortedLinks.map((link: SurveyLink) => {
-      const fullUrl = `${baseUrl}/s/${projectId}/${link.uid}`;
+      const fullUrl = `${baseUrl}/survey/${projectId}/${link.uid}`;
       
       // Extract data from metadata JSON
       let linkMetadata: any = {};

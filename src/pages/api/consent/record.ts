@@ -39,13 +39,19 @@ export default async function handler(
       });
     }
 
+    // Get enhanced geo-location data
+    const { enhancedGeoDetector } = await import('@/lib/enhanced-geo-detection');
+    const geoData = await enhancedGeoDetector.detectLocation(ip);
+
     // Log security event
     await securityService.logSecurityEvent('CONSENT_RECORDED', {
       projectId,
       uid,
       ip,
       consentCount: Object.keys(consents).length,
-      allConsented: Object.values(consents).every(c => c === true)
+      allConsented: Object.values(consents).every(c => c === true),
+      country: geoData.country,
+      countryCode: geoData.countryCode
     });
 
     // Verify survey link exists
@@ -98,7 +104,16 @@ export default async function handler(
         consents,
         metadata: metadata || {},
         ipAddress: ip,
-        userAgent: req.headers['user-agent'] || undefined
+        userAgent: req.headers['user-agent'] || undefined,
+        geoLocation: {
+          country: geoData.country,
+          countryCode: geoData.countryCode,
+          region: geoData.region,
+          city: geoData.city,
+          accuracy: geoData.accuracy,
+          confidence: geoData.confidence,
+          sources: geoData.sources
+        }
       }
     };
 

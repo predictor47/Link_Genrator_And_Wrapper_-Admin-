@@ -318,6 +318,18 @@ class AmplifyServerService {
     metadata?: string;
     geoData?: any;
   }): Promise<{ data: SurveyLink | null }> {
+    // Clean the input to remove any undefined values that might cause GraphQL issues
+    const cleanInput = {
+      projectId: input.projectId,
+      uid: input.uid,
+      status: input.status,
+      ...(input.vendorId ? { vendorId: input.vendorId } : {}),
+      ...(input.metadata ? { metadata: input.metadata } : {}),
+      ...(input.geoData ? { geoData: input.geoData } : {})
+    };
+
+    console.log('DEBUG: Creating survey link with input:', { uid: cleanInput.uid, linkType: JSON.parse(cleanInput.metadata || '{}').linkType });
+
     const query = `
       mutation CreateSurveyLink($input: CreateSurveyLinkInput!) {
         createSurveyLink(input: $input) {
@@ -338,7 +350,18 @@ class AmplifyServerService {
       }
     `;
 
-    const result = await this.makeGraphQLRequest<{ createSurveyLink: SurveyLink }>(query, { input });
+    const result = await this.makeGraphQLRequest<{ createSurveyLink: SurveyLink }>(query, { input: cleanInput });
+    
+    if (result.errors) {
+      console.error('GraphQL errors during survey link creation:', result.errors);
+    }
+    
+    if (result.data?.createSurveyLink) {
+      console.log('DEBUG: Successfully created survey link:', result.data.createSurveyLink.id);
+    } else {
+      console.error('DEBUG: Failed to create survey link - no data returned');
+    }
+    
     return { data: result.data?.createSurveyLink || null };
   }
 

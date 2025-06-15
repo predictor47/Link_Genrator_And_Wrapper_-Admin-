@@ -216,20 +216,34 @@ export default async function handler(
       });
     }
 
+    // Create a summary for analytics
+    const answersSummary = createAnswersSummary(sanitizedAnswers);
+
     // Update survey link to mark that presurvey was completed
     const updatedLinkMetadata = {
       ...JSON.parse(surveyLink.metadata || '{}'),
       presurveyCompleted: true,
       presurveyCompletedAt: timestamp,
-      presurveyAnswerCount: Object.keys(sanitizedAnswers).length
+      presurveyAnswerCount: Object.keys(sanitizedAnswers).length,
+      // Add QC analysis for raw data display
+      qcAnalysis: {
+        score: Math.max(0, 100 - suspicionScore),
+        flags: allQcFlags,
+        suspicionScore,
+        domainCheckPassed: !domainFlags.length,
+        honeypotPassed: !honeypotFlags.length,
+        flatlineDetected: flatlineFlags.length > 0,
+        aiDetected: aiFlags.length > 0,
+        riskLevel: suspicionScore > 50 ? 'HIGH' : suspicionScore > 25 ? 'MEDIUM' : 'LOW'
+      },
+      // Add qualification status
+      presurveyQualified: suspicionScore < 50 && allQcFlags.length < 3,
+      presurveyAnalysis: answersSummary
     };
 
     await amplifyServerService.updateSurveyLink(surveyLink.id, {
       metadata: JSON.stringify(updatedLinkMetadata)
     });
-
-    // Create a summary for analytics
-    const answersSummary = createAnswersSummary(sanitizedAnswers);
 
     // Log successful submission
     await securityService.logSecurityEvent('PRESURVEY_SUBMISSION_SUCCESS', {

@@ -607,7 +607,14 @@ export default function GeneratePage() {
       } else {
         payload.count = parseInt(data.count) || 1;
         payload.linkType = data.linkType || 'LIVE';
+        // Don't include testCount/liveCount when not in split mode
       }
+
+      // Add debugging
+      console.log('=== FRONTEND DEBUG ===');
+      console.log('Form data:', data);
+      console.log('Split link types:', splitLinkTypes);
+      console.log('Payload being sent:', payload);
 
       // Make a single API call
       const response = await axios.post('/api/links/generate', payload);
@@ -731,9 +738,11 @@ export default function GeneratePage() {
     document.body.removeChild(link);
   };
   
+  // End of GeneratePage function logic
+
+  // The return statement should be outside the function body
   return (
     <ProtectedRoute>
-      {/* Loading state */}
       {isLoadingProject ? (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center">
           <div className="text-center">
@@ -742,7 +751,6 @@ export default function GeneratePage() {
           </div>
         </div>
       ) : !project ? (
-        /* Error state */
         <div className="min-h-screen flex items-center justify-center bg-gray-100">
           <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
             <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
@@ -756,492 +764,177 @@ export default function GeneratePage() {
           </div>
         </div>
       ) : (
-        /* Main content */
         <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <Link 
-          href={`/admin/projects/${project?.id}`}
-          className="text-blue-600 hover:text-blue-800"
-        >
-          &larr; Back to project
-        </Link>
-        <h1 className="text-3xl font-bold mt-2">{project?.name}</h1>
-        <h2 className="text-xl font-semibold text-gray-700">Generate Survey Links</h2>
-      </div>
-      
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-          {error}
-        </div>
-      )}
-      
-      {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
-          {success}
-        </div>
-      )}
-      
-      <div className="bg-white shadow-md rounded-lg p-6 mb-8">
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium">Link Generation Method</h3>
+          <div className="mb-8">
+            <Link 
+              href={`/admin/projects/${project?.id}`}
+              className="text-blue-600 hover:text-blue-800"
+            >
+              &larr; Back to project
+            </Link>
+            <h1 className="text-3xl font-bold mt-2">{project?.name}</h1>
+            <h2 className="text-xl font-semibold text-gray-700">Generate Survey Links</h2>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button
-              type="button"
-              onClick={() => setIsBatchMode(false)}
-              className={`p-4 rounded-lg border-2 flex flex-col items-center ${!isBatchMode 
-                ? 'border-blue-500 bg-blue-50' 
-                : 'border-gray-200 hover:border-gray-300'}`}
-            >
-              <svg className="w-8 h-8 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              <span className="font-medium">Manual Entry</span>
-              <span className="text-xs text-gray-600 mt-1">Create links one by one with form</span>
-            </button>
-            
-            <button
-              type="button"
-              onClick={() => setIsBatchMode(true)}
-              className={`p-4 rounded-lg border-2 flex flex-col items-center ${isBatchMode 
-                ? 'border-blue-500 bg-blue-50' 
-                : 'border-gray-200 hover:border-gray-300'}`}
-            >
-              <svg className="w-8 h-8 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-              <span className="font-medium">Batch Upload</span>
-              <span className="text-xs text-gray-600 mt-1">Upload CSV with multiple links</span>
-            </button>
-          </div>
-        </div>
-        
-        <form onSubmit={handleSubmit(onSubmit)}>
-          {isBatchMode ? (
-            <div className="space-y-6">
-              <CSVUploader
-                onCSVProcessed={handleCSVProcessed}
-                templateFields={['originalUrl', 'vendorCode', 'count', 'testCount', 'liveCount', 'geoRestriction']} 
-                className="mb-4"
-              />
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+              {error}
+            </div>
+          )}
+          
+          {success && (
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
+              {success}
+            </div>
+          )}
+          
+          <div className="bg-white shadow-md rounded-lg p-6 mb-8">
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">Link Generation Method</h3>
+              </div>
               
-              {csvData.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="font-medium text-gray-700 mb-2">Loaded {csvData.length} entries from CSV</h4>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URL</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test/Live</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {csvData.slice(0, 5).map((row, index) => (
-                          <tr key={index}>
-                            <td className="px-6 py-2 text-sm text-gray-900">{row.originalUrl}</td>
-                            <td className="px-6 py-2 text-sm text-gray-500">{row.vendorCode || '-'}</td>
-                            <td className="px-6 py-2 text-sm text-gray-500">
-                              {row.testCount !== undefined && row.liveCount !== undefined 
-                                ? Number(row.testCount) + Number(row.liveCount)
-                                : row.count || 1}
-                            </td>
-                            <td className="px-6 py-2 text-sm text-gray-500">
-                              {row.testCount !== undefined && row.liveCount !== undefined 
-                                ? `${row.testCount} / ${row.liveCount}`
-                                : '-'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {csvData.length > 5 && (
-                    <p className="text-sm text-gray-500 mt-2">Showing 5 of {csvData.length} rows...</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setIsBatchMode(false)}
+                  className={`p-4 rounded-lg border-2 flex flex-col items-center ${!isBatchMode 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-200 hover:border-gray-300'}`}
+                >
+                  <svg className="w-8 h-8 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  <span className="font-medium">Manual Entry</span>
+                  <span className="text-xs text-gray-600 mt-1">Create links one by one with form</span>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => setIsBatchMode(true)}
+                  className={`p-4 rounded-lg border-2 flex flex-col items-center ${isBatchMode 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-200 hover:border-gray-300'}`}
+                >
+                  <svg className="w-8 h-8 text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  <span className="font-medium">Batch Upload</span>
+                  <span className="text-xs text-gray-600 mt-1">Upload CSV with multiple links</span>
+                </button>
+              </div>
+            </div>
+            
+            <form onSubmit={handleSubmit(onSubmit)}>
+              {isBatchMode ? (
+                <div className="space-y-6">
+                  <CSVUploader
+                    onCSVProcessed={handleCSVProcessed}
+                    templateFields={['originalUrl', 'vendorCode', 'count', 'testCount', 'liveCount', 'geoRestriction']} 
+                    className="mb-4"
+                  />
+                  
+                  {csvData.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="font-medium text-gray-700 mb-2">Loaded {csvData.length} entries from CSV</h4>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URL</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Count</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test/Live</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {csvData.slice(0, 5).map((row, index) => (
+                              <tr key={index}>
+                                <td className="px-6 py-2 text-sm text-gray-900">{row.originalUrl}</td>
+                                <td className="px-6 py-2 text-sm text-gray-500">{row.vendorCode || '-'}</td>
+                                <td className="px-6 py-2 text-sm text-gray-500">
+                                  {row.testCount !== undefined && row.liveCount !== undefined 
+                                    ? Number(row.testCount) + Number(row.liveCount)
+                                    : row.count || 1}
+                                </td>
+                                <td className="px-6 py-2 text-sm text-gray-500">
+                                  {row.testCount !== undefined && row.liveCount !== undefined 
+                                    ? `${row.testCount} / ${row.liveCount}`
+                                    : '-'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {csvData.length > 5 && (
+                        <p className="text-sm text-gray-500 mt-2">Showing 5 of {csvData.length} rows...</p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {isSubmitting && batchProgress.total > 0 && (
+                    <div className="mt-4">
+                      <h4 className="font-medium text-gray-700 mb-2">Processing Batch</h4>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div 
+                          className="bg-blue-600 h-2.5 rounded-full" 
+                          style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-2">
+                        Processing {batchProgress.current} of {batchProgress.total} rows...
+                      </p>
+                    </div>
                   )}
                 </div>
-              )}
-              
-              {isSubmitting && batchProgress.total > 0 && (
-                <div className="mt-4">
-                  <h4 className="font-medium text-gray-700 mb-2">Processing Batch</h4>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div 
-                      className="bg-blue-600 h-2.5 rounded-full" 
-                      style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-2">
-                    Processing {batchProgress.current} of {batchProgress.total} rows...
-                  </p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="originalUrl">
-                  Original Survey URL
-                </label>
-                <input
-                  id="originalUrl"
-                  type="url"
-                  placeholder="https://example.com/survey"
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  {...register("originalUrl", { required: true })}
-                />
-                {errors.originalUrl && (
-                  <p className="text-red-500 text-xs italic">Original URL is required</p>
-                )}
-              </div>
-              
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-gray-700 text-sm font-bold">
-                    Vendors ({selectedVendors.length} selected)
-                  </label>
-                  <button
-                    type="button"
-                    className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1 px-3 rounded text-sm"
-                    onClick={() => setShowVendorForm(!showVendorForm)}
-                  >
-                    {showVendorForm ? 'Cancel' : 'Add Vendor'}
-                  </button>
-                </div>
-                
-                {vendors.length > 0 ? (
-                  <div className="border border-gray-200 rounded-lg bg-gray-50 p-4">
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="text-sm text-gray-600">Select vendors for link generation:</span>
-                      <div className="space-x-2">
-                        <button
-                          type="button"
-                          onClick={handleSelectAllVendors}
-                          className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded"
-                        >
-                          Select All
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleClearAllVendors}
-                          className="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded"
-                        >
-                          Clear All
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {selectedVendors.length > 0 && (
-                      <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
-                        <strong>Selected Vendors:</strong> {getSelectedVendorNames()}
-                      </div>
-                    )}
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {vendors.map(vendor => (
-                        <label 
-                          key={vendor.id} 
-                          className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-100 ${
-                            selectedVendors.includes(vendor.id) ? 'bg-blue-100 text-blue-800' : ''
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedVendors.includes(vendor.id)}
-                            onChange={() => handleVendorToggle(vendor.id)}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          />
-                          <span className="text-sm">
-                            {vendor.name} ({vendor.code})
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="border border-gray-200 rounded-lg bg-gray-50 p-4 text-center">
-                    <p className="text-gray-500 text-sm">No vendors available. Create a vendor to get started.</p>
-                  </div>
-                )}
-                
-                {showVendorForm && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-md">
-                    <h3 className="font-medium text-gray-700 mb-2">Add New Vendor</h3>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-gray-700 text-sm mb-1" htmlFor="vendorName">
-                          Vendor Name
-                        </label>
-                        <input
-                          id="vendorName"
-                          type="text"
-                          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                          value={vendorName}
-                          onChange={(e) => setVendorName(e.target.value)}
-                          required
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-gray-700 text-sm mb-1" htmlFor="vendorCode">
-                          Vendor Code
-                        </label>
-                        <input
-                          id="vendorCode"
-                          type="text"
-                          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                          value={vendorCode}
-                          onChange={(e) => setVendorCode(e.target.value)}
-                          required
-                        />
-                        <p className="text-gray-500 text-xs mt-1">A short code to identify this vendor (e.g., "ABC_CORP")</p>
-                      </div>
-                      
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          className="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
-                          onClick={handleAddVendor}
-                          disabled={addingVendor || !vendorName || !vendorCode}
-                        >
-                          {addingVendor ? 'Adding...' : 'Add Vendor'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              <div className="mb-4">
-                <div className="flex items-center">
-                  <input
-                    id="splitLinkTypes"
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    checked={splitLinkTypes}
-                    onChange={(e) => setSplitLinkTypes(e.target.checked)}
-                  />
-                  <label htmlFor="splitLinkTypes" className="ml-2 block text-sm text-gray-700">
-                    Generate both Test and Live links
-                  </label>
-                </div>
-              </div>
-              
-              {!splitLinkTypes ? (
+              ) : (
                 <>
                   <div className="mb-4">
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="count">
-                      Number of Links to Generate
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="originalUrl">
+                      Original Survey URL
                     </label>
                     <input
-                      id="count"
-                      type="number"
-                      min="1"
-                      max="1000"
-                      defaultValue="1"
+                      id="originalUrl"
+                      type="url"
+                      placeholder="https://example.com/survey"
                       className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      {...register("count", { min: 1, max: 1000 })}
+                      {...register("originalUrl", { required: true })}
                     />
-                    {errors.count && (
-                      <p className="text-red-500 text-xs italic">Please enter a number between 1 and 1000</p>
+                    {errors.originalUrl && (
+                      <p className="text-red-500 text-xs italic">Original URL is required</p>
                     )}
                   </div>
                   
                   <div className="mb-4">
-                    <label className="block text-gray-700 text-sm font-bold mb-2">
-                      Link Type
-                    </label>
-                    <div className="mt-2 space-y-2">
-                      <div className="flex items-center">
-                        <input
-                          id="linkTypeLIVE"
-                          type="radio"
-                          value="LIVE"
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                          defaultChecked
-                          {...register("linkType")}
-                        />
-                        <label htmlFor="linkTypeLIVE" className="ml-2 block text-sm text-gray-700">
-                          Live (Production)
-                        </label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          id="linkTypeTEST"
-                          type="radio"
-                          value="TEST"
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                          {...register("linkType")}
-                        />
-                        <label htmlFor="linkTypeTEST" className="ml-2 block text-sm text-gray-700">
-                          Test (Relaxed Security)
-                        </label>
-                      </div>
-                    </div>
-                    <p className="text-gray-500 text-xs mt-1">
-                      {linkType === 'LIVE' ? 
-                        'Live mode enforces all security checks and is meant for production use.' : 
-                        'Test mode relaxes security checks for development and testing purposes.'}
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <div className="mb-4">
-                  <label className="block text-gray-700 text-sm font-bold mb-2">
-                    Link Distribution
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-gray-700 text-sm mb-2" htmlFor="testCount">
-                        Test Links
-                      </label>
-                      <input
-                        id="testCount"
-                        type="number"
-                        min="0"
-                        max="1000"
-                        defaultValue="0"
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        {...register("testCount", { min: 0, max: 1000 })}
-                      />
-                      <p className="text-gray-500 text-xs mt-1">
-                        Test links have relaxed security for development purposes
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-gray-700 text-sm mb-2" htmlFor="liveCount">
-                        Live Links
-                      </label>
-                      <input
-                        id="liveCount"
-                        type="number"
-                        min="0"
-                        max="1000"
-                        defaultValue="0"
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        {...register("liveCount", { min: 0, max: 1000 })}
-                      />
-                      <p className="text-gray-500 text-xs mt-1">
-                        Live links enforce all security checks for production use
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-sm text-gray-600">
-                      Total links to generate: <span className="font-medium">{Number(testCount || 0) + Number(liveCount || 0)}</span>
-                    </p>
-                    {(Number(testCount || 0) + Number(liveCount || 0)) > 1000 && (
-                      <p className="text-red-500 text-xs italic">Total links must not exceed 1000</p>
-                    )}
-                    {(Number(testCount || 0) + Number(liveCount || 0)) === 0 && (
-                      <p className="text-red-500 text-xs italic">You must generate at least 1 link</p>
-                    )}
-                  </div>
-                </div>
-              )}
-              
-              <div className="mb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <label htmlFor="restrictGeo" className="block text-sm font-medium text-gray-700">
-                      Restrict Survey Access by Country
-                    </label>
-                  </div>
-                  <div className="flex items-center">
-                    <button
-                      type="button"
-                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                        restrictGeo ? 'bg-blue-600' : 'bg-gray-200'
-                      }`}
-                      onClick={(e) => {
-                        const newValue = !restrictGeo;
-                        setValue('restrictGeo', newValue);
-                        setShowCountrySelect(newValue);
-                        if (!newValue) {
-                          setSelectedCountries([]);
-                        }
-                      }}
-                      role="switch"
-                      aria-checked={restrictGeo}
-                      aria-labelledby="restrictGeo-label"
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                          restrictGeo ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-                <p className="text-gray-500 text-xs mt-1">
-                  When enabled, survey links will only work in selected countries. Users from other regions will see a "not available in your region" message.
-                </p>
-                
-                {restrictGeo && (
-                  <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                    <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center justify-between mb-2">
                       <label className="block text-gray-700 text-sm font-bold">
-                        Select Allowed Countries ({selectedCountries.length} selected)
+                        Vendors ({selectedVendors.length} selected)
                       </label>
                       <button
                         type="button"
-                        onClick={() => setCountryModalOpen(true)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
+                        className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1 px-3 rounded text-sm"
+                        onClick={() => setShowVendorForm(!showVendorForm)}
                       >
-                        Select Countries
+                        {showVendorForm ? 'Cancel' : 'Add Vendor'}
                       </button>
                     </div>
                     
-                    {selectedCountries.length > 0 ? (
-                      <div className="p-2 bg-blue-50 border border-blue-200 rounded text-sm">
-                        <strong>Selected Countries:</strong> {getSelectedCountryNames()}
-                      </div>
-                    ) : (
-                      <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-                        ⚠️ No countries selected. Please select at least one country.
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                {/* Country Selection Modal */}
-                {countryModalOpen && (
-                  <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                    <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
-                      <div className="mt-3">
-                        <div className="flex justify-between items-center mb-4">
-                          <h3 className="text-lg font-medium text-gray-900">Select Countries</h3>
-                          <button
-                            type="button"
-                            onClick={() => setCountryModalOpen(false)}
-                            className="text-gray-400 hover:text-gray-600"
-                          >
-                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                        
-                        <div className="flex justify-between items-center mb-4">
-                          <span className="text-sm text-gray-600">
-                            {selectedCountries.length} of {countryCodes.length} countries selected
-                          </span>
+                    {vendors.length > 0 ? (
+                      <div className="border border-gray-200 rounded-lg bg-gray-50 p-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-sm text-gray-600">Select vendors for link generation:</span>
                           <div className="space-x-2">
                             <button
                               type="button"
-                              onClick={handleSelectAllCountries}
+                              onClick={handleSelectAllVendors}
                               className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded"
                             >
                               Select All
                             </button>
                             <button
                               type="button"
-                              onClick={handleClearAllCountries}
+                              onClick={handleClearAllVendors}
                               className="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded"
                             >
                               Clear All
@@ -1249,158 +942,472 @@ export default function GeneratePage() {
                           </div>
                         </div>
                         
-                        <div className="max-h-96 overflow-y-auto border border-gray-300 rounded bg-white mb-4">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1 p-2">
-                            {countryCodes.map(country => (
-                              <label 
-                                key={country.code} 
-                                className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-100 ${
-                                  selectedCountries.includes(country.code) ? 'bg-blue-100 text-blue-800' : ''
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={selectedCountries.includes(country.code)}
-                                  onChange={() => handleCountryToggle(country.code)}
-                                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                />
-                                <span className="text-sm">
-                                  {country.name} ({country.code})
-                                </span>
-                              </label>
-                            ))}
+                        {selectedVendors.length > 0 && (
+                          <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                            <strong>Selected Vendors:</strong> {getSelectedVendorNames()}
                           </div>
-                        </div>
+                        )}
                         
-                        <div className="flex justify-end space-x-2">
-                          <button
-                            type="button"
-                            onClick={() => setCountryModalOpen(false)}
-                            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setCountryModalOpen(false)}
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
-                          >
-                            Done ({selectedCountries.length} selected)
-                          </button>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {vendors.map(vendor => (
+                            <label 
+                              key={vendor.id} 
+                              className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-100 ${
+                                selectedVendors.includes(vendor.id) ? 'bg-blue-100 text-blue-800' : ''
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedVendors.includes(vendor.id)}
+                                onChange={() => handleVendorToggle(vendor.id)}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              />
+                              <span className="text-sm">
+                                {vendor.name} ({vendor.code})
+                              </span>
+                            </label>
+                          ))}
                         </div>
                       </div>
+                    ) : (
+                      <div className="border border-gray-200 rounded-lg bg-gray-50 p-4 text-center">
+                        <p className="text-gray-500 text-sm">No vendors available. Create a vendor to get started.</p>
+                      </div>
+                    )}
+                    
+                    {showVendorForm && (
+                      <div className="mt-4 p-4 bg-gray-50 rounded-md">
+                        <h3 className="font-medium text-gray-700 mb-2">Add New Vendor</h3>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-gray-700 text-sm mb-1" htmlFor="vendorName">
+                              Vendor Name
+                            </label>
+                            <input
+                              id="vendorName"
+                              type="text"
+                              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                              value={vendorName}
+                              onChange={(e) => setVendorName(e.target.value)}
+                              required
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-gray-700 text-sm mb-1" htmlFor="vendorCode">
+                              Vendor Code
+                            </label>
+                            <input
+                              id="vendorCode"
+                              type="text"
+                              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                              value={vendorCode}
+                              onChange={(e) => setVendorCode(e.target.value)}
+                              required
+                            />
+                            <p className="text-gray-500 text-xs mt-1">A short code to identify this vendor (e.g., "ABC_CORP")</p>
+                          </div>
+                          
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              className="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+                              onClick={handleAddVendor}
+                              disabled={addingVendor || !vendorName || !vendorCode}
+                            >
+                              {addingVendor ? 'Adding...' : 'Add Vendor'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="mb-4">
+                    <div className="flex items-center">
+                      <input
+                        id="splitLinkTypes"
+                        type="checkbox"
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        checked={splitLinkTypes}
+                        onChange={(e) => setSplitLinkTypes(e.target.checked)}
+                      />
+                      <label htmlFor="splitLinkTypes" className="ml-2 block text-sm text-gray-700">
+                        Generate both Test and Live links
+                      </label>
                     </div>
                   </div>
+                  
+                  {!splitLinkTypes ? (
+                    <>
+                      <div className="mb-4">
+                        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="count">
+                          Number of Links to Generate
+                        </label>
+                        <input
+                          id="count"
+                          type="number"
+                          min="1"
+                          max="1000"
+                          defaultValue="1"
+                          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                          {...register("count", { min: 1, max: 1000 })}
+                        />
+                        {errors.count && (
+                          <p className="text-red-500 text-xs italic">Please enter a number between 1 and 1000</p>
+                        )}
+                      </div>
+                      
+                      <div className="mb-4">
+                        <label className="block text-gray-700 text-sm font-bold mb-2">
+                          Link Type
+                        </label>
+                        <div className="mt-2 space-y-2">
+                          <div className="flex items-center">
+                            <input
+                              id="linkTypeLIVE"
+                              type="radio"
+                              value="LIVE"
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                              defaultChecked
+                              {...register("linkType")}
+                            />
+                            <label htmlFor="linkTypeLIVE" className="ml-2 block text-sm text-gray-700">
+                              Live (Production)
+                            </label>
+                          </div>
+                          <div className="flex items-center">
+                            <input
+                              id="linkTypeTEST"
+                              type="radio"
+                              value="TEST"
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                              {...register("linkType")}
+                            />
+                            <label htmlFor="linkTypeTEST" className="ml-2 block text-sm text-gray-700">
+                              Test (Relaxed Security)
+                            </label>
+                          </div>
+                        </div>
+                        <p className="text-gray-500 text-xs mt-1">
+                          {linkType === 'LIVE' ? 
+                            'Live mode enforces all security checks and is meant for production use.' : 
+                            'Test mode relaxes security checks for development and testing purposes.'}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="mb-4">
+                      <label className="block text-gray-700 text-sm font-bold mb-2">
+                        Link Distribution
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-gray-700 text-sm mb-2" htmlFor="testCount">
+                            Test Links
+                          </label>
+                          <input
+                            id="testCount"
+                            type="number"
+                            min="0"
+                            max="1000"
+                            defaultValue="0"
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            {...register("testCount", { min: 0, max: 1000 })}
+                          />
+                          <p className="text-gray-500 text-xs mt-1">
+                            Test links have relaxed security for development purposes
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-gray-700 text-sm mb-2" htmlFor="liveCount">
+                            Live Links
+                          </label>
+                          <input
+                            id="liveCount"
+                            type="number"
+                            min="0"
+                            max="1000"
+                            defaultValue="0"
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            {...register("liveCount", { min: 0, max: 1000 })}
+                          />
+                          <p className="text-gray-500 text-xs mt-1">
+                            Live links enforce all security checks for production use
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-2">
+                        <p className="text-sm text-gray-600">
+                          Total links to generate: <span className="font-medium">{Number(testCount || 0) + Number(liveCount || 0)}</span>
+                        </p>
+                        {(Number(testCount || 0) + Number(liveCount || 0)) > 1000 && (
+                          <p className="text-red-500 text-xs italic">Total links must not exceed 1000</p>
+                        )}
+                        {(Number(testCount || 0) + Number(liveCount || 0)) === 0 && (
+                          <p className="text-red-500 text-xs italic">You must generate at least 1 link</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <label htmlFor="restrictGeo" className="block text-sm font-medium text-gray-700">
+                          Restrict Survey Access by Country
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <button
+                          type="button"
+                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                            restrictGeo ? 'bg-blue-600' : 'bg-gray-200'
+                          }`}
+                          onClick={(e) => {
+                            const newValue = !restrictGeo;
+                            setValue('restrictGeo', newValue);
+                            setShowCountrySelect(newValue);
+                            if (!newValue) {
+                              setSelectedCountries([]);
+                            }
+                          }}
+                          role="switch"
+                          aria-checked={restrictGeo}
+                          aria-labelledby="restrictGeo-label"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                              restrictGeo ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-gray-500 text-xs mt-1">
+                      When enabled, survey links will only work in selected countries. Users from other regions will see a "not available in your region" message.
+                    </p>
+                    
+                    {restrictGeo && (
+                      <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                        <div className="flex justify-between items-center mb-3">
+                          <label className="block text-gray-700 text-sm font-bold">
+                            Select Allowed Countries ({selectedCountries.length} selected)
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setCountryModalOpen(true)}
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
+                          >
+                            Select Countries
+                          </button>
+                        </div>
+                        
+                        {selectedCountries.length > 0 ? (
+                          <div className="p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                            <strong>Selected Countries:</strong> {getSelectedCountryNames()}
+                          </div>
+                        ) : (
+                          <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                            ⚠️ No countries selected. Please select at least one country.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Country Selection Modal */}
+                    {countryModalOpen && (
+                      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                        <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+                          <div className="mt-3">
+                            <div className="flex justify-between items-center mb-4">
+                              <h3 className="text-lg font-medium text-gray-900">Select Countries</h3>
+                              <button
+                                type="button"
+                                onClick={() => setCountryModalOpen(false)}
+                                className="text-gray-400 hover:text-gray-600"
+                              >
+                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                            
+                            <div className="flex justify-between items-center mb-4">
+                              <span className="text-sm text-gray-600">
+                                {selectedCountries.length} of {countryCodes.length} countries selected
+                              </span>
+                              <div className="space-x-2">
+                                <button
+                                  type="button"
+                                  onClick={handleSelectAllCountries}
+                                  className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded"
+                                >
+                                  Select All
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleClearAllCountries}
+                                  className="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded"
+                                >
+                                  Clear All
+                                </button>
+                              </div>
+                            </div>
+                            
+                            <div className="max-h-96 overflow-y-auto border border-gray-300 rounded bg-white mb-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1 p-2">
+                                {countryCodes.map(country => (
+                                  <label 
+                                    key={country.code} 
+                                    className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-gray-100 ${
+                                      selectedCountries.includes(country.code) ? 'bg-blue-100 text-blue-800' : ''
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedCountries.includes(country.code)}
+                                      onChange={() => handleCountryToggle(country.code)}
+                                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    />
+                                    <span className="text-sm">
+                                      {country.name} ({country.code})
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            <div className="flex justify-end space-x-2">
+                              <button
+                                type="button"
+                                onClick={() => setCountryModalOpen(false)}
+                                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setCountryModalOpen(false)}
+                                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+                              >
+                                Done ({selectedCountries.length} selected)
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+              
+              <div className="flex items-center justify-between mt-6">
+                <button
+                  type="submit"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
+                  disabled={
+                    isSubmitting || 
+                    (splitLinkTypes && (Number(testCount || 0) + Number(liveCount || 0)) === 0) ||
+                    (restrictGeo && selectedCountries.length === 0)
+                  }
+                >
+                  {isSubmitting ? 'Generating...' : isBatchMode ? 'Generate Batch Links' : 'Generate Links'}
+                </button>
+                {restrictGeo && selectedCountries.length === 0 && (
+                  <p className="text-red-500 text-sm">Select countries to enable generation</p>
                 )}
               </div>
-            </>
-          )}
-          
-          <div className="flex items-center justify-between">
-            <button
-              type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
-              disabled={
-                isSubmitting || 
-                (splitLinkTypes && (Number(testCount || 0) + Number(liveCount || 0)) === 0) ||
-                (restrictGeo && selectedCountries.length === 0)
-              }
-            >
-              {isSubmitting ? 'Generating...' : isBatchMode ? 'Generate Batch Links' : 'Generate Links'}
-            </button>
-            {restrictGeo && selectedCountries.length === 0 && (
-              <p className="text-red-500 text-sm">Select countries to enable generation</p>
-            )}
+            </form>
           </div>
-        </form>
-      </div>
-      
-      {generatedLinks.length > 0 && (
-        <div className="bg-white shadow-md rounded-lg p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Generated Links</h3>
-            <div className="space-x-2">
-              <button
-                onClick={exportAsCSV}
-                className="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded text-sm"
-              >
-                Export CSV
-              </button>
-              <button
-                onClick={copyAllLinks}
-                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded text-sm"
-              >
-                Copy All URLs
-              </button>
+          
+          {generatedLinks.length > 0 && (
+            <div className="bg-white shadow-md rounded-lg p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Generated Links</h3>
+                <div className="space-x-2">
+                  <button
+                    onClick={exportAsCSV}
+                    className="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded text-sm"
+                  >
+                    Export CSV
+                  </button>
+                  <button
+                    onClick={copyAllLinks}
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded text-sm"
+                  >
+                    Copy All URLs
+                  </button>
+                </div>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        UID
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        URL
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {generatedLinks.slice(0, 50).map((link) => (
+                      <tr key={link.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {link.uid}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium ${
+                            link.linkType === 'LIVE' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {link.linkType}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {link.status}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <a 
+                            href={link.fullUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 hover:underline"
+                          >
+                            {link.fullUrl.length > 50 ? `${link.fullUrl.substring(0, 50)}...` : link.fullUrl}
+                          </a>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <button
+                            onClick={() => copyToClipboard(link.fullUrl)}
+                            className="text-indigo-600 hover:text-indigo-900"
+                          >
+                            Copy
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {generatedLinks.length > 50 && (
+                <p className="text-sm text-gray-500 mt-4">Showing 50 of {generatedLinks.length} links. Please use the export button to access all links.</p>
+              )}
             </div>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    UID
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    URL
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {generatedLinks.slice(0, 50).map((link) => (
-                  <tr key={link.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {link.uid}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium ${
-                        link.linkType === 'LIVE' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {link.linkType}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {link.status}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <a 
-                        href={link.fullUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 hover:underline"
-                      >
-                        {link.fullUrl.length > 50 ? `${link.fullUrl.substring(0, 50)}...` : link.fullUrl}
-                      </a>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <button
-                        onClick={() => copyToClipboard(link.fullUrl)}
-                        className="text-indigo-600 hover:text-indigo-900"
-                      >
-                        Copy
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {generatedLinks.length > 50 && (
-            <p className="text-sm text-gray-500 mt-4">Showing 50 of {generatedLinks.length} links. Please use the export button to access all links.</p>
           )}
         </div>
-      )}
-    </div>
       )}
     </ProtectedRoute>
   );

@@ -543,63 +543,162 @@ export async function getServerSideProps(context: any) {
   const { projectId, uid } = context.params;
   
   try {
-    // In a real implementation, these would be fetched from your database
-    // For now, we'll return mock data that should be replaced with actual API calls
+    // Import server service on the server side
+    const { getAmplifyServerService } = await import('@/lib/amplify-server-service');
+    const amplifyServerService = getAmplifyServerService();
+    
+    // Validate the survey link exists and get link details
+    const surveyLinkResult = await amplifyServerService.getSurveyLinkByUid(uid);
+    const surveyLink = surveyLinkResult.data;
+    
+    if (!surveyLink || surveyLink.projectId !== projectId) {
+      return {
+        props: {
+          isValid: false,
+          originalUrl: null,
+          geoRestriction: null,
+          linkType: 'LIVE' as const,
+          vendorCode: null,
+          questions: [],
+          projectTitle: 'Survey',
+          consentItems: [],
+          presurveyQuestions: []
+        }
+      };
+    }
+    
+    // Get project details
+    const projectResult = await amplifyServerService.getProject(projectId);
+    const project = projectResult.data;
+    
+    if (!project) {
+      return {
+        props: {
+          isValid: false,
+          originalUrl: null,
+          geoRestriction: null,
+          linkType: 'LIVE' as const,
+          vendorCode: null,
+          questions: [],
+          projectTitle: 'Survey',
+          consentItems: [],
+          presurveyQuestions: []
+        }
+      };
+    }
+    
+    // Parse metadata from survey link to get original URL and link type
+    let originalUrl = null;
+    let linkType = 'LIVE';
+    let geoRestriction = null;
+    
+    if (surveyLink.metadata) {
+      try {
+        const metadata = JSON.parse(surveyLink.metadata);
+        originalUrl = metadata.originalUrl;
+        linkType = metadata.linkType || 'LIVE';
+        geoRestriction = metadata.geoRestriction;
+      } catch (e) {
+        console.error('Error parsing survey link metadata:', e);
+      }
+    }
+    
+    // Get vendor information if available
+    let vendorCode = null;
+    if (surveyLink.vendorId) {
+      const vendorResult = await amplifyServerService.getVendor(surveyLink.vendorId);
+      const vendor = vendorResult.data;
+      if (vendor && vendor.settings) {
+        try {
+          const settings = JSON.parse(vendor.settings);
+          vendorCode = settings.code;
+        } catch (e) {
+          console.error('Error parsing vendor settings:', e);
+        }
+      }
+    }
+    
+    // Get project settings for consent items and presurvey questions
+    let consentItems = [
+      {
+        id: 'privacy',
+        title: 'Privacy Policy',
+        description: 'I agree to the privacy policy and understand how my data will be used.',
+        required: true,
+        type: 'privacy' as const
+      },
+      {
+        id: 'data_collection',
+        title: 'Data Collection',
+        description: 'I consent to the collection and processing of my survey responses.',
+        required: true,
+        type: 'data_collection' as const
+      },
+      {
+        id: 'participation',
+        title: 'Voluntary Participation',
+        description: 'I understand that my participation is voluntary and I can withdraw at any time.',
+        required: true,
+        type: 'participation' as const
+      }
+    ];
+    
+    let presurveyQuestions = [
+      {
+        id: 'age_check',
+        text: 'Are you 18 years of age or older?',
+        type: 'single_choice' as const,
+        options: ['Yes', 'No'],
+        required: true,
+        conditions: {
+          qualification: 'disqualify' as const,
+          qualificationMessage: 'You must be 18 or older to participate in this survey.'
+        }
+      },
+      {
+        id: 'country_check',
+        text: 'Which country do you currently reside in?',
+        type: 'single_choice' as const,
+        options: ['United States', 'Canada', 'United Kingdom', 'Australia', 'Other'],
+        required: true,
+        conditions: {
+          qualification: 'qualify' as const
+        }
+      }
+    ];
+    
+    // Parse project settings if available
+    if (project.settings) {
+      try {
+        const settings = JSON.parse(project.settings);
+        if (settings.consentItems) {
+          consentItems = settings.consentItems;
+        }
+        if (settings.presurveyQuestions) {
+          presurveyQuestions = settings.presurveyQuestions;
+        }
+        if (settings.geoRestrictions && !geoRestriction) {
+          geoRestriction = settings.geoRestrictions;
+        }
+      } catch (e) {
+        console.error('Error parsing project settings:', e);
+      }
+    }
+    
+    // Get legacy questions for mid-survey validation
+    const questionsResult = await amplifyServerService.listQuestionsByProject(projectId);
+    const questions = questionsResult.data || [];
     
     const props = {
-      isValid: true, // This should be validated based on the link
-      originalUrl: null, // This should be fetched from your database
-      geoRestriction: null, // Project-specific geo restrictions
-      linkType: 'LIVE' as const, // Determined from the link
-      vendorCode: null, // Vendor associated with this link
-      questions: [], // Legacy questions for mid-survey validation
-      projectTitle: 'Research Survey', // Project title
-      consentItems: [
-        {
-          id: 'privacy',
-          title: 'Privacy Policy',
-          description: 'I agree to the privacy policy and understand how my data will be used.',
-          required: true,
-          type: 'privacy' as const
-        },
-        {
-          id: 'data_collection',
-          title: 'Data Collection',
-          description: 'I consent to the collection and processing of my survey responses.',
-          required: true,
-          type: 'data_collection' as const
-        },
-        {
-          id: 'participation',
-          title: 'Voluntary Participation',
-          description: 'I understand that my participation is voluntary and I can withdraw at any time.',
-          required: true,
-          type: 'participation' as const
-        }
-      ], // Consent items required for this project
-      presurveyQuestions: [
-        {
-          id: 'age_check',
-          text: 'Are you 18 years of age or older?',
-          type: 'single_choice' as const,
-          options: ['Yes', 'No'],
-          required: true,
-          conditions: {
-            qualification: 'disqualify' as const,
-            qualificationMessage: 'You must be 18 or older to participate in this survey.'
-          }
-        },
-        {
-          id: 'country_check',
-          text: 'Which country do you currently reside in?',
-          type: 'single_choice' as const,
-          options: ['United States', 'Canada', 'United Kingdom', 'Australia', 'Other'],
-          required: true,
-          conditions: {
-            qualification: 'qualify' as const
-          }
-        }
-      ] // Presurvey questions with conditional logic
+      isValid: true,
+      originalUrl: originalUrl,
+      geoRestriction: geoRestriction,
+      linkType: linkType as 'TEST' | 'LIVE',
+      vendorCode: vendorCode,
+      questions: questions,
+      projectTitle: project.name || 'Research Survey',
+      consentItems: consentItems,
+      presurveyQuestions: presurveyQuestions
     };
     
     return { props };

@@ -1388,6 +1388,18 @@ function ProjectAnalyticsComponent({
                       >
                         Created {rawDataSortField === 'createdAt' && (rawDataSortDirection === 'asc' ? '↑' : '↓')}
                       </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Country
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        QC Score
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Presurvey
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Security Flags
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -1442,6 +1454,113 @@ function ProjectAnalyticsComponent({
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(link.createdAt).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {(() => {
+                            try {
+                              const metadata = link.metadata ? JSON.parse(link.metadata) : {};
+                              
+                              // Priority order: consent geo data > general geo data > geoData field
+                              return metadata?.consent?.geoLocation?.country || 
+                                     metadata?.geoLocation?.country || 
+                                     metadata?.ip_location?.country || 
+                                     metadata?.country || 
+                                     (link.geoData && typeof link.geoData === 'object' ? 
+                                       (typeof link.geoData === 'string' ? JSON.parse(link.geoData).country : link.geoData.country) : 
+                                       null) ||
+                                     'Unknown';
+                            } catch {
+                              return 'Unknown';
+                            }
+                          })()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {(() => {
+                            try {
+                              const metadata = link.metadata ? JSON.parse(link.metadata) : {};
+                              const qcScore = metadata?.qcAnalysis?.score || 
+                                            metadata?.qualityScore || 
+                                            metadata?.dataQualityScore;
+                              if (qcScore !== undefined) {
+                                return (
+                                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                    qcScore >= 80 ? 'bg-green-100 text-green-800' :
+                                    qcScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    {qcScore}
+                                  </span>
+                                );
+                              }
+                              return '-';
+                            } catch {
+                              return '-';
+                            }
+                          })()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {(() => {
+                            try {
+                              const metadata = link.metadata ? JSON.parse(link.metadata) : {};
+                              const presurveyCompleted = metadata?.presurveyCompleted || false;
+                              const qualified = metadata?.presurveyQualified || metadata?.isQualified;
+                              
+                              if (presurveyCompleted) {
+                                return (
+                                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                    qualified ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                  }`}>
+                                    {qualified ? 'Qualified' : 'Disqualified'}
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                  Pending
+                                </span>
+                              );
+                            } catch {
+                              return '-';
+                            }
+                          })()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {(() => {
+                            try {
+                              const metadata = link.metadata ? JSON.parse(link.metadata) : {};
+                              const qcFlags = metadata?.qcAnalysis?.flags || [];
+                              const securityFlags = metadata?.securityFlags || [];
+                              const generalFlags = metadata?.flags || [];
+                              const vpnDetected = metadata?.vpnDetected || 
+                                                metadata?.securityContext?.vpnDetection?.isVPN ||
+                                                metadata?.consent?.geoLocation?.isVPN;
+                              
+                              const allFlags = [...qcFlags, ...securityFlags, ...generalFlags];
+                              if (vpnDetected) allFlags.push('VPN');
+                              
+                              if (allFlags.length > 0) {
+                                return (
+                                  <div className="flex flex-wrap gap-1">
+                                    {allFlags.slice(0, 2).map((flag, index) => (
+                                      <span key={index} className="inline-flex px-1 py-0.5 text-xs font-medium rounded bg-red-100 text-red-800">
+                                        {flag}
+                                      </span>
+                                    ))}
+                                    {allFlags.length > 2 && (
+                                      <span className="text-xs text-gray-500">+{allFlags.length - 2}</span>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              return (
+                                <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                  Clean
+                                </span>
+                              );
+                            } catch {
+                              return '-';
+                            }
+                          })()}
                         </td>
                       </tr>
                     ))}
