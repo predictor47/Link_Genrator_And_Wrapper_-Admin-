@@ -3,7 +3,8 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import ProtectedRoute from '@/lib/protected-route';
 import { getAmplifyDataService } from '@/lib/amplify-data-service';
-import AdvancedQuestionBuilder from '@/components/AdvancedQuestionBuilder';
+import EnhancedFormGenerator from '@/components/EnhancedFormGenerator';
+import { EnhancedFormData, EnhancedQuestion, LegacyQuestion, convertEnhancedToLegacy } from '@/types/form-types';
 
 interface QuestionOption {
   id: string;
@@ -67,11 +68,15 @@ interface Question {
   updatedAt?: string;
 }
 
-interface QuestionGroup {
+interface FormData {
   id: string;
-  name: string;
-  description?: string;
-  randomize?: boolean;
+  title: string;
+  questions: Question[];
+  responses: any[];
+  qualified: number;
+  disqualified: number;
+  createdAt: Date;
+  lastModified: Date;
 }
 
 export default function NewProject() {
@@ -79,13 +84,13 @@ export default function NewProject() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('DRAFT');
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [groups, setGroups] = useState<QuestionGroup[]>([]);
+  const [questions, setQuestions] = useState<LegacyQuestion[]>([]);
+  const [formData, setFormData] = useState<EnhancedFormData | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [currentOptions, setCurrentOptions] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [useAdvancedBuilder, setUseAdvancedBuilder] = useState(false);
+  const [useEnhancedBuilder, setUseEnhancedBuilder] = useState(true);
 
   // Add a new question to the list
   const addQuestion = () => {
@@ -136,22 +141,19 @@ export default function NewProject() {
     setQuestions(questions.filter((_, i) => i !== index));
   };
 
-  // Handle advanced question builder changes
-  const handleQuestionsChange = (newQuestions: Question[], newGroups: QuestionGroup[]) => {
-    setQuestions(newQuestions);
-    setGroups(newGroups);
+  // Handle form data from enhanced builder
+  const handleFormSave = (savedFormData: EnhancedFormData) => {
+    setFormData(savedFormData);
+    // Convert enhanced questions to legacy format for backward compatibility
+    const legacyQuestions = savedFormData.questions.map((q, index) => convertEnhancedToLegacy(q, index + 1));
+    setQuestions(legacyQuestions);
+    setName(savedFormData.title);
   };
 
-  // Handle save from advanced builder
-  const handleAdvancedSave = () => {
+  // Handle save from enhanced builder
+  const handleEnhancedSave = () => {
     // Just update the state, actual save happens on project creation
-    console.log('Advanced questions saved:', questions.length, 'questions');
-  };
-
-  // Convert simple questions to advanced format
-  const convertToAdvancedFormat = () => {
-    // Questions are already in the advanced format, just enable the builder
-    setUseAdvancedBuilder(true);
+    console.log('Enhanced questions saved:', questions.length, 'questions');
   };
 
   // Handle form submission
@@ -192,8 +194,19 @@ export default function NewProject() {
       }));
       
       // Save questions in project settings
+      // Create project settings with enhanced form data
       const projectSettings = {
-        presurveyQuestions: presurveyQuestions,
+        preSurveyQuestions: formData ? formData.questions : questions.map(q => ({
+          id: q.id,
+          text: q.text,
+          description: '',
+          type: q.type,
+          required: q.isRequired,
+          isLead: false,
+          isQualifying: q.isQualifier || false,
+          options: q.options || [],
+          disqualifyingAnswers: []
+        })),
         consentItems: [
           {
             id: 'data_collection',
@@ -234,7 +247,7 @@ export default function NewProject() {
       // Add questions if provided
       if (questions && Array.isArray(questions) && questions.length > 0) {
         const projectId = projectResult.data.id;
-        const questionPromises = questions.map((q: Question, index: number) => 
+        const questionPromises = questions.map((q: LegacyQuestion, index: number) => 
           amplifyDataService.questions.create({
             projectId,
             text: q.text,
@@ -334,23 +347,23 @@ export default function NewProject() {
                 <div>
                   <h3 className="text-lg font-medium text-gray-800">Pre-survey Questions</h3>
                   <p className="text-sm text-gray-600">
-                    These questions will be asked before the survey and used for validation.
+                    Create professional surveys with advanced logic and qualification rules.
                   </p>
                 </div>
                 <div className="flex items-center space-x-4">
-                  {!useAdvancedBuilder && questions.length > 0 && (
+                  {!useEnhancedBuilder && questions.length > 0 && (
                     <button
                       type="button"
-                      onClick={convertToAdvancedFormat}
+                      onClick={() => setUseEnhancedBuilder(true)}
                       className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
                     >
-                      Use Advanced Builder
+                      Use Enhanced Builder
                     </button>
                   )}
-                  {useAdvancedBuilder && (
+                  {useEnhancedBuilder && (
                     <button
                       type="button"
-                      onClick={() => setUseAdvancedBuilder(false)}
+                      onClick={() => setUseEnhancedBuilder(false)}
                       className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
                     >
                       Use Simple Builder
@@ -359,14 +372,11 @@ export default function NewProject() {
                 </div>
               </div>
               
-              {useAdvancedBuilder ? (
+              {useEnhancedBuilder ? (
                 <div className="mb-6">
-                  <AdvancedQuestionBuilder
-                    projectId="new-project"
-                    questions={questions}
-                    groups={groups}
-                    onQuestionsChange={handleQuestionsChange}
-                    onSave={handleAdvancedSave}
+                  <EnhancedFormGenerator
+                    onSave={handleFormSave}
+                    initialData={formData || undefined}
                   />
                 </div>
               ) : (
@@ -438,10 +448,10 @@ export default function NewProject() {
                       <p className="text-gray-500 italic mb-4">No questions added yet</p>
                       <button
                         type="button"
-                        onClick={() => setUseAdvancedBuilder(true)}
+                        onClick={() => setUseEnhancedBuilder(true)}
                         className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
                       >
-                        Start with Advanced Builder
+                        Start with Enhanced Builder
                       </button>
                     </div>
                   )}

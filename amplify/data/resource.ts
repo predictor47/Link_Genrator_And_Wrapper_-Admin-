@@ -134,6 +134,28 @@ const schema = a.schema({
       allow.publicApiKey().to(['create', 'read', 'update', 'delete']),
     ]),
 
+  EnhancedFormResponse: a
+    .model({
+      projectId: a.id().required(),
+      uid: a.string().required(),
+      formData: a.json().required(),
+      responseData: a.json().required(),
+      leadData: a.json(),
+      qualified: a.boolean().required(),
+      disqualificationReason: a.string(),
+      completionTime: a.integer(),
+      metadata: a.json(),
+      ipAddress: a.string(),
+      userAgent: a.string(),
+      submittedAt: a.datetime().required(),
+      createdAt: a.datetime().required(),
+      updatedAt: a.datetime().required()
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['create', 'read', 'update', 'delete']),
+      allow.publicApiKey().to(['create', 'read', 'update', 'delete']),
+    ]),
+
   Response: a
     .model({
       surveyLinkId: a.id().required(),

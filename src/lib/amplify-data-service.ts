@@ -305,6 +305,105 @@ export async function getAmplifyDataService() {
       }
     },
 
+    presurveyAnswers: {
+      create: async (data: any) => {
+        const result = await client.models.PresurveyAnswer.create(data);
+        return { data: unwrapData(result) };
+      },
+      get: async (id: string) => {
+        const result = await client.models.PresurveyAnswer.get({ id });
+        return { data: unwrapData(result) };
+      },
+      list: async (filter?: any) => {
+        const result = await client.models.PresurveyAnswer.list(filter);
+        return { data: result.data || [] };
+      },
+      listByProject: async (projectId: string) => {
+        const result = await client.models.PresurveyAnswer.list({ 
+          filter: { projectId: { eq: projectId } } 
+        });
+        return { data: result.data || [] };
+      },
+      listByUid: async (uid: string) => {
+        const result = await client.models.PresurveyAnswer.list({ 
+          filter: { uid: { eq: uid } } 
+        });
+        return { data: result.data || [] };
+      },
+      update: async (id: string, data: any) => {
+        const result = await client.models.PresurveyAnswer.update({ id, ...data });
+        return { data: unwrapData(result) };
+      },
+      delete: async (id: string) => {
+        const result = await client.models.PresurveyAnswer.delete({ id });
+        return { data: unwrapData(result) };
+      }
+    },
+
+    enhancedFormResponses: {
+      create: async (data: any) => {
+        const result = await client.models.EnhancedFormResponse.create(data);
+        return { data: unwrapData(result) };
+      },
+      get: async (id: string) => {
+        const result = await client.models.EnhancedFormResponse.get({ id });
+        return { data: unwrapData(result) };
+      },
+      list: async (filter?: any) => {
+        const result = await client.models.EnhancedFormResponse.list(filter);
+        return { data: result.data || [] };
+      },
+      listByProject: async (projectId: string) => {
+        const result = await client.models.EnhancedFormResponse.list({ 
+          filter: { projectId: { eq: projectId } } 
+        });
+        return { data: result.data || [] };
+      },
+      listByUid: async (uid: string) => {
+        const result = await client.models.EnhancedFormResponse.list({ 
+          filter: { uid: { eq: uid } } 
+        });
+        return { data: result.data || [] };
+      },
+      update: async (id: string, data: any) => {
+        const result = await client.models.EnhancedFormResponse.update({ id, ...data });
+        return { data: unwrapData(result) };
+      },
+      delete: async (id: string) => {
+        const result = await client.models.EnhancedFormResponse.delete({ id });
+        return { data: unwrapData(result) };
+      }
+    },
+
+    rawDataRecords: {
+      create: async (data: any) => {
+        const result = await client.models.RawDataRecord.create(data);
+        return { data: unwrapData(result) };
+      },
+      get: async (id: string) => {
+        const result = await client.models.RawDataRecord.get({ id });
+        return { data: unwrapData(result) };
+      },
+      list: async (filter?: any) => {
+        const result = await client.models.RawDataRecord.list(filter);
+        return { data: result.data || [] };
+      },
+      listByProject: async (projectId: string) => {
+        const result = await client.models.RawDataRecord.list({ 
+          filter: { projectId: { eq: projectId } } 
+        });
+        return { data: result.data || [] };
+      },
+      update: async (id: string, data: any) => {
+        const result = await client.models.RawDataRecord.update({ id, ...data });
+        return { data: unwrapData(result) };
+      },
+      delete: async (id: string) => {
+        const result = await client.models.RawDataRecord.delete({ id });
+        return { data: unwrapData(result) };
+      }
+    },
+
     // Helper for transactions (not directly supported in Amplify Data, using batch operations)
     transaction: {
       execute: async (operations: any[]) => {

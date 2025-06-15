@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { GetServerSideProps } from 'next';
-import SurveyFlow from '@/components/SurveyFlow';
+import CombinedSurveyFlow from '@/components/CombinedSurveyFlow';
 import { getAmplifyServerService } from '@/lib/amplify-server-service';
 
 // Types
@@ -90,7 +90,7 @@ export default function SurveyLandingPage({
         </div>
         
         <div className="bg-white rounded-lg shadow-lg p-2 md:p-6">
-          <SurveyFlow 
+          <CombinedSurveyFlow 
             projectId={projectId}
             uid={uid}
             surveyUrl={project.surveyUrl}
