@@ -121,6 +121,7 @@ const LinksTab = ({ projectId }: LinksTabProps) => {
   const [linkTypeFilter, setLinkTypeFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [linksPerPage] = useState(50);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Fetch links and vendors
   useEffect(() => {
@@ -147,7 +148,12 @@ const LinksTab = ({ projectId }: LinksTabProps) => {
     };
 
     fetchData();
-  }, [projectId]);
+  }, [projectId, refreshTrigger]); // Added refreshTrigger to dependency array
+
+  // Function to manually refresh the links
+  const refreshLinks = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   // Helper function to get vendor name
   const getVendorName = (vendorId?: string) => {
@@ -316,6 +322,16 @@ const LinksTab = ({ projectId }: LinksTabProps) => {
             >
               Generate More Links
             </Link>
+            <button
+              onClick={refreshLinks}
+              disabled={loading}
+              className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2"
+            >
+              <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
+            </button>
             <button
               onClick={exportToCSV}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"

@@ -313,22 +313,40 @@ class AmplifyServerService {
   async createSurveyLink(input: {
     projectId: string;
     uid: string;
+    respId?: string; // New field for response ID
     vendorId?: string;
     status: string;
     metadata?: string;
     geoData?: any;
   }): Promise<{ data: SurveyLink | null }> {
+    console.log('=== CREATE SURVEY LINK DEBUG ===');
+    console.log('Input received:', {
+      projectId: input.projectId,
+      uid: input.uid,
+      vendorId: input.vendorId || 'none',
+      status: input.status,
+      hasMetadata: !!input.metadata,
+      hasGeoData: !!input.geoData
+    });
+    
+    // Validate required fields
+    if (!input.projectId || !input.uid || !input.status) {
+      console.error('❌ Missing required fields for survey link creation');
+      return { data: null };
+    }
+    
     // Clean the input to remove any undefined values that might cause GraphQL issues
     const cleanInput = {
       projectId: input.projectId,
       uid: input.uid,
       status: input.status,
+      ...(input.respId ? { respId: input.respId } : {}),
       ...(input.vendorId ? { vendorId: input.vendorId } : {}),
       ...(input.metadata ? { metadata: input.metadata } : {}),
       ...(input.geoData ? { geoData: input.geoData } : {})
     };
 
-    console.log('DEBUG: Creating survey link with input:', { uid: cleanInput.uid, linkType: JSON.parse(cleanInput.metadata || '{}').linkType });
+    console.log('Cleaned input for GraphQL:', cleanInput);
 
     const query = `
       mutation CreateSurveyLink($input: CreateSurveyLinkInput!) {
@@ -336,6 +354,7 @@ class AmplifyServerService {
           id
           projectId
           uid
+          respId
           vendorId
           status
           metadata
@@ -350,22 +369,53 @@ class AmplifyServerService {
       }
     `;
 
-    const result = await this.makeGraphQLRequest<{ createSurveyLink: SurveyLink }>(query, { input: cleanInput });
-    
-    if (result.errors) {
-      console.error('GraphQL errors during survey link creation:', result.errors);
+    try {
+      console.log('Sending GraphQL request...');
+      const result = await this.makeGraphQLRequest<{ createSurveyLink: SurveyLink }>(query, { input: cleanInput });
+      
+      console.log('GraphQL response received');
+      console.log('Has data:', !!result.data);
+      console.log('Has errors:', !!result.errors);
+      
+      if (result.errors) {
+        console.error('❌ GraphQL errors during survey link creation:');
+        result.errors.forEach((error, index) => {
+          console.error(`  Error ${index + 1}:`, error.message);
+        });
+        return { data: null };
+      }
+      
+      if (result.data?.createSurveyLink) {
+        const createdLink = result.data.createSurveyLink;
+        console.log('✅ Successfully created survey link:');
+        console.log('  ID:', createdLink.id);
+        console.log('  UID:', createdLink.uid);
+        console.log('  Project ID:', createdLink.projectId);
+        console.log('  Status:', createdLink.status);
+        console.log('  Created At:', createdLink.createdAt);
+        return { data: createdLink };
+      } else {
+        console.error('❌ No data returned from GraphQL mutation');
+        console.log('Full result:', JSON.stringify(result, null, 2));
+        return { data: null };
+      }
+      
+    } catch (error) {
+      console.error('❌ Exception during survey link creation:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
+      return { data: null };
+    } finally {
+      console.log('=== END CREATE SURVEY LINK DEBUG ===');
     }
-    
-    if (result.data?.createSurveyLink) {
-      console.log('DEBUG: Successfully created survey link:', result.data.createSurveyLink.id);
-    } else {
-      console.error('DEBUG: Failed to create survey link - no data returned');
-    }
-    
-    return { data: result.data?.createSurveyLink || null };
   }
 
   async listSurveyLinksByProject(projectId: string): Promise<{ data: SurveyLink[] }> {
+    console.log('=== LIST SURVEY LINKS DEBUG ===');
+    console.log('Querying for project ID:', projectId);
+    
     const query = `
       query ListSurveyLinks($filter: ModelSurveyLinkFilterInput) {
         listSurveyLinks(filter: $filter) {
@@ -373,6 +423,7 @@ class AmplifyServerService {
             id
             projectId
             uid
+            respId
             vendorId
             status
             metadata
@@ -392,8 +443,29 @@ class AmplifyServerService {
       projectId: { eq: projectId }
     };
 
+    console.log('Using filter:', JSON.stringify(filter));
+    
     const result = await this.makeGraphQLRequest<{ listSurveyLinks: { items: SurveyLink[] } }>(query, { filter });
-    return { data: result.data?.listSurveyLinks?.items || [] };
+    
+    const items = result.data?.listSurveyLinks?.items || [];
+    console.log(`Query returned ${items.length} items`);
+    
+    if (items.length > 0) {
+      console.log('Found links:');
+      items.forEach((link, index) => {
+        console.log(`  ${index + 1}. ID: ${link.id}, UID: ${link.uid}, ProjectID: ${link.projectId}`);
+      });
+    } else {
+      console.log('No links found for this project');
+    }
+    
+    if (result.errors) {
+      console.log('GraphQL errors in list query:', result.errors);
+    }
+    
+    console.log('=== END LIST SURVEY LINKS DEBUG ===');
+    
+    return { data: items };
   }
 
   async getSurveyLinkByUid(uid: string): Promise<{ data: SurveyLink | null }> {

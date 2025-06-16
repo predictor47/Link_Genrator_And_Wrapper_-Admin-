@@ -39,6 +39,7 @@ const schema = a.schema({
     .model({
       projectId: a.id(),
       uid: a.string().required(),
+      respId: a.string(), // Response ID for the actual survey (e.g., al001, al002)
       status: a.enum(['UNUSED', 'CLICKED', 'COMPLETED', 'DISQUALIFIED', 'QUOTA_FULL']),
       createdAt: a.datetime().required(),
       updatedAt: a.datetime().required(),
@@ -88,6 +89,7 @@ const schema = a.schema({
     .model({
       projectId: a.id().required(),
       uid: a.string().required(),
+      respId: a.string(), // Response ID that links to the survey response
       surveyData: a.json(),
       presurveyAnswers: a.json(),
       completionData: a.json(),
