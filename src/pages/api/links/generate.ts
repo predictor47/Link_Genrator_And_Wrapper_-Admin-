@@ -3,6 +3,27 @@ import { nanoid } from 'nanoid';
 import { getAmplifyServerService } from '@/lib/amplify-server-service';
 import { securityService } from '@/lib/security-service';
 
+// Define proper types for the API responses
+interface LinkCreationResult {
+  data: any; // The actual link data from Amplify
+}
+
+interface LinkCreationError {
+  data: null;
+  error: string | Error;
+}
+
+type LinkCreationResponse = LinkCreationResult | LinkCreationError;
+
+// Define the metadata structure
+interface LinkMetadata {
+  linkType?: string;
+  originalUrl?: string;
+  geoRestriction?: any;
+  vendorName?: string;
+  [key: string]: any; // Allow additional properties
+}
+
 // Use types that match our server service
 type SurveyLinkStatus = 'UNUSED' | 'CLICKED' | 'COMPLETED' | 'DISQUALIFIED' | 'QUOTA_FULL';
 
@@ -305,7 +326,7 @@ export default async function handler(
     }
 
     // Generate links with enhanced per-vendor logic
-    const creationPromises = [];
+    const creationPromises: Promise<any>[] = [];
     
     console.log('=== GENERATION PATH SELECTION ===');
     console.log('generatePerVendor:', generatePerVendor);
@@ -515,7 +536,7 @@ export default async function handler(
     
     console.log(`Using batch size: ${BATCH_SIZE}, delay: ${BATCH_DELAY}ms for ${creationPromises.length} links`);
     
-    const createdLinksResults = [];
+    const createdLinksResults: LinkCreationResponse[] = [];
     const totalBatches = Math.ceil(creationPromises.length / BATCH_SIZE);
     const startTime = Date.now();
     
@@ -539,7 +560,7 @@ export default async function handler(
       }
       
       // Process batch with improved error handling
-      const batchResults = [];
+      const batchResults: LinkCreationResponse[] = [];
       let batchSuccessful = 0;
       let batchFailed = 0;
       
@@ -596,7 +617,10 @@ export default async function handler(
             }
           } catch (individualError) {
             console.error(`Individual link creation ${j + 1}/${batch.length} failed:`, individualError);
-            batchResults.push({ data: null, error: individualError });
+            const errorMessage = individualError instanceof Error ? individualError : 
+                                 typeof individualError === 'string' ? individualError : 
+                                 'Unknown error';
+            batchResults.push({ data: null, error: errorMessage });
             batchFailed++;
             totalFailed++;
           }
@@ -619,9 +643,9 @@ export default async function handler(
     console.log('Creation results count:', createdLinksResults.length);
     console.log('Unique created IDs count:', allCreatedIds.size);
     
-    // Check for any failed creations
-    const successfulCreations = createdLinksResults.filter(result => result.data);
-    const failedCreations = createdLinksResults.filter(result => !result.data);
+    // Check for any failed creations - properly typed
+    const successfulCreations = createdLinksResults.filter((result): result is LinkCreationResult => !!result.data);
+    const failedCreations = createdLinksResults.filter((result): result is LinkCreationError => !result.data);
     
     console.log('Successful creations:', successfulCreations.length);
     console.log('Failed creations:', failedCreations.length);
@@ -726,11 +750,11 @@ export default async function handler(
         
         // Determine link type from UID pattern or metadata
         let linkType = 'LIVE';
-        let extractedMetadata = {};
+        let extractedMetadata: LinkMetadata = {};
         
         try {
           if (linkData.metadata) {
-            extractedMetadata = JSON.parse(linkData.metadata as string);
+            extractedMetadata = JSON.parse(linkData.metadata as string) as LinkMetadata;
             linkType = extractedMetadata.linkType || 'LIVE';
           }
         } catch (e) {
