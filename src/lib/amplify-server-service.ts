@@ -35,6 +35,7 @@ interface SurveyLink {
   id: string;
   projectId: string;
   uid: string;
+  respId?: string;
   vendorId?: string;
   status: SurveyLinkStatus;
   clickedAt?: string;

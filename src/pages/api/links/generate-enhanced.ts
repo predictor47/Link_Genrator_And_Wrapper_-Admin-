@@ -382,7 +382,7 @@ export default async function handler(
       return {
         id: linkData.id,
         uid: linkData.uid,
-        respId: (linkData as any).respId, // TODO: Remove this type assertion after schema deployment
+        respId: linkData.respId || metadata.respId, // Fallback to metadata if not in top-level
         originalUrl: metadata.originalUrl,
         surveyUrl: metadata.surveyUrl,
         wrapperUrl: `${baseUrl}/survey/${projectId}/${linkData.uid}`,
