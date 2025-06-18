@@ -9,7 +9,7 @@ export default function SorryDisqualified() {
     // Set up redirect countdown - now 15 seconds
     const timer = setTimeout(() => {
       window.location.href = redirectUrl;
-    }, 20000);
+    }, 5000); // 5000 milliseconds = 5 seconds
 
     // Update countdown timer
     const countdownInterval = setInterval(() => {

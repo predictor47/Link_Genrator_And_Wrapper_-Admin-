@@ -585,7 +585,12 @@ export default function GeneratePage() {
         projectId: project?.id,
         originalUrl: data.originalUrl,
         geoRestriction,
-        useDevelopmentDomain: process.env.NODE_ENV === 'development'
+        useDevelopmentDomain: process.env.NODE_ENV === 'development',
+        respIdStart: parseInt(data.respIdStart) || 1,
+        vendorInternal: data.vendorInternal || false,
+        vendorTrackingCode: data.vendorTrackingCode || null,
+        includeVendorMetadata: data.includeVendorMetadata || false,
+        enableVendorReporting: data.enableVendorReporting || false
       };
 
       // Handle vendor selection

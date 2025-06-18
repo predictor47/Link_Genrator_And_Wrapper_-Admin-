@@ -65,6 +65,11 @@ type GenerateLinksRequest = {
   liveCount?: number; // Per vendor live count
   useDevelopmentDomain?: boolean;
   generatePerVendor?: boolean; // Flag to generate specified counts for EACH vendor
+  respIdStart?: number; // Starting respondent ID
+  vendorInternal?: boolean; // Use vendor internal parameters
+  vendorTrackingCode?: string; // Custom vendor tracking code
+  includeVendorMetadata?: boolean; // Include vendor metadata in links
+  enableVendorReporting?: boolean; // Enable enhanced vendor reporting
 };
 
 // Domain configuration
@@ -103,7 +108,12 @@ export default async function handler(
       testCount,
       liveCount,
       useDevelopmentDomain,
-      generatePerVendor
+      generatePerVendor,
+      respIdStart,
+      vendorInternal,
+      vendorTrackingCode,
+      includeVendorMetadata,
+      enableVendorReporting
     } = req.body as GenerateLinksRequest;
 
     // Get client IP for security logging
@@ -402,11 +412,18 @@ export default async function handler(
               uid,
               vendorId: vId,
               status: 'UNUSED',
+              respId: String((respIdStart || 1) + i), // Add sequential respId as string
               metadata: JSON.stringify({
                 originalUrl,
                 linkType: linkType || 'LIVE',
                 geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined,
-                vendorName: vendorInfo.name
+                vendorName: vendorInfo.name,
+                respIdStart: respIdStart || 1,
+                respId: (respIdStart || 1) + i,
+                vendorInternal: vendorInternal || false,
+                vendorTrackingCode: vendorTrackingCode || null,
+                includeVendorMetadata: includeVendorMetadata || false,
+                enableVendorReporting: enableVendorReporting || false
               })
             };
             
@@ -435,11 +452,18 @@ export default async function handler(
             uid,
             vendorId: singleVendorId || undefined,
             status: 'UNUSED',
+            respId: String((respIdStart || 1) + i), // Add sequential respId as string
             metadata: JSON.stringify({
               originalUrl,
               linkType: 'TEST',
               geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined,
-              vendorName: singleVendorInfo?.name
+              vendorName: singleVendorInfo?.name,
+              respIdStart: respIdStart || 1,
+              respId: (respIdStart || 1) + i,
+              vendorInternal: vendorInternal || false,
+              vendorTrackingCode: vendorTrackingCode || null,
+              includeVendorMetadata: includeVendorMetadata || false,
+              enableVendorReporting: enableVendorReporting || false
             })
           };
           
@@ -458,11 +482,18 @@ export default async function handler(
             uid,
             vendorId: singleVendorId || undefined,
             status: 'UNUSED',
+            respId: String((respIdStart || 1) + parsedTestCount + i), // Continue sequential respId after TEST links as string
             metadata: JSON.stringify({
               originalUrl,
               linkType: 'LIVE',
               geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined,
-              vendorName: singleVendorInfo?.name
+              vendorName: singleVendorInfo?.name,
+              respIdStart: respIdStart || 1,
+              respId: (respIdStart || 1) + parsedTestCount + i,
+              vendorInternal: vendorInternal || false,
+              vendorTrackingCode: vendorTrackingCode || null,
+              includeVendorMetadata: includeVendorMetadata || false,
+              enableVendorReporting: enableVendorReporting || false
             })
           };
           
@@ -485,11 +516,18 @@ export default async function handler(
             uid,
             vendorId: singleVendorId || undefined,
             status: 'UNUSED',
+            respId: String((respIdStart || 1) + i), // Add sequential respId as string
             metadata: JSON.stringify({
               originalUrl,
               linkType: linkType || 'LIVE',
               geoRestriction: geoRestriction && geoRestriction.length > 0 ? geoRestriction : undefined,
-              vendorName: singleVendorInfo?.name
+              vendorName: singleVendorInfo?.name,
+              respIdStart: respIdStart || 1,
+              respId: (respIdStart || 1) + i,
+              vendorInternal: vendorInternal || false,
+              vendorTrackingCode: vendorTrackingCode || null,
+              includeVendorMetadata: includeVendorMetadata || false,
+              enableVendorReporting: enableVendorReporting || false
             })
           };
           

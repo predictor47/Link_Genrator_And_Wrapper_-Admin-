@@ -9,7 +9,7 @@ export default function ThankYouCompleted() {
     // Set up redirect countdown - now 15 seconds
     const timer = setTimeout(() => {
       window.location.href = redirectUrl;
-    }, 20000);
+    }, 5000);
 
     // Update countdown timer
     const countdownInterval = setInterval(() => {

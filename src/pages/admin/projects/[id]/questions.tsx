@@ -1,234 +1,279 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import axios from 'axios';
 import ProtectedRoute from '@/lib/protected-route';
+import { getAmplifyDataService } from '@/lib/amplify-data-service';
+import EnhancedFormGenerator from '@/components/EnhancedFormGenerator';
+import { EnhancedFormData, EnhancedQuestion, convertEnhancedToLegacy } from '@/types/form-types';
 
-// Types for our component
-interface Question {
+interface Project {
   id: string;
-  text: string;
-  options: string[];
+  name: string;
+  description?: string;
+  settings?: string;
 }
 
-interface QuestionsPageProps {
-  project: {
-    id: string;
-    name: string;
-  };
-  initialQuestions: Question[];
-}
-
-export default function QuestionsPage({ project, initialQuestions }: QuestionsPageProps) {
+export default function QuestionsPage() {
   const router = useRouter();
-  const [questions, setQuestions] = useState<Question[]>(initialQuestions);
-  const [newQuestion, setNewQuestion] = useState('');
-  const [newOptions, setNewOptions] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const { id } = router.query;
+  const [project, setProject] = useState<Project | null>(null);
+  const [formData, setFormData] = useState<EnhancedFormData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  
-  // Add a new question
-  const handleAddQuestion = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    
-    if (!newQuestion.trim()) {
-      setError('Question text is required');
-      setIsLoading(false);
-      return;
+
+  useEffect(() => {
+    if (id) {
+      loadProject();
     }
-    
-    // Parse options from newline-separated text
-    const options = newOptions
-      .split('\n')
-      .map(opt => opt.trim())
-      .filter(opt => opt.length > 0);
-    
-    if (options.length < 2) {
-      setError('At least two options are required');
-      setIsLoading(false);
-      return;
-    }
-    
+  }, [id]);
+
+  const loadProject = async () => {
     try {
-      const response = await axios.post(`/api/projects/${project.id}/questions`, {
-        text: newQuestion,
-        options
-      });
+      setIsLoading(true);
+      const amplifyDataService = await getAmplifyDataService();
       
-      if (response.data.success) {
-        setQuestions([response.data.question, ...questions]);
-        setNewQuestion('');
-        setNewOptions('');
-        setSuccess('Question added successfully');
-        
-        // Clear success message after 3 seconds
-        setTimeout(() => setSuccess(null), 3000);
+      if (!amplifyDataService || !amplifyDataService.projects) {
+        throw new Error('Data service not available');
       }
-    } catch (error: any) {
-      setError(error.response?.data?.message || 'Failed to add question');
+
+      const projectResult = await amplifyDataService.projects.get({ id: id as string });
+      
+      if (projectResult && projectResult.data) {
+        const projectData = projectResult.data;
+        setProject(projectData);
+
+        // Parse settings to get pre-survey questions
+        if (projectData.settings) {
+          try {
+            const settings = JSON.parse(projectData.settings);
+            if (settings.preSurveyQuestions) {
+              const enhancedFormData: EnhancedFormData = {
+                id: `form_${projectData.id}`,
+                title: projectData.name,
+                questions: settings.preSurveyQuestions.map((q: any, index: number) => ({
+                  id: q.id || `q_${index + 1}`,
+                  text: q.text,
+                  description: q.description || '',
+                  type: q.type || 'multiple-choice',
+                  required: q.required ?? true,
+                  isLead: q.isLead ?? false,
+                  isQualifying: q.isQualifying ?? false,
+                  options: (q.options || []).map((opt: any, optIndex: number) => {
+                    // Handle both simple string options and enhanced option objects
+                    if (typeof opt === 'string') {
+                      return {
+                        id: `opt_${optIndex + 1}`,
+                        text: opt,
+                        value: opt.toLowerCase().replace(/\s+/g, '_'),
+                        skipToAction: 'next' as const,
+                        isDisqualifying: false
+                      };
+                    } else {
+                      return {
+                        id: opt.id || `opt_${optIndex + 1}`,
+                        text: opt.text || '',
+                        value: opt.value || opt.text?.toLowerCase().replace(/\s+/g, '_') || '',
+                        skipToAction: opt.skipToAction || 'next' as const,
+                        skipToQuestion: opt.skipToQuestion,
+                        isDisqualifying: opt.isDisqualifying || false
+                      };
+                    }
+                  }),
+                  disqualifyingAnswers: q.disqualifyingAnswers || [],
+                  conditionalLogic: q.conditionalLogic || [],
+                  validation: q.validation || {}
+                })),
+                responses: [],
+                qualified: 0,
+                disqualified: 0,
+                createdAt: new Date(projectData.createdAt),
+                lastModified: new Date()
+              };
+              setFormData(enhancedFormData);
+            }
+          } catch (e) {
+            console.error('Error parsing project settings:', e);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error loading project:', err);
+      setError('Failed to load project');
     } finally {
       setIsLoading(false);
     }
   };
-  
-  // Delete a question
-  const handleDeleteQuestion = async (questionId: string) => {
-    if (!confirm('Are you sure you want to delete this question?')) return;
-    
+
+  const handleFormSave = async (savedFormData: EnhancedFormData) => {
     try {
-      const response = await axios.delete(`/api/projects/${project.id}/questions`, {
-        data: { questionId }
-      });
+      setIsSaving(true);
+      setError(null);
+
+      const amplifyDataService = await getAmplifyDataService();
       
-      if (response.data.success) {
-        setQuestions(questions.filter(q => q.id !== questionId));
-        setSuccess('Question deleted successfully');
-        
-        // Clear success message after 3 seconds
-        setTimeout(() => setSuccess(null), 3000);
+      if (!amplifyDataService || !amplifyDataService.projects) {
+        throw new Error('Data service not available');
       }
-    } catch (error: any) {
-      setError(error.response?.data?.message || 'Failed to delete question');
+
+      // Update project settings with new form data
+      const currentSettings = project?.settings ? JSON.parse(project.settings) : {};
+      const updatedSettings = {
+        ...currentSettings,
+        preSurveyQuestions: savedFormData.questions
+      };
+
+      await amplifyDataService.projects.update({
+        id: id as string,
+        settings: JSON.stringify(updatedSettings),
+        updatedAt: new Date().toISOString()
+      });
+
+      setFormData(savedFormData);
+      setSuccess('Pre-survey questions updated successfully!');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error saving questions:', err);
+      setError('Failed to save questions. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
-  
+
+  if (isLoading) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading project...</p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  if (!project) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Project Not Found</h2>
+            <p className="text-gray-600 mb-6">The project you're looking for doesn't exist.</p>
+            <Link href="/admin/projects" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+              Back to Projects
+            </Link>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
   return (
     <ProtectedRoute>
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-        <Link 
-          href={`/admin/projects/${project.id}`}
-          className="text-blue-600 hover:text-blue-800"
-        >
-          &larr; Back to project
-        </Link>
-        <h1 className="text-3xl font-bold mt-2">{project.name}</h1>
-        <h2 className="text-xl font-semibold text-gray-700">Pre-Survey Questions</h2>
-        <p className="text-gray-600 mt-1">
-          These questions will be asked before the survey starts and randomly during the survey as a validation check.
-        </p>
-      </div>
-      
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-          {error}
-        </div>
-      )}
-      
-      {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
-          {success}
-        </div>
-      )}
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Left column: Add new question form */}
-        <div className="md:col-span-1">
-          <div className="bg-white shadow-md rounded-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Add New Question</h3>
-            
-            <form onSubmit={handleAddQuestion}>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newQuestion">
-                  Question Text
-                </label>
-                <input
-                  id="newQuestion"
-                  type="text"
-                  placeholder="e.g., What is your age range?"
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  value={newQuestion}
-                  onChange={(e) => setNewQuestion(e.target.value)}
-                  required
-                />
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <Link href="/admin/projects" className="text-blue-600 hover:text-blue-700 text-sm font-medium mb-2 inline-block">
+                  ← Back to Projects
+                </Link>
+                <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
+                <p className="text-gray-600 mt-2">Edit pre-survey questions and qualification logic</p>
               </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="newOptions">
-                  Options (one per line)
-                </label>
-                <textarea
-                  id="newOptions"
-                  placeholder="e.g.,
-18-24
-25-34
-35-44
-45+"
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  value={newOptions}
-                  onChange={(e) => setNewOptions(e.target.value)}
-                  rows={5}
-                  required
-                ></textarea>
-                <p className="text-gray-500 text-xs mt-1">
-                  Enter each option on a new line. At least 2 options are required.
+              <div className="flex gap-3">
+                <Link 
+                  href={`/admin/projects/${id}`}
+                  className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+                >
+                  Project Overview
+                </Link>
+                <Link 
+                  href={`/admin/projects/${id}/generate`}
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  Generate Links
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Status Messages */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+              {success}
+            </div>
+          )}
+
+          {/* Enhanced Form Generator */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Pre-Survey Questions</h2>
+              <p className="text-gray-600">
+                Configure questions that respondents must answer before accessing the main survey.
+                Use these questions for qualification, lead generation, and conditional survey flow.
+              </p>
+              {isSaving && (
+                <p className="text-blue-600 mt-2">
+                  💾 Saving changes...
                 </p>
+              )}
+            </div>
+
+            <div className="p-6">
+              <EnhancedFormGenerator
+                onSave={handleFormSave}
+                initialData={formData || {
+                  id: `form_${project.id}`,
+                  title: project.name,
+                  questions: [],
+                  responses: [],
+                  qualified: 0,
+                  disqualified: 0,
+                  createdAt: new Date(),
+                  lastModified: new Date()
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Help Section */}
+          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <h3 className="text-lg font-medium text-blue-900 mb-3">💡 Tips for Effective Pre-Survey Questions</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
+              <div>
+                <h4 className="font-medium mb-2">Question Types:</h4>
+                <ul className="space-y-1">
+                  <li>• <strong>Lead Questions:</strong> Collect contact information</li>
+                  <li>• <strong>Qualifying Questions:</strong> Screen respondents</li>
+                  <li>• <strong>Multiple Choice:</strong> Simple selection questions</li>
+                  <li>• <strong>Scale Questions:</strong> Rating or satisfaction questions</li>
+                </ul>
               </div>
-              
-              <button
-                type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Adding...' : 'Add Question'}
-              </button>
-            </form>
+              <div>
+                <h4 className="font-medium mb-2">Advanced Features:</h4>
+                <ul className="space-y-1">
+                  <li>• <strong>Skip Logic:</strong> Route users based on answers</li>
+                  <li>• <strong>Conditional Logic:</strong> Advanced branching rules</li>
+                  <li>• <strong>Disqualification:</strong> End survey for specific answers</li>
+                  <li>• <strong>Success Completion:</strong> End with qualified completion</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
-        
-        {/* Right column: List existing questions */}
-        <div className="md:col-span-2">
-          <div className="bg-white shadow-md rounded-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Existing Questions</h3>
-            
-            {questions.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <p>No questions added yet.</p>
-                <p className="text-sm mt-2">Add questions to enable mid-survey validation.</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {questions.map((question) => (
-                  <div 
-                    key={question.id} 
-                    className="border border-gray-200 rounded-md p-4"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium text-lg">{question.text}</h4>
-                        <ul className="mt-3 list-disc pl-6">
-                          {question.options.map((option, index) => (
-                            <li key={index} className="text-gray-600">{option}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      <button
-                        onClick={() => handleDeleteQuestion(question.id)}
-                        className="text-red-500 hover:text-red-700"
-                        title="Delete question"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
       </div>
     </ProtectedRoute>
   );
-}
-
-export async function getServerSideProps() {
-  // All data fetching is now client-side. Do not use amplifyDataService here.
-  return { props: {} };
 }

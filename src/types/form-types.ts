@@ -5,6 +5,17 @@ export interface QuestionOption {
   text: string;
   value: string;
   isDisqualifying?: boolean;
+  skipToQuestion?: string; // ID of question to skip to
+  skipToAction?: 'next' | 'end_success' | 'end_disqualify' | 'skip_to'; // Action to take
+}
+
+export interface ConditionalLogic {
+  id: string;
+  condition: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';
+  value: string;
+  action: 'skip_to' | 'end_success' | 'end_disqualify' | 'show_message';
+  target?: string; // Question ID to skip to
+  message?: string; // Message to show
 }
 
 export interface EnhancedQuestion {
@@ -17,6 +28,7 @@ export interface EnhancedQuestion {
   isQualifying: boolean;
   options?: QuestionOption[];
   disqualifyingAnswers?: string[];
+  conditionalLogic?: ConditionalLogic[];
   validation?: {
     minLength?: number;
     maxLength?: number;
@@ -89,12 +101,27 @@ export function convertLegacyToEnhanced(legacy: LegacyQuestion): EnhancedQuestio
     required: legacy.isRequired ?? true,
     isLead: false,
     isQualifying: legacy.isQualifier || false,
-    options: legacy.options?.map((opt: any, index: number) => ({
-      id: `opt_${index}`,
-      text: typeof opt === 'string' ? opt : opt.text,
-      value: typeof opt === 'string' ? opt.toLowerCase().replace(/\s+/g, '_') : opt.value,
-      isDisqualifying: false
-    })) || [],
+    options: legacy.options?.map((opt: any, index: number) => {
+      // Handle both simple string options and enhanced option objects
+      if (typeof opt === 'string') {
+        return {
+          id: `opt_${index}`,
+          text: opt,
+          value: opt.toLowerCase().replace(/\s+/g, '_'),
+          isDisqualifying: false,
+          skipToAction: 'next' as const
+        };
+      } else {
+        return {
+          id: opt.id || `opt_${index}`,
+          text: opt.text,
+          value: opt.value || opt.text.toLowerCase().replace(/\s+/g, '_'),
+          isDisqualifying: opt.isDisqualifying || false,
+          skipToAction: opt.skipToAction || 'next' as const,
+          skipToQuestion: opt.skipToQuestion
+        };
+      }
+    }) || [],
     disqualifyingAnswers: []
   };
 }
@@ -115,9 +142,10 @@ export function convertEnhancedToLegacy(enhanced: EnhancedQuestion, sequence: nu
     id: enhanced.id,
     text: enhanced.text,
     type: typeMap[enhanced.type],
-    options: enhanced.options?.map(opt => opt.text) || [],
+    options: enhanced.options || [], // Keep full option objects with conditional logic
     sequence,
     isRequired: enhanced.required,
-    isQualifier: enhanced.isQualifying
+    isQualifier: enhanced.isQualifying,
+    logic: enhanced.conditionalLogic || []
   };
 }

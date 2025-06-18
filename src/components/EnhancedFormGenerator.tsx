@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { EnhancedQuestion, EnhancedFormData, QuestionOption } from '@/types/form-types';
+import QuestionEditor from './QuestionEditor';
 
 interface EnhancedFormGeneratorProps {
   onSave: (formData: EnhancedFormData) => void;
@@ -30,6 +31,8 @@ const EnhancedFormGenerator: React.FC<EnhancedFormGeneratorProps> = ({
   const [userResponses, setUserResponses] = useState<Record<string, any>>({});
   const [showModal, setShowModal] = useState(false);
   const [modalContent, setModalContent] = useState({ title: '', body: '' });
+  const [showQuestionEditor, setShowQuestionEditor] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<EnhancedQuestion | undefined>(undefined);
 
   function generateId() {
     return 'form_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -152,14 +155,28 @@ const EnhancedFormGenerator: React.FC<EnhancedFormGeneratorProps> = ({
   };
 
   const openQuestionEditor = (type: string, existingQuestion?: EnhancedQuestion) => {
-    setEditingQuestionIndex(existingQuestion ? 
-      currentForm.questions.indexOf(existingQuestion) : null);
-    
-    setModalContent({
-      title: `${editingQuestionIndex !== null ? 'Edit' : 'Add'} ${formatQuestionType(type)} Question`,
-      body: generateQuestionEditorContent(type, existingQuestion)
-    });
-    setShowModal(true);
+    setEditingQuestion(existingQuestion);
+    setShowQuestionEditor(true);
+  };
+
+  const handleQuestionSave = (questionData: Omit<EnhancedQuestion, 'id'>) => {
+    if (editingQuestion) {
+      // Update existing question
+      const questionIndex = currentForm.questions.findIndex(q => q.id === editingQuestion.id);
+      if (questionIndex !== -1) {
+        updateQuestion(questionIndex, questionData);
+      }
+    } else {
+      // Add new question
+      addQuestion(questionData);
+    }
+    setShowQuestionEditor(false);
+    setEditingQuestion(undefined);
+  };
+
+  const handleQuestionCancel = () => {
+    setShowQuestionEditor(false);
+    setEditingQuestion(undefined);
   };
 
   const formatQuestionType = (type: string) => {
@@ -178,7 +195,7 @@ const EnhancedFormGenerator: React.FC<EnhancedFormGeneratorProps> = ({
 
   const generateQuestionEditorContent = (type: string, existingQuestion?: EnhancedQuestion) => {
     const optionsHTML = ['multiple-choice', 'checkbox', 'dropdown'].includes(type) 
-      ? generateOptionsEditor(existingQuestion?.options || [])
+      ? generateOptionsEditor(existingQuestion?.options || [], currentForm.questions)
       : '';
 
     return `
@@ -224,89 +241,248 @@ const EnhancedFormGenerator: React.FC<EnhancedFormGeneratorProps> = ({
     `;
   };
 
-  const generateOptionsEditor = (options: QuestionOption[]) => {
+  const generateOptionsEditor = (options: QuestionOption[], allQuestions: EnhancedQuestion[] = []) => {
+    // Helper function to safely escape HTML content
+    const escapeHtml = (text: string) => {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    };
+
     return `
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Options</label>
-        <div id="options-list" class="space-y-2">
-          ${options.map((option, index) => `
-            <div class="flex items-center space-x-2">
-              <input type="text" class="flex-1 border border-gray-300 rounded-md px-3 py-2" 
-                     value="${option.text}" placeholder="Option ${index + 1}">
-              <button type="button" class="text-red-600 hover:text-red-800" onclick="removeOption(this)">×</button>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Options & Logic</label>
+        <div id="options-list" class="space-y-3">
+          ${options.map((option, index) => {
+            const safeText = escapeHtml(option.text || '');
+            const safeId = escapeHtml(option.id || '');
+            return `
+            <div class="border border-gray-200 rounded-lg p-3 option-container" data-option-id="${safeId}">
+              <div class="flex items-center space-x-2 mb-2">
+                <input type="text" class="flex-1 border border-gray-300 rounded-md px-3 py-2 option-text" 
+                       value="${safeText}" placeholder="Option ${index + 1}">
+                <button type="button" class="text-red-600 hover:text-red-800" onclick="removeOption(this.closest('.option-container'))">×</button>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 mb-1">After this option:</label>
+                  <select class="w-full text-sm border border-gray-300 rounded px-2 py-1 option-action" onchange="toggleSkipTarget(this)">
+                    <option value="next" ${(option.skipToAction || 'next') === 'next' ? 'selected' : ''}>Next Question</option>
+                    <option value="skip_to" ${option.skipToAction === 'skip_to' ? 'selected' : ''}>Skip to Question</option>
+                    <option value="end_success" ${option.skipToAction === 'end_success' ? 'selected' : ''}>End Survey (Success)</option>
+                    <option value="end_disqualify" ${option.skipToAction === 'end_disqualify' ? 'selected' : ''}>End Survey (Disqualify)</option>
+                  </select>
+                </div>
+                
+                <div class="skip-to-container" style="display: ${option.skipToAction === 'skip_to' ? 'block' : 'none'}">
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Skip to:</label>
+                  <select class="w-full text-sm border border-gray-300 rounded px-2 py-1 skip-target">
+                    <option value="">Select Question</option>
+                    ${allQuestions.map((q, qIndex) => {
+                      const safeQuestionText = escapeHtml(q.text?.substring(0, 30) || 'Untitled');
+                      const safeQuestionId = escapeHtml(q.id || '');
+                      return `<option value="${safeQuestionId}" ${option.skipToQuestion === q.id ? 'selected' : ''}>Question ${qIndex + 1}: ${safeQuestionText}${q.text && q.text.length > 30 ? '...' : ''}</option>`;
+                    }).join('')}
+                  </select>
+                </div>
+              </div>
+              
+              <div class="mt-2">
+                <label class="flex items-center text-xs text-gray-600">
+                  <input type="checkbox" class="option-disqualifying mr-1" ${option.isDisqualifying ? 'checked' : ''}>
+                  Mark as disqualifying answer
+                </label>
+              </div>
             </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>
-        <button type="button" class="mt-2 text-blue-600 hover:text-blue-800" onclick="addOption()">+ Add Option</button>
+        <button type="button" class="mt-3 text-blue-600 hover:text-blue-800 font-medium" onclick="addAdvancedOption()">+ Add Option</button>
       </div>
     `;
   };
 
   const saveQuestionFromModal = (type: string) => {
-    const questionText = (document.getElementById('question-text') as HTMLInputElement)?.value?.trim();
-    if (!questionText) {
-      showAlert('Please enter a question text.', 'error');
-      return;
-    }
-
-    const questionData: Omit<EnhancedQuestion, 'id'> = {
-      text: questionText,
-      description: (document.getElementById('question-description') as HTMLTextAreaElement)?.value?.trim() || '',
-      type: type as any,
-      required: (document.getElementById('required-checkbox') as HTMLInputElement)?.checked || false,
-      isLead: (document.getElementById('lead-checkbox') as HTMLInputElement)?.checked || false,
-      isQualifying: (document.getElementById('qualifying-checkbox') as HTMLInputElement)?.checked || false
-    };
-
-    // Handle options for choice-based questions
-    if (['multiple-choice', 'checkbox', 'dropdown'].includes(type)) {
-      const optionInputs = document.querySelectorAll('.option-input') as NodeListOf<HTMLInputElement>;
-      const options = Array.from(optionInputs)
-        .map((input, index) => ({
-          id: (index + 1).toString(),
-          text: input.value.trim(),
-          value: input.value.trim().toLowerCase().replace(/\s+/g, '_')
-        }))
-        .filter(option => option.text);
-
-      if (options.length < 2) {
-        showAlert('Please provide at least 2 options.', 'error');
+    try {
+      const questionText = (document.getElementById('question-text') as HTMLInputElement)?.value?.trim();
+      if (!questionText) {
+        showAlert('Please enter a question text.', 'error');
         return;
       }
 
-      questionData.options = options;
-    }
+      const questionData: Omit<EnhancedQuestion, 'id'> = {
+        text: questionText,
+        description: (document.getElementById('question-description') as HTMLTextAreaElement)?.value?.trim() || '',
+        type: type as any,
+        required: (document.getElementById('required-checkbox') as HTMLInputElement)?.checked || false,
+        isLead: (document.getElementById('lead-checkbox') as HTMLInputElement)?.checked || false,
+        isQualifying: (document.getElementById('qualifying-checkbox') as HTMLInputElement)?.checked || false
+      };
 
-    if (editingQuestionIndex !== null) {
-      updateQuestion(editingQuestionIndex, questionData);
-      setEditingQuestionIndex(null);
-    } else {
-      addQuestion(questionData);
-    }
+      // Handle options for choice-based questions
+      if (['multiple-choice', 'checkbox', 'dropdown'].includes(type)) {
+        const optionContainers = document.querySelectorAll('.option-container') as NodeListOf<HTMLElement>;
+        const options = Array.from(optionContainers)
+          .map((container, index) => {
+            const textInput = container.querySelector('.option-text') as HTMLInputElement;
+            const actionSelect = container.querySelector('.option-action') as HTMLSelectElement;
+            const skipTarget = container.querySelector('.skip-target') as HTMLSelectElement;
+            const isDisqualifying = container.querySelector('.option-disqualifying') as HTMLInputElement;
+            
+            if (!textInput?.value?.trim()) return null;
+            
+            const option: QuestionOption = {
+              id: (index + 1).toString(),
+              text: textInput.value.trim(),
+              value: textInput.value.trim().toLowerCase().replace(/\s+/g, '_'),
+              skipToAction: actionSelect?.value as any || 'next',
+              isDisqualifying: isDisqualifying?.checked || false
+            };
+            
+            if (actionSelect?.value === 'skip_to' && skipTarget?.value) {
+              option.skipToQuestion = skipTarget.value;
+            }
+            
+            return option;
+          })
+          .filter(option => option !== null) as QuestionOption[];
 
-    setShowModal(false);
+        if (options.length < 2) {
+          showAlert('Please provide at least 2 options.', 'error');
+          return;
+        }
+
+        questionData.options = options;
+        
+        // Set disqualifying answers for backward compatibility
+        questionData.disqualifyingAnswers = options
+          .filter(opt => opt.isDisqualifying)
+          .map(opt => opt.text);
+      }
+
+      if (editingQuestionIndex !== null) {
+        updateQuestion(editingQuestionIndex, questionData);
+        setEditingQuestionIndex(null);
+      } else {
+        addQuestion(questionData);
+      }
+
+      setShowModal(false);
+    } catch (error) {
+      console.error('Error saving question:', error);
+      showAlert('Failed to save question. Please try again.', 'error');
+    }
   };
 
-  // Add this function to handle adding options in the modal
-  const addOptionToModal = () => {
-    const optionsList = document.getElementById('options-list');
-    if (optionsList) {
-      const count = optionsList.children.length + 1;
-      const div = document.createElement('div');
-      div.className = 'flex items-center space-x-2 mb-2';
-      div.innerHTML = `
-        <input type="text" class="flex-1 border border-gray-300 rounded-md px-3 py-2 option-input" 
-               placeholder="Option ${count}">
-        <button type="button" class="text-red-600 hover:text-red-800 font-bold text-lg" onclick="this.parentElement.remove()">×</button>
-      `;
-      optionsList.appendChild(div);
-    }
-  };
+  // Enhanced option management functions
+  useEffect(() => {
+    // Helper function to safely escape HTML content
+    const escapeHtml = (text: string) => {
+      try {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      } catch (error) {
+        console.error('Error escaping HTML:', error);
+        return text.replace(/[&<>"']/g, ''); // Basic fallback
+      }
+    };
+
+    // Add advanced option function
+    (window as any).addAdvancedOption = () => {
+      try {
+        const optionsList = document.getElementById('options-list');
+        if (!optionsList) {
+          console.warn('Options list not found');
+          return;
+        }
+        
+        const count = optionsList.children.length + 1;
+        const div = document.createElement('div');
+        div.className = 'border border-gray-200 rounded-lg p-3 option-container';
+        
+        // Generate the question options HTML safely
+        const questionOptionsHtml = currentForm.questions.map((q, qIndex) => {
+          const safeQuestionText = escapeHtml(q.text?.substring(0, 30) || 'Untitled');
+          const safeQuestionId = escapeHtml(q.id || '');
+          return `<option value="${safeQuestionId}">Question ${qIndex + 1}: ${safeQuestionText}${q.text && q.text.length > 30 ? '...' : ''}</option>`;
+        }).join('');
+        
+        div.innerHTML = `
+          <div class="flex items-center space-x-2 mb-2">
+            <input type="text" class="flex-1 border border-gray-300 rounded-md px-3 py-2 option-text" 
+                   placeholder="Option ${count}">
+            <button type="button" class="text-red-600 hover:text-red-800" onclick="removeOption(this.closest('.option-container'))">×</button>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">After this option:</label>
+              <select class="w-full text-sm border border-gray-300 rounded px-2 py-1 option-action" onchange="toggleSkipTarget(this)">
+                <option value="next">Next Question</option>
+                <option value="skip_to">Skip to Question</option>
+                <option value="end_success">End Survey (Success)</option>
+                <option value="end_disqualify">End Survey (Disqualify)</option>
+              </select>
+            </div>
+            
+            <div class="skip-to-container" style="display: none">
+              <label class="block text-xs font-medium text-gray-600 mb-1">Skip to:</label>
+              <select class="w-full text-sm border border-gray-300 rounded px-2 py-1 skip-target">
+                <option value="">Select Question</option>
+                ${questionOptionsHtml}
+              </select>
+            </div>
+          </div>
+          
+          <div class="mt-2">
+            <label class="flex items-center text-xs text-gray-600">
+              <input type="checkbox" class="option-disqualifying mr-1">
+              Mark as disqualifying answer
+            </label>
+          </div>
+        `;
+        optionsList.appendChild(div);
+      } catch (error) {
+        console.error('Error adding option:', error);
+      }
+    };
+
+    // Toggle skip target visibility
+    (window as any).toggleSkipTarget = (select: HTMLSelectElement) => {
+      try {
+        const container = select.closest('.option-container');
+        const skipContainer = container?.querySelector('.skip-to-container') as HTMLElement;
+        if (skipContainer) {
+          skipContainer.style.display = select.value === 'skip_to' ? 'block' : 'none';
+        }
+      } catch (error) {
+        console.error('Error toggling skip target:', error);
+      }
+    };
+
+    // Remove option function
+    (window as any).removeOption = (container: HTMLElement) => {
+      try {
+        if (container && container.parentNode) {
+          container.remove();
+        }
+      } catch (error) {
+        console.error('Error removing option:', error);
+      }
+    };
+
+    return () => {
+      delete (window as any).addAdvancedOption;
+      delete (window as any).toggleSkipTarget;
+      delete (window as any).removeOption;
+    };
+  }, [currentForm.questions]);
 
   // Make functions available globally for the modal
   React.useEffect(() => {
     (window as any).saveQuestion = saveQuestionFromModal;
-    (window as any).addOption = addOptionToModal;
     (window as any).hideModal = () => setShowModal(false);
   }, [editingQuestionIndex]);
 
@@ -316,8 +492,15 @@ const EnhancedFormGenerator: React.FC<EnhancedFormGeneratorProps> = ({
       return;
     }
 
+    // Save the form data and switch to preview mode
     onSave(currentForm);
-    showAlert('Survey saved successfully!', 'success');
+    showAlert('Survey saved successfully! You can now preview it or create the project.', 'success');
+    
+    // Switch to preview mode to show the saved form
+    setIsPreviewMode(true);
+    setCurrentQuestionIndex(0);
+    setUserResponses({});
+    setIsDisqualified(false);
   };
 
   const togglePreview = () => {
@@ -568,6 +751,19 @@ const EnhancedFormGenerator: React.FC<EnhancedFormGeneratorProps> = ({
           border-color: #6366f1;
           transform: translateY(-2px);
         }
+
+        .option-container {
+          transition: all 0.2s ease;
+        }
+        
+        .option-container:hover {
+          border-color: #6366f1;
+          box-shadow: 0 2px 4px rgba(99, 102, 241, 0.1);
+        }
+        
+        .skip-to-container {
+          transition: all 0.3s ease;
+        }
       `}</style>
 
       {/* Hero Section */}
@@ -670,8 +866,43 @@ const EnhancedFormGenerator: React.FC<EnhancedFormGeneratorProps> = ({
                     
                     {/* Show options for choice-based questions */}
                     {question.options && question.options.length > 0 && (
-                      <div className="text-sm text-gray-600">
-                        Options: {question.options.map(opt => opt.text).join(', ')}
+                      <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                        <h5 className="text-sm font-medium text-gray-700 mb-2">Answer Options:</h5>
+                        <div className="space-y-1">
+                          {question.options.map((opt, optIndex) => (
+                            <div key={opt.id} className="flex items-center justify-between text-sm">
+                              <span className="text-gray-800">• {opt.text}</span>
+                              <div className="flex gap-2">
+                                {opt.isDisqualifying && (
+                                  <span className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded">Disqualify</span>
+                                )}
+                                {opt.skipToAction && opt.skipToAction !== 'next' && (
+                                  <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded">
+                                    {opt.skipToAction === 'end_success' ? 'End Success' :
+                                     opt.skipToAction === 'end_disqualify' ? 'End Disqualify' :
+                                     opt.skipToAction === 'skip_to' ? `Skip to Q${currentForm.questions.findIndex(q => q.id === opt.skipToQuestion) + 1}` :
+                                     opt.skipToAction}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Show conditional logic */}
+                    {question.conditionalLogic && question.conditionalLogic.length > 0 && (
+                      <div className="mt-3 p-3 bg-purple-50 rounded-lg">
+                        <h5 className="text-sm font-medium text-purple-700 mb-2">Conditional Logic:</h5>
+                        <div className="space-y-1">
+                          {question.conditionalLogic.map((logic, logicIndex) => (
+                            <div key={logic.id} className="text-sm text-purple-800">
+                              If answer {logic.condition} "{logic.value}" → {logic.action}
+                              {logic.target && ` (Q${currentForm.questions.findIndex(q => q.id === logic.target) + 1})`}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -781,26 +1012,56 @@ const EnhancedFormGenerator: React.FC<EnhancedFormGeneratorProps> = ({
 
             {/* Actions */}
             <div className="space-y-3">
-              <button
-                onClick={togglePreview}
-                className="w-full btn-primary"
-                disabled={currentForm.questions.length === 0}
-              >
-                👁️ Preview Survey
-              </button>
-              <button
-                onClick={saveForm}
-                className="w-full btn-primary"
-                disabled={currentForm.questions.length === 0}
-              >
-                💾 Save Survey
-              </button>
+              {!isPreviewMode && (
+                <>
+                  <button
+                    onClick={togglePreview}
+                    className="w-full btn-primary"
+                    disabled={currentForm.questions.length === 0}
+                  >
+                    👁️ Preview Survey
+                  </button>
+                  <button
+                    onClick={saveForm}
+                    className="w-full btn-primary"
+                    disabled={currentForm.questions.length === 0}
+                  >
+                    💾 Save Survey
+                  </button>
+                </>
+              )}
+              
+              {isPreviewMode && (
+                <>
+                  <button
+                    onClick={() => setIsPreviewMode(false)}
+                    className="w-full btn-secondary"
+                  >
+                    ✏️ Edit Survey
+                  </button>
+                  <button
+                    onClick={saveForm}
+                    className="w-full btn-primary"
+                  >
+                    💾 Save Changes
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
       </div>
 
-      {/* Modal */}
+      {/* Question Editor Modal */}
+      <QuestionEditor
+        question={editingQuestion}
+        availableQuestions={currentForm.questions}
+        onSave={handleQuestionSave}
+        onCancel={handleQuestionCancel}
+        isOpen={showQuestionEditor}
+      />
+
+      {/* Old Modal (keep for other uses) */}
       {showModal && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
           <div className="modal-content">
